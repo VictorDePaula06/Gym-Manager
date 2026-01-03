@@ -1,0 +1,1939 @@
+
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
+import { useGym } from '../context/GymContext';
+import { useToast } from '../context/ToastContext';
+import { useDialog } from '../context/DialogContext';
+import { db, storage } from '../firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility } from 'lucide-react';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import BodyMeasurementMap from '../components/BodyMeasurementMap';
+import StudentCard from '../components/StudentCard';
+
+export default function StudentDetails() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { students, updateStudent, settings } = useGym();
+    const { addToast } = useToast();
+    const { confirm } = useDialog();
+    const [student, setStudent] = useState(null);
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'overview');
+    const [assessments, setAssessments] = useState([]);
+    const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+    const [editingAssessmentId, setEditingAssessmentId] = useState(null);
+
+    // New state for multiple sheets
+    const [selectedSheetId, setSelectedSheetId] = useState('default');
+    const [isCreatingSheet, setIsCreatingSheet] = useState(false);
+    const [newSheetName, setNewSheetName] = useState('');
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+    const [newAssessment, setNewAssessment] = useState({
+        weight: '',
+        height: '',
+        bodyFat: '',
+        muscleMass: '',
+        notes: '',
+        // Detailed Measurements
+        bicepsRight: '', bicepsLeft: '',
+        tricepsRight: '', tricepsLeft: '',
+        chest: '', waist: '', abdomen: '',
+        hips: '',
+        thighRight: '', thighLeft: '',
+        calfRight: '', calfLeft: ''
+    });
+
+    // Comparison State
+    const [selectedAssessments, setSelectedAssessments] = useState([]);
+    const [showComparison, setShowComparison] = useState(false);
+
+    const [paymentForm, setPaymentForm] = useState({
+        value: '',
+        method: 'Cartão de Crédito',
+        date: new Date().toISOString().split('T')[0]
+    });
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const scrollRef = useRef(null);
+
+    const scroll = (scrollOffset) => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollBy({ left: scrollOffset, behavior: 'smooth' });
+        }
+    };
+
+    useEffect(() => {
+        const found = students.find(s => s.id === id);
+        if (found) {
+            setStudent(found);
+
+            if (found.workoutSheets && Object.keys(found.workoutSheets).length > 0 && selectedSheetId === 'default') {
+                const sheetIds = Object.keys(found.workoutSheets).sort();
+                setSelectedSheetId(sheetIds[sheetIds.length - 1]);
+            }
+        }
+    }, [id, students]);
+
+    useEffect(() => {
+        if (!id) return;
+
+        const q = query(collection(db, 'students', id, 'assessments'), orderBy('date', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setAssessments(snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })));
+        });
+
+        return () => unsubscribe();
+    }, [id]);
+
+    const handleAddAssessment = async (e) => {
+        e.preventDefault();
+        try {
+            const assessmentData = {
+                ...newAssessment,
+                // If editing, keep original date, else new date
+                ...(editingAssessmentId ? {} : {
+                    date: serverTimestamp(),
+                    dateString: new Date().toLocaleDateString()
+                })
+            };
+
+            if (editingAssessmentId) {
+                // Ensure number format
+                const cleanAssessment = { ...assessmentData };
+                ['weight', 'height', 'bodyFat', 'muscleMass'].forEach(k => {
+                    if (cleanAssessment[k]) cleanAssessment[k] = cleanAssessment[k].toString().replace(',', '.');
+                });
+
+                await updateDoc(doc(db, 'students', id, 'assessments', editingAssessmentId), cleanAssessment);
+                addToast("Avaliação atualizada!", 'success');
+            } else {
+                const cleanAssessment = { ...assessmentData };
+                ['weight', 'height', 'bodyFat', 'muscleMass'].forEach(k => {
+                    if (cleanAssessment[k]) cleanAssessment[k] = cleanAssessment[k].toString().replace(',', '.');
+                });
+                await addDoc(collection(db, 'students', id, 'assessments'), cleanAssessment);
+                addToast("Avaliação criada com sucesso!", 'success');
+            }
+
+            setShowAssessmentForm(false);
+            setEditingAssessmentId(null);
+            setNewAssessment({ weight: '', height: '', bodyFat: '', muscleMass: '', notes: '' });
+        } catch (error) {
+            console.error("Error saving assessment:", error);
+            addToast("Erro ao salvar avaliação.", 'error');
+        }
+    };
+
+    const handleDeleteAssessment = async (assessmentId) => {
+        const confirmed = await confirm({
+            title: 'Excluir Avaliação',
+            message: 'Tem certeza que deseja excluir esta avaliação?',
+            confirmText: 'Excluir',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            await deleteDoc(doc(db, 'students', id, 'assessments', assessmentId));
+            addToast("Avaliação excluída com sucesso!", 'success');
+        } catch (e) {
+            addToast("Erro ao excluir avaliação.", 'error');
+        }
+    };
+
+    const handleWhatsApp = async () => {
+        if (!settings?.whatsapp) {
+            const confirmed = await confirm({
+                title: 'WhatsApp não configurado',
+                message: 'Para entrar em contato com alunos, você precisa primeiro cadastrar o seu número de WhatsApp nas configurações.',
+                confirmText: 'Ir para Configurações',
+                cancelText: 'Cancelar',
+                type: 'info' // Using info type for blue color (or default) instead of danger
+            });
+
+            if (confirmed) {
+                navigate('/settings');
+            }
+            return;
+        }
+        if (!student.phone) return;
+        const phone = student.phone.replace(/\D/g, '');
+        window.open(`https://wa.me/55${phone}`, '_blank');
+    };
+
+    const getCurrentSheet = () => {
+        if (!student) return null;
+
+        if (student.workoutSheets && Object.keys(student.workoutSheets).length > 0) {
+            if (student.workoutSheets[selectedSheetId]) {
+                return { type: 'sheet', id: selectedSheetId, ...student.workoutSheets[selectedSheetId] };
+            }
+            const firstKey = Object.keys(student.workoutSheets)[0];
+            return { type: 'sheet', id: firstKey, ...student.workoutSheets[firstKey] };
+        }
+
+        return { type: 'legacy', id: 'legacy', name: 'Ficha Principal', workouts: student.workouts || {} };
+    };
+
+    const handleCreateSheet = async () => {
+        if (!newSheetName.trim()) return;
+
+        try {
+            const sheetId = crypto.randomUUID();
+            const newSheet = {
+                name: newSheetName,
+                createdAt: new Date().toISOString(),
+                workouts: {}
+            };
+
+            const updatedSheets = {
+                ...(student.workoutSheets || {}),
+                [sheetId]: newSheet
+            };
+
+            let finalUpdate = { workoutSheets: updatedSheets };
+
+            if (!student.workoutSheets && student.workouts && Object.keys(student.workouts).length > 0) {
+                const legacyId = crypto.randomUUID();
+                finalUpdate.workoutSheets[legacyId] = {
+                    name: "Ficha Anterior",
+                    createdAt: new Date().toISOString(),
+                    workouts: student.workouts
+                };
+            }
+
+            await updateDoc(doc(db, 'students', id), finalUpdate);
+
+            setNewSheetName('');
+            setIsCreatingSheet(false);
+            setSelectedSheetId(sheetId);
+            addToast("Nova ficha criada com sucesso!", 'success');
+
+        } catch (error) {
+            console.error("Error creating sheet:", error);
+            addToast("Erro ao criar nova ficha.", 'error');
+        }
+    };
+
+    const handleDeleteSheet = async (sheetId) => {
+        const confirmed = await confirm({
+            title: 'Excluir Ficha',
+            message: 'Tem certeza que deseja excluir esta ficha inteira? Todos os treinos nela serão perdidos.',
+            confirmText: 'Excluir',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const newSheets = { ...student.workoutSheets };
+            delete newSheets[sheetId];
+
+            await updateDoc(doc(db, 'students', id), {
+                workoutSheets: newSheets
+            });
+            setSelectedSheetId('default');
+            addToast("Ficha excluída com sucesso!", 'success');
+        } catch (error) {
+            console.error("Error deleting sheet:", error);
+            addToast("Erro ao excluir ficha.", 'error');
+        }
+    }
+
+    const generatePDF = () => {
+        try {
+            const doc = new jsPDF();
+            const currentSheet = getCurrentSheet();
+            const workouts = currentSheet.workouts || (currentSheet.type === 'legacy' ? currentSheet.workouts : {});
+            const variations = Object.keys(workouts).sort();
+
+            if (variations.length === 0) {
+                addToast("Nenhum treino encontrado nesta ficha para gerar o PDF.", 'info');
+                return;
+            }
+
+            doc.setFontSize(22);
+            // ... (omitted unaffected code)
+            doc.save(`${student.name}_${currentSheet.name || 'Ficha'}.pdf`);
+            addToast("PDF gerado com sucesso!", 'success');
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            addToast("Ocorreu um erro ao gerar o PDF.", 'error');
+        }
+    };
+
+    if (!student) return <div style={{ padding: '2rem', textAlign: 'center' }}>Carregando...</div>;
+
+    const TabButton = ({ id, label, icon: Icon }) => (
+        <button
+            onClick={() => setActiveTab(id)}
+            style={{
+                background: activeTab === id ? 'var(--primary)' : 'transparent',
+                color: activeTab === id ? 'white' : 'var(--text-muted)',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+            }}
+        >
+            <Icon size={18} />
+            {label}
+        </button>
+    );
+
+    const handleOpenPaymentModal = () => {
+        setPaymentForm({
+            value: student.price || '89.90',
+            method: 'Cartão de Crédito',
+            date: new Date().toISOString().split('T')[0]
+        });
+        setShowPaymentModal(true);
+    };
+
+    const handleDeletePayment = async (indexToDelete) => {
+        const confirmed = await confirm({
+            title: 'Excluir Pagamento',
+            message: 'Tem certeza que deseja remover este registro de pagamento?',
+            confirmText: 'Excluir',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const newHistory = student.paymentHistory.filter((_, index) => index !== indexToDelete);
+
+            await updateStudent(id, {
+                ...student,
+                paymentHistory: newHistory
+            });
+            addToast("Pagamento removido com sucesso.", 'success');
+        } catch (error) {
+            console.error("Error deleting payment:", error);
+            addToast("Erro ao remover pagamento.", 'error');
+        }
+    };
+
+    const handleRegisterPayment = async () => {
+        try {
+            const paymentAmount = parseFloat(paymentForm.value);
+            // Fix timezone issue: split YYYY-MM-DD and create local date
+            const [pYear, pMonth, pDay] = paymentForm.date.split('-').map(Number);
+            const paymentDateObj = new Date(pYear, pMonth - 1, pDay, 12, 0, 0); // Noon to avoid DST/timezone shift
+
+            // Calculate next due date based on plan
+            let monthsToAdd = 1; // Default Monthly
+            const plan = (student.plan || '').toLowerCase();
+
+            if (plan.includes('trimestral') || plan.includes('quarterly')) monthsToAdd = 3;
+            else if (plan.includes('semestral') || plan.includes('semiannual')) monthsToAdd = 6;
+            else if (plan.includes('anual') || plan.includes('annual')) monthsToAdd = 12;
+
+            const nextDueDate = new Date(paymentDateObj);
+            nextDueDate.setMonth(nextDueDate.getMonth() + monthsToAdd);
+
+            const newHistory = [
+                {
+                    date: paymentDateObj.toISOString(),
+                    description: `Mensalidade - ${paymentDateObj.toLocaleDateString('pt-BR', { month: 'long' })}`,
+                    value: paymentAmount,
+                    status: 'Paid',
+                    method: paymentForm.method
+                },
+                ...(student.paymentHistory || [])
+            ];
+
+            await updateStudent(id, {
+                ...student,
+                status: 'Active',
+                paymentHistory: newHistory,
+                lastPaymentDate: paymentDateObj.toISOString(),
+                nextPaymentDate: nextDueDate.toISOString()
+            });
+
+            setShowPaymentModal(false);
+            addToast(`Pagamento registrado! Próximo vencimento: ${nextDueDate.toLocaleDateString('pt-BR')}`, 'success');
+        } catch (error) {
+            console.error("Erro ao registrar pagamento:", error);
+            addToast("Erro ao registrar pagamento.", 'error');
+        }
+    };
+
+    const calculateAge = (dateString) => {
+        if (!dateString) return null;
+        const today = new Date();
+        const birthDate = new Date(dateString);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
+    const currentSheet = getCurrentSheet();
+    const isLegacy = currentSheet?.type === 'legacy';
+
+    // Sort legacy vs new
+    const availableSheets = student.workoutSheets
+        ? Object.entries(student.workoutSheets).map(([k, v]) => ({ id: k, ...v }))
+        : [];
+
+    const toggleAssessmentSelection = (assessment) => {
+        if (selectedAssessments.find(a => a.id === assessment.id)) {
+            setSelectedAssessments(selectedAssessments.filter(a => a.id !== assessment.id));
+        } else {
+            if (selectedAssessments.length >= 2) {
+                addToast("Selecione no máximo 2 avaliações para comparar.", 'info');
+                return;
+            }
+            setSelectedAssessments([...selectedAssessments, assessment]);
+        }
+    };
+
+    const handlePhotoUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        setUploadingPhoto(true);
+        try {
+            const storageRef = ref(storage, `students/${id}/photos/${Date.now()}_${file.name}`);
+            const snapshot = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+
+            const photoData = {
+                url: downloadURL,
+                path: snapshot.ref.fullPath,
+                date: new Date().toISOString(),
+                name: file.name
+            };
+
+            await updateDoc(doc(db, 'students', id), {
+                photoGallery: arrayUnion(photoData)
+            });
+
+            setStudent(prev => ({
+                ...prev,
+                photoGallery: [...(prev.photoGallery || []), photoData]
+            }));
+
+            // If it's the first photo, set as profile picture automatically
+            if (!student.profilePictureUrl) {
+                await updateDoc(doc(db, 'students', id), {
+                    profilePictureUrl: downloadURL
+                });
+                setStudent(prev => ({ ...prev, profilePictureUrl: downloadURL }));
+            }
+            addToast("Foto enviada com sucesso!", 'success');
+
+        } catch (error) {
+            console.error("Error uploading photo:", error);
+            addToast(`Erro ao enviar foto: ${error.message}`, 'error');
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
+
+    const handleDeletePhoto = async (photo) => {
+        const confirmed = await confirm({
+            title: 'Excluir Foto',
+            message: 'Tem certeza que deseja excluir esta foto?',
+            confirmText: 'Excluir',
+            type: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            const storageRef = ref(storage, photo.path);
+            await deleteObject(storageRef);
+
+            await updateDoc(doc(db, 'students', id), {
+                photoGallery: arrayRemove(photo)
+            });
+
+            // If deleted photo was profile picture, unset it
+            if (student.profilePictureUrl === photo.url) {
+                await updateDoc(doc(db, 'students', id), {
+                    profilePictureUrl: null
+                });
+                setStudent(prev => ({ ...prev, profilePictureUrl: null }));
+            }
+
+            setStudent(prev => ({
+                ...prev,
+                photoGallery: prev.photoGallery.filter(p => p.url !== photo.url)
+            }));
+            addToast("Foto excluída com sucesso!", 'success');
+
+        } catch (error) {
+            console.error("Error deleting photo:", error);
+            addToast("Erro ao excluir foto.", 'error');
+        }
+    };
+
+    const handleSetProfilePicture = async (photoUrl) => {
+        try {
+            await updateDoc(doc(db, 'students', id), {
+                profilePictureUrl: photoUrl
+            });
+            setStudent(prev => ({ ...prev, profilePictureUrl: photoUrl }));
+            addToast("Foto de perfil definida!", 'success');
+        } catch (error) {
+            console.error("Error setting profile picture:", error);
+            addToast("Erro ao definir foto de perfil.", 'error');
+        }
+    };
+
+    const ComparisonModal = () => {
+        if (selectedAssessments.length !== 2) return null;
+
+        // Ensure chronological order for comparison (Older -> Newer)
+        const [a1, a2] = [...selectedAssessments].sort((a, b) => new Date(a.date.seconds * 1000) - new Date(b.date.seconds * 1000));
+
+        const renderRow = (label, key, unit = '') => {
+            const v1 = parseFloat(a1[key]) || 0;
+            const v2 = parseFloat(a2[key]) || 0;
+            const diff = v2 - v1;
+            const isPositive = diff > 0;
+            const neutral = Math.abs(diff) < 0.1;
+
+            // Logic for colors (Reversed for Weight/Fat where Down is Good)
+            const reverseColor = ['weight', 'bodyFat', 'waist', 'abdomen'].includes(key);
+            let color = 'white';
+            if (!neutral) {
+                if (reverseColor) color = isPositive ? '#ef4444' : '#10b981';
+                else color = isPositive ? '#10b981' : '#ef4444';
+            }
+
+            return (
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '0.8rem', borderBottom: '1px solid var(--border-glass)', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{label}</span>
+                    <span style={{ fontWeight: 'bold' }}>{a1[key] ? `${a1[key]}${unit}` : '-'}</span>
+                    <span style={{ fontWeight: 'bold' }}>{a2[key] ? `${a2[key]}${unit}` : '-'}</span>
+                    <span style={{ color, fontWeight: 'bold', fontSize: '0.9rem' }}>
+                        {neutral ? '-' : `${isPositive ? '+' : ''}${diff.toFixed(1)}${unit}`}
+                    </span>
+                </div>
+            );
+        };
+
+        const downloadComparisonPDF = () => {
+            try {
+                const doc = new jsPDF();
+
+                // Header
+                doc.setFillColor(15, 23, 42); // Dark Blue
+                doc.rect(0, 0, 210, 40, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(22);
+                doc.text("GymManager", 105, 20, { align: 'center' });
+                doc.setFontSize(12);
+                doc.text("Relatório Comparativo de Evolução", 105, 30, { align: 'center' });
+
+                // Student Info
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                doc.text(`Aluno: ${student.name}`, 14, 50);
+                doc.text(`Comparação: ${a1.dateString} vs ${a2.dateString}`, 14, 58);
+
+                // Data Preparation
+                const rows = [
+                    // General
+                    ['Peso (kg)', `${a1.weight}`, `${a2.weight}`, (a2.weight - a1.weight).toFixed(1)],
+                    ['% Gordura', `${a1.bodyFat || '-'}`, `${a2.bodyFat || '-'}`, a1.bodyFat && a2.bodyFat ? (a2.bodyFat - a1.bodyFat).toFixed(1) : '-'],
+                    ['Massa Magra (kg)', `${a1.muscleMass || '-'}`, `${a2.muscleMass || '-'}`, a1.muscleMass && a2.muscleMass ? (a2.muscleMass - a1.muscleMass).toFixed(1) : '-'],
+
+                    // Upper Body
+                    ['Bíceps Dir. (cm)', `${a1.bicepsRight || '-'}`, `${a2.bicepsRight || '-'}`, a1.bicepsRight && a2.bicepsRight ? (a2.bicepsRight - a1.bicepsRight).toFixed(1) : '-'],
+                    ['Bíceps Esq. (cm)', `${a1.bicepsLeft || '-'}`, `${a2.bicepsLeft || '-'}`, a1.bicepsLeft && a2.bicepsLeft ? (a2.bicepsLeft - a1.bicepsLeft).toFixed(1) : '-'],
+                    ['Peitoral (cm)', `${a1.chest || '-'}`, `${a2.chest || '-'}`, a1.chest && a2.chest ? (a2.chest - a1.chest).toFixed(1) : '-'],
+
+                    // Trunk
+                    ['Cintura (cm)', `${a1.waist || '-'}`, `${a2.waist || '-'}`, a1.waist && a2.waist ? (a2.waist - a1.waist).toFixed(1) : '-'],
+                    ['Abdômen (cm)', `${a1.abdomen || '-'}`, `${a2.abdomen || '-'}`, a1.abdomen && a2.abdomen ? (a2.abdomen - a1.abdomen).toFixed(1) : '-'],
+                    ['Quadril (cm)', `${a1.hips || '-'}`, `${a2.hips || '-'}`, a1.hips && a2.hips ? (a2.hips - a1.hips).toFixed(1) : '-'],
+
+                    // Lower Body
+                    ['Coxa Dir. (cm)', `${a1.thighRight || '-'}`, `${a2.thighRight || '-'}`, a1.thighRight && a2.thighRight ? (a2.thighRight - a1.thighRight).toFixed(1) : '-'],
+                    ['Coxa Esq. (cm)', `${a1.thighLeft || '-'}`, `${a2.thighLeft || '-'}`, a1.thighLeft && a2.thighLeft ? (a2.thighLeft - a1.thighLeft).toFixed(1) : '-'],
+                    ['Panturrilha Dir. (cm)', `${a1.calfRight || '-'}`, `${a2.calfRight || '-'}`, a1.calfRight && a2.calfRight ? (a2.calfRight - a1.calfRight).toFixed(1) : '-'],
+                    ['Panturrilha Esq. (cm)', `${a1.calfLeft || '-'}`, `${a2.calfLeft || '-'}`, a1.calfLeft && a2.calfLeft ? (a2.calfLeft - a1.calfLeft).toFixed(1) : '-'],
+                ];
+
+                autoTable(doc, {
+                    startY: 70,
+                    head: [['Medida', `Valor (${a1.dateString})`, `Valor (${a2.dateString})`, 'Diferença']],
+                    body: rows,
+                    theme: 'grid',
+                    headStyles: { fillColor: [30, 41, 59] },
+                    styles: { fontSize: 10, halign: 'center' },
+                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+                    didParseCell: function (data) {
+                        if (data.section === 'body' && data.column.index === 3) {
+                            const val = parseFloat(data.cell.raw);
+                            if (!isNaN(val) && val !== 0) {
+                                // Logic for color: Weight/Fat/Waist/Abdomen Down is Good (Green), others Up is Good
+                                const measure = data.row.raw[0].toString().toLowerCase();
+                                const reverseColor = measure.includes('peso') || measure.includes('gordura') || measure.includes('cintura') || measure.includes('abdômen');
+
+                                if (reverseColor) {
+                                    data.cell.styles.textColor = val < 0 ? [16, 185, 129] : [239, 68, 68];
+                                } else {
+                                    data.cell.styles.textColor = val > 0 ? [16, 185, 129] : [239, 68, 68];
+                                }
+
+                                data.cell.text = (val > 0 ? '+' : '') + val.toFixed(1);
+                            }
+                        }
+                    }
+                });
+
+                doc.save(`comparativo_${student.name.replace(/\s+/g, '_')}.pdf`);
+                addToast("PDF comparativo gerado com sucesso!", 'success');
+            } catch (error) {
+                console.error("Erro ao gerar PDF comparativo:", error);
+                addToast("Erro ao gerar PDF comparativo.", 'error');
+            }
+        };
+
+        return (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                <div className="glass-panel" style={{ width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--card-bg)', padding: '0', color: 'var(--text-main)' }}>
+                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-glass)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, background: 'var(--card-bg)', zIndex: 10 }}>
+                        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem', color: 'var(--text-main)' }}>
+                            <Scale size={24} color="var(--primary)" />
+                            Comparativo de Evolução
+                        </h3>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button onClick={downloadComparisonPDF} title="Baixar PDF" style={{ background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Download size={20} />
+                            </button>
+                            <button onClick={() => setShowComparison(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '0.8rem', background: 'var(--input-bg)', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                            <span>Medida</span>
+                            <span>{a1.dateString}</span>
+                            <span>{a2.dateString}</span>
+                            <span>Diferença</span>
+                        </div>
+
+                        {/* General Data */}
+                        <h5 style={{ color: 'var(--primary)', margin: '1rem 0 0.5rem 0', textTransform: 'uppercase', fontSize: '0.8rem' }}>Dados Gerais</h5>
+                        {renderRow('Peso', 'weight', 'kg')}
+                        {renderRow('Altura', 'height', 'm')}
+                        {renderRow('% Gordura', 'bodyFat', '%')}
+                        {renderRow('Massa Magra', 'muscleMass', 'kg')}
+
+                        {/* Upper Body */}
+                        <h5 style={{ color: 'var(--primary)', margin: '1.5rem 0 0.5rem 0', textTransform: 'uppercase', fontSize: '0.8rem' }}>Membros Superiores</h5>
+                        {renderRow('Bíceps Direito', 'bicepsRight', 'cm')}
+                        {renderRow('Bíceps Esquerdo', 'bicepsLeft', 'cm')}
+                        {renderRow('Tríceps Direito', 'tricepsRight', 'cm')}
+                        {renderRow('Tríceps Esquerdo', 'tricepsLeft', 'cm')}
+                        {renderRow('Peitoral', 'chest', 'cm')}
+
+                        {/* Trunk */}
+                        <h5 style={{ color: 'var(--primary)', margin: '1.5rem 0 0.5rem 0', textTransform: 'uppercase', fontSize: '0.8rem' }}>Tronco</h5>
+                        {renderRow('Cintura', 'waist', 'cm')}
+                        {renderRow('Abdômen', 'abdomen', 'cm')}
+                        {renderRow('Quadril', 'hips', 'cm')}
+
+                        {/* Lower Body */}
+                        <h5 style={{ color: 'var(--primary)', margin: '1.5rem 0 0.5rem 0', textTransform: 'uppercase', fontSize: '0.8rem' }}>Membros Inferiores</h5>
+                        {renderRow('Coxa Direita', 'thighRight', 'cm')}
+                        {renderRow('Coxa Esquerda', 'thighLeft', 'cm')}
+                        {renderRow('Panturrilha Dir.', 'calfRight', 'cm')}
+                        {renderRow('Panturrilha Esq.', 'calfLeft', 'cm')}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const downloadAssessmentPDF = (assessment) => {
+        try {
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFillColor(15, 23, 42); // Dark Blue
+            doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text("GymManager", 105, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.text("Relatório de Avaliação Física", 105, 30, { align: 'center' });
+
+            // Student Info
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(11);
+            doc.text(`Aluno: ${student.name}`, 14, 50);
+            doc.text(`Data da Avaliação: ${assessment.dateString}`, 14, 58);
+            if (student.email) doc.text(`Email: ${student.email}`, 14, 66);
+
+            // Basic Measurements Table
+            const basicData = [
+                ['Peso', `${assessment.weight} kg`],
+                ['Altura', assessment.height ? `${assessment.height} m` : '-'],
+                ['Gordura Corporal', assessment.bodyFat ? `${assessment.bodyFat}%` : '-'],
+                ['Massa Magra', assessment.muscleMass ? `${assessment.muscleMass} kg` : '-'],
+            ];
+
+            autoTable(doc, {
+                startY: 75,
+                head: [['Medida', 'Valor']],
+                body: basicData,
+                theme: 'striped',
+                headStyles: { fillColor: [16, 185, 129] }, // Green primary
+                styles: { fontSize: 10 }
+            });
+
+            // Detailed Measurements
+            const detailedData = [
+                ['Bíceps (D / E)', `${assessment.bicepsRight || '-'} cm  /  ${assessment.bicepsLeft || '-'} cm`],
+                ['Tríceps (D / E)', `${assessment.tricepsRight || '-'} cm  /  ${assessment.tricepsLeft || '-'} cm`],
+                ['Coxa (D / E)', `${assessment.thighRight || '-'} cm  /  ${assessment.thighLeft || '-'} cm`],
+                ['Panturrilha (D / E)', `${assessment.calfRight || '-'} cm  /  ${assessment.calfLeft || '-'} cm`],
+                ['Peitoral', `${assessment.chest || '-'} cm`],
+                ['Cintura', `${assessment.waist || '-'} cm`],
+                ['Abdômen', `${assessment.abdomen || '-'} cm`],
+                ['Quadril', `${assessment.hips || '-'} cm`],
+            ];
+
+            doc.text("Medidas Circunferência", 14, doc.lastAutoTable.finalY + 15);
+
+            autoTable(doc, {
+                startY: doc.lastAutoTable.finalY + 20,
+                head: [['Região', 'Medidas']],
+                body: detailedData,
+                theme: 'grid',
+                headStyles: { fillColor: [30, 41, 59] }, // Slate
+                styles: { fontSize: 10 }
+            });
+
+            // Notes
+            if (assessment.notes) {
+                doc.text("Notas / Observações", 14, doc.lastAutoTable.finalY + 15);
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                const splitNotes = doc.splitTextToSize(assessment.notes, 180);
+                doc.text(splitNotes, 14, doc.lastAutoTable.finalY + 22);
+            }
+
+            doc.save(`avaliacao_${student.name.replace(/\s+/g, '_')}_${assessment.dateString.replace(/\//g, '-')}.pdf`);
+            addToast("PDF baixado com sucesso!", 'success');
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            addToast("Erro ao baixar PDF.", 'error');
+        }
+    };
+
+    return (
+        <div style={{ paddingBottom: '4rem' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button onClick={() => navigate('/students')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ArrowLeft size={24} />
+                    </button>
+                    <div>
+                        <h1 style={{ fontSize: '1.8rem', marginBottom: '0.25rem' }}>{student.name}</h1>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <span style={{
+                                fontSize: '0.85rem',
+                                padding: '0.2rem 0.8rem',
+                                borderRadius: '20px',
+                                background: student.status === 'Active' ? 'rgba(16, 185, 129, 0.2)' : student.status === 'Pending' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                color: student.status === 'Active' ? '#10b981' : student.status === 'Pending' ? '#eab308' : '#ef4444',
+                            }}>
+                                {student.status === 'Active' ? 'Ativo' : student.status === 'Pending' ? 'Pendente' : 'Inativo'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    {student.phone && (
+                        <button onClick={handleWhatsApp} style={{
+                            background: '#25D366',
+                            color: 'white',
+                            padding: '0.75rem 1.5rem',
+                            borderRadius: '12px',
+                            fontWeight: '600',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            boxShadow: '0 4px 12px rgba(37, 211, 102, 0.4)'
+                        }}>
+                            <MessageCircle size={20} />
+                            WhatsApp
+                        </button>
+                    )}
+                    <Link to={`/students/${id}/edit`} style={{
+                        background: 'var(--input-bg)',
+                        color: 'var(--text-main)',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '12px',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        border: '1px solid var(--border-glass)'
+                    }}>
+                        <Edit2 size={20} />
+                        Editar
+                    </Link>
+                </div>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem', overflowX: 'auto' }}>
+                <TabButton id="overview" label="Visão Geral" icon={User} />
+                <TabButton id="assessments" label="Avaliações" icon={Activity} />
+                <TabButton id="map" label="Mapa Corporal" icon={Accessibility} />
+                <TabButton id="workouts" label="Treinos" icon={Dumbbell} />
+                <TabButton id="financial" label="Financeiro" icon={DollarSign} />
+                <TabButton id="photos" label="Fotos" icon={ImageIcon} />
+            </div>
+
+            {/* Content Area */}
+            <div style={{ marginTop: '2rem' }}>
+
+                {activeTab === 'overview' && (<>
+                    <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2rem', alignItems: 'start' }}>
+                        {/* LEFT COLUMN: Profile & Personal */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            {/* Profile Card */}
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                                <StudentCard student={student} settings={settings} style={{ width: '300px' }} />
+                            </div>
+
+                            {/* Plan Summary */}
+                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Plano Atual</h4>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                    <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                        {{
+                                            'Monthly': 'Mensal',
+                                            'monthly': 'Mensal',
+                                            'Quarterly': 'Trimestral',
+                                            'quarterly': 'Trimestral',
+                                            'Semiannual': 'Semestral',
+                                            'semiannual': 'Semestral',
+                                            'Annual': 'Anual',
+                                            'annual': 'Anual'
+                                        }[student.plan] || student.plan}
+                                    </span>
+                                    <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+                                        {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
+                                    </span>
+                                </div>
+                                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                                    Vence dia <span style={{ color: 'var(--text-main)' }}>{student.paymentDay}</span>
+                                </p>
+                            </div>
+
+                            {/* Contact Info */}
+                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Contato</h4>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Email</label>
+                                    <span style={{ color: 'var(--text-main)' }}>{student.email || '-'}</span>
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Telefone</label>
+                                    <span style={{ color: 'var(--text-main)' }}>{student.phone || '-'}</span>
+                                </div>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Endereço</label>
+                                    <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.address || '-'}</span>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>CPF</label>
+                                    <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.cpf || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Anamnesis & Extras */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Anamnese e Objetivos</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+                                {/* Objective */}
+                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)', borderLeft: '3px solid var(--primary)' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Objetivo</label>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: 'var(--text-main)' }}>{student.objective || '---'}</p>
+                                </div>
+
+                                {/* Frequency */}
+                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Frequência</label>
+                                    <p style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: 'var(--text-main)' }}>{student.trainingFrequency || '---'}</p>
+                                </div>
+
+                                {/* Routine */}
+                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Rotina</label>
+                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: 'var(--text-main)' }}>{student.routine || '---'}</p>
+                                </div>
+
+                                {/* Limitations */}
+                                <div className="glass-panel" style={{
+                                    padding: '1.5rem',
+                                    background: student.limitations ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
+                                    border: student.limitations ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-glass)'
+                                }}>
+                                    <label style={{ fontSize: '0.75rem', color: student.limitations ? '#b91c1c' : 'var(--text-muted)', textTransform: 'uppercase' }}>Limitações</label>
+                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: student.limitations ? '#b91c1c' : 'var(--text-main)' }}>{student.limitations || 'Nenhuma'}</p>
+                                </div>
+
+                                {/* Diseases */}
+                                <div className="glass-panel" style={{
+                                    padding: '1.5rem',
+                                    background: student.diseases ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
+                                    border: student.diseases ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid var(--border-glass)'
+                                }}>
+                                    <label style={{ fontSize: '0.75rem', color: student.diseases ? '#b45309' : 'var(--text-muted)', textTransform: 'uppercase' }}>Histórico Médico</label>
+                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: student.diseases ? '#b45309' : 'var(--text-main)' }}>{student.diseases || 'Nenhum'}</p>
+                                </div>
+                            </div>
+
+                            {/* ZERO ASSESSMENTS PLACEHOLDER */}
+                            {assessments.length === 0 && (
+                                <div className="glass-panel" style={{
+                                    padding: '3rem',
+                                    textAlign: 'center',
+                                    marginTop: '2rem',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '2px dashed var(--border-glass)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                    <div style={{
+                                        width: '64px', height: '64px', borderRadius: '50%',
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        marginBottom: '1rem'
+                                    }}>
+                                        <Activity size={32} color="#10b981" />
+                                    </div>
+                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>Comece a monitorar o progresso</h3>
+                                    <p style={{ color: 'var(--text-muted)', maxWidth: '450px', margin: '0 auto 1.5rem auto' }}>
+                                        Nenhuma avaliação física foi registrada para este aluno ainda. Adicione a primeira para acompanhar a evolução.
+                                    </p>
+                                    <button
+                                        onClick={() => { setActiveTab('assessments'); setShowAssessmentForm(true); }}
+                                        style={{
+                                            background: '#10b981',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '0.8rem 1.5rem',
+                                            borderRadius: '12px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                                            transition: 'transform 0.2s'
+                                        }}
+                                        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        <Plus size={20} />
+                                        Realizar Primeira Avaliação
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Additional Info / Note placeholder if needed */}
+                            {/* Additional Info / Note placeholder if needed */}
+                            {/* CPF Deleted from here */}
+
+                            {/* Progress Chart Section - Moved here for Dashboard Layout */}
+                            {assessments.length > 0 && (
+                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Progresso (Peso & Gordura)</h3>
+                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent)' }}></div>
+                                                Peso
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div>
+                                                Gordura
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ height: '400px', width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={[...assessments].reverse().map(a => {
+                                                let dateObj = new Date();
+                                                if (a.date?.seconds) dateObj = new Date(a.date.seconds * 1000);
+                                                else if (a.date instanceof Date) dateObj = a.date;
+                                                else if (a.date) dateObj = new Date(a.date);
+
+                                                const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '??/??';
+
+                                                return {
+                                                    name: dateStr,
+                                                    weight: parseFloat((a.weight || 0).toString().replace(',', '.')),
+                                                    bodyFat: parseFloat((a.bodyFat || 0).toString().replace(',', '.'))
+                                                };
+                                            })}>
+                                                <defs>
+                                                    <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="colorFat" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    stroke="var(--text-muted)"
+                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                />
+                                                <YAxis
+                                                    yAxisId="left"
+                                                    orientation="left"
+                                                    stroke="var(--accent)"
+                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    domain={['dataMin - 2', 'dataMax + 2']}
+                                                />
+                                                <YAxis
+                                                    yAxisId="right"
+                                                    orientation="right"
+                                                    stroke="#10b981"
+                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    unit="%"
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-glass)', borderRadius: '8px', color: 'var(--text-main)' }}
+                                                    itemStyle={{ color: 'var(--text-main)' }}
+                                                    labelStyle={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}
+                                                />
+                                                <Area
+                                                    yAxisId="left"
+                                                    type="monotone"
+                                                    dataKey="weight"
+                                                    stroke="var(--accent)"
+                                                    strokeWidth={2}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorWeight)"
+                                                    name="Peso (kg)"
+                                                />
+                                                <Area
+                                                    yAxisId="right"
+                                                    type="monotone"
+                                                    dataKey="bodyFat"
+                                                    stroke="#10b981"
+                                                    strokeWidth={2}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorFat)"
+                                                    name="Gordura (%)"
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Body Map removed from here */}
+                        </div>
+                    </div>
+                </>)}
+
+                {activeTab === 'map' && (
+                    <div className="glass-panel" style={{ padding: '2rem', background: 'var(--card-bg)', minHeight: '600px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{ width: '100%', maxWidth: '900px' }}>
+                            <div style={{ marginBottom: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: 'var(--text-main)' }}>Mapa Corporal</h3>
+                                {assessments.length > 0 ? (
+                                    <span>
+                                        Comparando: <strong style={{ color: 'var(--primary)' }}>
+                                            {assessments[0].dateString || new Date(assessments[0].date.seconds * 1000).toLocaleDateString('pt-BR')}
+                                        </strong>
+                                        {' vs '}
+                                        {assessments[1]
+                                            ? (assessments[1].dateString || new Date(assessments[1].date.seconds * 1000).toLocaleDateString('pt-BR'))
+                                            : 'Início'}
+                                    </span>
+                                ) : (
+                                    <span>Nenhuma avaliação registrada.</span>
+                                )}
+                            </div>
+
+                            {assessments.length > 0 && (
+                                <BodyMeasurementMap
+                                    current={assessments[0]}
+                                    previous={assessments[1]}
+                                    gender={student.gender}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
+                {
+                    activeTab === 'assessments' && (
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>Histórico de Evolução</h3>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    {selectedAssessments.length === 2 && (
+                                        <button
+                                            onClick={() => setShowComparison(true)}
+                                            style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '0.5rem', alignItems: 'center', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}
+                                        >
+                                            <Scale size={18} /> Comparar (2)
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setShowAssessmentForm(!showAssessmentForm)}
+                                        style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid var(--border-glass)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                                    >
+                                        <Plus size={18} /> Nova Avaliação
+                                    </button>
+                                </div>
+                            </div>
+
+                            {showComparison && <ComparisonModal />}
+
+                            {showAssessmentForm && (
+                                <form onSubmit={handleAddAssessment} className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', border: '1px solid var(--primary)' }}>
+                                    <h4 style={{ marginTop: 0, marginBottom: '1rem' }}>{editingAssessmentId ? 'Editar Avaliação' : 'Registrar Nova Avaliação'}</h4>
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <h5 style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.85rem', textTransform: 'uppercase' }}>Dados Gerais</h5>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Peso (kg)</label>
+                                                <input required type="number" step="0.1" style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                                    value={newAssessment.weight} onChange={e => setNewAssessment({ ...newAssessment, weight: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Altura (m)</label>
+                                                <input type="number" step="0.01" style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                                    value={newAssessment.height} onChange={e => setNewAssessment({ ...newAssessment, height: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>% Gordura</label>
+                                                <input type="number" step="0.1" style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                                    value={newAssessment.bodyFat} onChange={e => setNewAssessment({ ...newAssessment, bodyFat: e.target.value })} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Massa Magra (kg)</label>
+                                                <input type="number" step="0.1" style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                                    value={newAssessment.muscleMass} onChange={e => setNewAssessment({ ...newAssessment, muscleMass: e.target.value })} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: '1.5rem' }}>
+                                        <h5 style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.85rem', textTransform: 'uppercase' }}>Medidas Detalhadas (cm)</h5>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '1rem' }}>
+                                            {[
+                                                { label: 'Bíceps Dir.', key: 'bicepsRight' }, { label: 'Bíceps Esq.', key: 'bicepsLeft' },
+                                                { label: 'Tríceps Dir.', key: 'tricepsRight' }, { label: 'Tríceps Esq.', key: 'tricepsLeft' },
+                                                { label: 'Peitoral', key: 'chest' }, { label: 'Cintura', key: 'waist' },
+                                                { label: 'Abdômen', key: 'abdomen' }, { label: 'Quadril', key: 'hips' },
+                                                { label: 'Coxa Dir.', key: 'thighRight' }, { label: 'Coxa Esq.', key: 'thighLeft' },
+                                                { label: 'Panturrilha D.', key: 'calfRight' }, { label: 'Panturrilha E.', key: 'calfLeft' },
+                                            ].map(field => (
+                                                <div key={field.key} style={{ background: 'var(--input-bg)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>{field.label}</label>
+                                                    <input
+                                                        type="number"
+                                                        step="0.1"
+                                                        style={{ width: '100%', padding: '0.25rem', background: 'transparent', border: 'none', color: 'var(--text-main)', borderBottom: '1px solid var(--text-muted)', outline: 'none', fontWeight: 'bold' }}
+                                                        value={newAssessment[field.key] || ''}
+                                                        onChange={e => setNewAssessment({ ...newAssessment, [field.key]: e.target.value })}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Notas / Medidas Adicionais</label>
+                                        <textarea rows="3" style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            value={newAssessment.notes} onChange={e => setNewAssessment({ ...newAssessment, notes: e.target.value })} placeholder="Ex: Braço: 35cm, Peito: 100cm..." />
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                        <button type="button" onClick={() => setShowAssessmentForm(false)} style={{ background: 'transparent', border: '1px solid var(--border-glass)', color: 'var(--text-muted)', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}>Cancelar</button>
+                                        <button type="submit" style={{ background: 'var(--primary)', border: 'none', color: 'white', padding: '0.5rem 1.5rem', borderRadius: '6px', cursor: 'pointer' }}>Salvar</button>
+                                    </div>
+                                </form>
+                            )}
+
+                            {assessments.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                    <Activity size={32} style={{ opacity: 0.5, marginBottom: '1rem' }} />
+                                    <p>Nenhuma avaliação registrada.</p>
+                                </div>
+                            ) : (
+                                <div style={{ position: 'relative' }}>
+                                    {/* Navigation Arrows */}
+                                    <button
+                                        onClick={() => scroll(-300)}
+                                        style={{
+                                            position: 'absolute', left: '-1rem', top: '50%', transform: 'translateY(-50%)',
+                                            zIndex: 10, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none',
+                                            borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                                        }}
+                                    >
+                                        <ChevronLeft size={24} />
+                                    </button>
+                                    <button
+                                        onClick={() => scroll(300)}
+                                        style={{
+                                            position: 'absolute', right: '-1rem', top: '50%', transform: 'translateY(-50%)',
+                                            zIndex: 10, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none',
+                                            borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                                        }}
+                                    >
+                                        <ChevronRight size={24} />
+                                    </button>
+
+                                    <div
+                                        ref={scrollRef}
+                                        style={{
+                                            display: 'flex',
+                                            gap: '1.5rem',
+                                            overflowX: 'auto',
+                                            padding: '0.5rem',
+                                            paddingBottom: '1.5rem',
+                                            scrollSnapType: 'x mandatory',
+                                            msOverflowStyle: 'none',
+                                            scrollbarWidth: 'none',
+                                            alignItems: 'stretch'
+                                        }}
+                                    >
+                                        <style>
+                                            {`
+                                            div::-webkit-scrollbar {
+                                                display: none;
+                                            }
+                                        `}
+                                        </style>
+                                        {assessments.map((item, index) => {
+                                            const previous = assessments[index + 1];
+
+
+
+                                            const getDelta = (field, reverseColor = false, neutral = false) => {
+                                                if (!previous || !item[field] || !previous[field]) return null;
+                                                const currentVal = parseFloat(item[field]);
+                                                const prevVal = parseFloat(previous[field]);
+                                                const diff = currentVal - prevVal;
+
+                                                if (Math.abs(diff) < 0.1) return null;
+
+                                                const isPositive = diff > 0;
+                                                let color = 'var(--text-muted)';
+
+                                                if (!neutral) {
+                                                    // Normal: Up is Green (Good), Down is Red (Bad) e.g. Muscle
+                                                    // Reverse: Up is Red (Bad), Down is Green (Good) e.g. Fat
+                                                    if (reverseColor) {
+                                                        color = isPositive ? '#ef4444' : '#10b981';
+                                                    } else {
+                                                        color = isPositive ? '#10b981' : '#ef4444';
+                                                    }
+                                                }
+
+                                                return (
+                                                    <span style={{ fontSize: '0.75rem', color, marginLeft: '0.3rem', display: 'inline-flex', alignItems: 'center', fontWeight: 'bold' }}>
+                                                        {isPositive ? '▲' : '▼'} {Math.abs(diff).toFixed(1)}
+                                                    </span>
+                                                );
+                                            };
+
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    className="glass-panel"
+                                                    style={{
+                                                        padding: '1.5rem',
+                                                        position: 'relative',
+                                                        border: selectedAssessments.find(a => a.id === item.id) ? '2px solid var(--primary)' : '1px solid var(--border-glass)',
+                                                        boxShadow: 'var(--shadow-glass)',
+                                                        transition: 'all 0.2s',
+                                                        background: 'var(--card-bg)',
+                                                        minWidth: '320px',
+                                                        maxWidth: '350px',
+                                                        flex: '0 0 auto',
+                                                        scrollSnapAlign: 'start',
+                                                        display: 'flex',
+                                                        flexDirection: 'column'
+                                                    }}
+                                                    onClick={() => toggleAssessmentSelection(item)}
+                                                >
+                                                    {/* Selection Checkbox (Visual) */}
+                                                    <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
+                                                        <div style={{
+                                                            width: '20px', height: '20px',
+                                                            borderRadius: '50%',
+                                                            border: selectedAssessments.find(a => a.id === item.id) ? 'none' : '2px solid var(--text-muted)',
+                                                            background: selectedAssessments.find(a => a.id === item.id) ? 'var(--primary)' : 'transparent',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            cursor: 'pointer'
+                                                        }}>
+                                                            {selectedAssessments.find(a => a.id === item.id) && <CheckCircle size={14} color="white" />}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Centered Header */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                                        <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>{item.dateString}</h3>
+
+                                                        {/* Action Buttons Row */}
+                                                        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem' }}>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setNewAssessment(item);
+                                                                    setEditingAssessmentId(item.id);
+                                                                    setShowAssessmentForm(true);
+                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                                }}
+                                                                title="Editar"
+                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa', cursor: 'pointer' }}
+                                                            >
+                                                                <Edit2 size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDeleteAssessment(item.id);
+                                                                }}
+                                                                title="Excluir"
+                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', cursor: 'pointer' }}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); downloadAssessmentPDF(item); }}
+                                                                title="Baixar PDF"
+                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', cursor: 'pointer' }}
+                                                            >
+                                                                <Download size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Main Stats Row (Pills) */}
+                                                    <div style={{
+                                                        display: 'grid',
+                                                        gridTemplateColumns: '1fr 1fr',
+                                                        gap: '1rem',
+                                                        marginBottom: '1.5rem',
+                                                        width: '100%'
+                                                    }}>
+                                                        {item.height && (
+                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>ALT</span>
+                                                                <strong>{item.height}m</strong>
+                                                            </div>
+                                                        )}
+                                                        {item.weight && (
+                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>PESO</span>
+                                                                <strong>{item.weight}kg</strong>
+                                                                {getDelta('weight', true)}
+                                                            </div>
+                                                        )}
+                                                        {item.bodyFat && (
+                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>GC</span>
+                                                                <strong>{item.bodyFat}%</strong>
+                                                                {getDelta('bodyFat', true)}
+                                                            </div>
+                                                        )}
+                                                        {item.muscleMass && (
+                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>MASSA M.</span>
+                                                                <strong>{item.muscleMass}kg</strong>
+                                                                {getDelta('muscleMass', false)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Detailed Sections (Clean Grid) */}
+                                                    <div style={{ display: 'grid', gap: '1rem' }}>
+                                                        {[
+                                                            {
+                                                                title: 'Membros Superiores',
+                                                                items: [
+                                                                    { l: 'Bíceps (D/E)', v: `${item.bicepsRight || '-'} / ${item.bicepsLeft || '-'}` },
+                                                                    { l: 'Tríceps (D/E)', v: `${item.tricepsRight || '-'} / ${item.tricepsLeft || '-'}` },
+                                                                    { l: 'Peitoral', v: item.chest }
+                                                                ]
+                                                            },
+                                                            {
+                                                                title: 'Tronco',
+                                                                items: [
+                                                                    { l: 'Cintura', v: item.waist },
+                                                                    { l: 'Abdômen', v: item.abdomen },
+                                                                    { l: 'Quadril', v: item.hips }
+                                                                ]
+                                                            },
+                                                            {
+                                                                title: 'Membros Inferiores',
+                                                                items: [
+                                                                    { l: 'Coxa (D/E)', v: `${item.thighRight || '-'} / ${item.thighLeft || '-'}` },
+                                                                    { l: 'Panturrilha (D/E)', v: `${item.calfRight || '-'} / ${item.calfLeft || '-'}` }
+                                                                ]
+                                                            }
+                                                        ].map((group, gIdx) => (
+                                                            <div key={gIdx} style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
+                                                                <h6 style={{ textAlign: 'center', margin: '0 0 0.8rem 0', color: 'var(--primary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{group.title}</h6>
+                                                                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                                                    {group.items.map((m, mIdx) => (m.v && m.v !== '-') && (
+                                                                        <div key={mIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{m.l}</span>
+                                                                            <span style={{ fontWeight: 'bold' }}>{m.v} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>cm</span></span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {item.notes && (
+                                                        <div style={{ marginTop: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
+                                                            "{item.notes}"
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )
+                            }
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'workouts' && (
+                        <div>
+                            {/* Header: Sheet Selector */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '2rem' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, marginBottom: '0.5rem' }}>Fichas de Treino</h3>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        {isLegacy && (
+                                            <button
+                                                onClick={() => setSelectedSheetId('legacy')}
+                                                style={{
+                                                    padding: '0.5rem 1rem',
+                                                    borderRadius: '20px',
+                                                    border: '1px solid var(--primary)',
+                                                    background: 'var(--primary)',
+                                                    color: 'white',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            >
+                                                Ficha Principal
+                                            </button>
+                                        )}
+                                        {availableSheets.map(s => (
+                                            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                <button
+                                                    onClick={() => setSelectedSheetId(s.id)}
+                                                    style={{
+                                                        padding: '0.5rem 1rem',
+                                                        borderRadius: '20px',
+                                                        border: `1px solid ${selectedSheetId === s.id ? 'var(--primary)' : 'var(--border-glass)'}`,
+                                                        background: selectedSheetId === s.id ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                                        color: selectedSheetId === s.id ? 'white' : 'var(--text-muted)',
+                                                        cursor: 'pointer',
+                                                        fontSize: '0.9rem'
+                                                    }}
+                                                >
+                                                    {s.name}
+                                                </button>
+                                                {selectedSheetId === s.id && (
+                                                    <button
+                                                        onClick={() => handleDeleteSheet(s.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                        title="Excluir Ficha"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => setIsCreatingSheet(true)}
+                                            style={{
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '20px',
+                                                border: '1px dashed var(--border-glass)',
+                                                background: 'transparent',
+                                                color: 'var(--text-muted)',
+                                                cursor: 'pointer',
+                                                fontSize: '0.9rem',
+                                                display: 'flex', alignItems: 'center', gap: '0.25rem'
+                                            }}
+                                        >
+                                            <Plus size={14} /> Nova Ficha
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {isCreatingSheet && (
+                                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', border: '1px dashed var(--primary)' }}>
+                                    <h4 style={{ margin: 0, marginBottom: '1rem' }}>Criar Nova Ficha</h4>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <input
+                                            value={newSheetName}
+                                            onChange={e => setNewSheetName(e.target.value)}
+                                            placeholder="Nome da ficha (ex: Hipertrofia 2025)"
+                                            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
+                                        />
+                                        <button
+                                            onClick={handleCreateSheet}
+                                            disabled={!newSheetName.trim()}
+                                            style={{ padding: '0 1.5rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        >
+                                            Criar
+                                        </button>
+                                        <button
+                                            onClick={() => setIsCreatingSheet(false)}
+                                            style={{ padding: '0 1.5rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', borderRadius: '8px', cursor: 'pointer' }}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Single "Ficha" Container */}
+                            <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--primary)', position: 'relative' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+                                    <div>
+                                        <h2 style={{ fontSize: '1.5rem', margin: 0, marginBottom: '0.5rem' }}>{currentSheet?.name || 'Ficha de Treino'}</h2>
+                                        <p style={{ color: 'var(--text-muted)' }}>
+                                            {Object.keys(currentSheet?.workouts || {}).length} divisões ativas
+                                        </p>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                        <button
+                                            onClick={generatePDF}
+                                            style={{
+                                                background: 'var(--input-bg)',
+                                                color: 'var(--text-main)',
+                                                border: 'none',
+                                                padding: '0.75rem 1.5rem',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <Dumbbell size={18} /> Baixar PDF
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                const keys = Object.keys(currentSheet?.workouts || {}).sort();
+                                                const firstVar = keys.length > 0 ? keys[0] : 'A';
+                                                // Pass sheetId param
+                                                navigate(`/workouts/${id}?variation=${firstVar}&sheetId=${currentSheet?.id || 'legacy'}`);
+                                            }}
+                                            style={{
+                                                background: 'var(--primary)',
+                                                color: 'white',
+                                                border: 'none',
+                                                padding: '0.75rem 1.5rem',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                        >
+                                            <Edit2 size={18} /> Editar Ficha
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1.5rem' }}>
+                                    {/* List Divisions Inside */}
+                                    {Object.keys(currentSheet?.workouts || {}).sort().map(variation => (
+                                        <div
+                                            key={variation}
+                                            onClick={() => navigate(`/workouts/${id}?variation=${variation}&sheetId=${currentSheet?.id || 'legacy'}`)}
+                                            className="glass-card-interactive"
+                                            style={{
+                                                padding: '1.5rem',
+                                                background: 'var(--card-bg)',
+                                                borderRadius: '16px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                border: '1px solid var(--border-glass)',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                                position: 'relative',
+                                                overflow: 'hidden'
+                                            }}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.transform = 'translateY(-5px)';
+                                                e.currentTarget.style.borderColor = 'var(--primary)';
+                                                e.currentTarget.style.boxShadow = '0 10px 20px rgba(16, 185, 129, 0.15)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.borderColor = 'var(--border-glass)';
+                                                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '48px',
+                                                height: '48px',
+                                                borderRadius: '50%',
+                                                background: 'linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%)',
+                                                color: 'white',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                marginBottom: '1rem',
+                                                fontWeight: 'bold',
+                                                fontSize: '1.2rem',
+                                                boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                                            }}>
+                                                {variation}
+                                            </div>
+                                            <span style={{ fontWeight: '700', fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '0.25rem' }}>
+                                                {currentSheet?.workouts[variation]?.name || `Divisão ${variation}`}
+                                            </span>
+                                            {currentSheet?.workouts[variation]?.name && currentSheet?.workouts[variation]?.name !== `Treino ${variation}` && (
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                                                    Divisão {variation}
+                                                </span>
+                                            )}
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                {currentSheet?.workouts[variation]?.exercises?.length || 0} exercícios
+                                            </span>
+                                        </div>
+                                    ))}
+
+                                    {/* Add New Division Button */}
+                                    <button
+                                        onClick={() => {
+                                            const keys = Object.keys(currentSheet?.workouts || {}).sort();
+                                            const nextVar = keys.length === 0 ? 'A' : String.fromCharCode(keys[keys.length - 1].charCodeAt(0) + 1);
+                                            navigate(`/workouts/${id}?variation=${nextVar}&sheetId=${currentSheet?.id || 'legacy'}`);
+                                        }}
+                                        style={{
+                                            background: 'rgba(255,255,255,0.02)',
+                                            border: '2px dashed var(--border-glass)',
+                                            color: 'var(--text-muted)',
+                                            borderRadius: '16px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            minHeight: '160px',
+                                            gap: '0.8rem',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.borderColor = 'var(--primary)';
+                                            e.currentTarget.style.color = 'var(--primary)';
+                                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.borderColor = 'var(--border-glass)';
+                                            e.currentTarget.style.color = 'var(--text-muted)';
+                                            e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '40px', height: '40px', borderRadius: '50%',
+                                            border: '1px solid currentColor', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}>
+                                            <Plus size={20} />
+                                        </div>
+                                        <span style={{ fontWeight: '600' }}>Nova Divisão</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {
+                    activeTab === 'financial' && (
+                        <div>
+                            <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <CheckCircle color="#047857" />
+                                    <div>
+                                        <h4 style={{ color: '#047857', margin: 0 }}>Status: Em dia</h4>
+                                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            Próximo pagamento em {(() => {
+                                                if (student.nextPaymentDate && new Date(student.nextPaymentDate) > new Date()) {
+                                                    return new Date(student.nextPaymentDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+                                                }
+
+                                                // Fallback existing logic
+                                                const today = new Date();
+                                                const dueDay = parseInt(student.paymentDay);
+                                                let dueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+
+                                                if (today.getDate() > dueDay) {
+                                                    dueDate.setMonth(dueDate.getMonth() + 1);
+                                                }
+
+                                                return dueDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+                                            })()}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={handleOpenPaymentModal}
+                                    style={{ background: 'transparent', border: '1px solid #047857', color: '#047857', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}
+                                >
+                                    Registrar Pagamento Manual
+                                </button>
+                            </div>
+
+                            {showPaymentModal && (
+                                <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', border: '1px solid #10b981' }}>
+                                    <h4 style={{ margin: 0, marginBottom: '1rem', color: '#10b981' }}>Registrar Pagamento</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Valor (R$)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={paymentForm.value}
+                                                onChange={e => setPaymentForm({ ...paymentForm, value: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Método</label>
+                                            <select
+                                                value={paymentForm.method}
+                                                onChange={e => setPaymentForm({ ...paymentForm, method: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            >
+                                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                                <option value="Pix">Pix</option>
+                                                <option value="Dinheiro">Dinheiro</option>
+                                                <option value="Débito">Débito</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Data</label>
+                                            <input
+                                                type="date"
+                                                value={paymentForm.date}
+                                                onChange={e => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                                                style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                                        <button
+                                            onClick={() => setShowPaymentModal(false)}
+                                            style={{ padding: '0.5rem 1.5rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', borderRadius: '8px', cursor: 'pointer' }}
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={handleRegisterPayment}
+                                            style={{ padding: '0.5rem 1.5rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        >
+                                            Confirmar Pagamento
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            <h3 style={{ marginBottom: '1rem' }}>Histórico Financeiro</h3>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                <thead>
+                                    <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-glass)' }}>
+                                        <th style={{ padding: '1rem' }}>Data</th>
+                                        <th>Descrição</th>
+                                        <th>Valor</th>
+                                        <th>Status</th>
+                                        <th>Método</th>
+                                        <th style={{ width: '50px' }}></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {student.paymentHistory && student.paymentHistory.length > 0 ? (
+                                        student.paymentHistory.map((payment, index) => (
+                                            <tr key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                                <td style={{ padding: '1rem' }}>{new Date(payment.date).toLocaleDateString()}</td>
+                                                <td>{payment.description}</td>
+                                                <td>R$ {parseFloat(payment.value).toFixed(2)}</td>
+                                                <td>
+                                                    <span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>
+                                                        {payment.status === 'Paid' ? 'Pago' : 'Pendente'}
+                                                    </span>
+                                                </td>
+                                                <td>{payment.method}</td>
+                                                <td>
+                                                    <button
+                                                        onClick={() => handleDeletePayment(index)}
+                                                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0.25rem' }}
+                                                        title="Remover pagamento"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td style={{ padding: '1rem' }}>{new Date(student.startDate).toLocaleDateString()}</td>
+                                            <td>Plano {student.plan} - Contratação (Legado)</td>
+                                            <td>
+                                                {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : 'R$ 89,90'}
+                                            </td>
+                                            <td><span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pago</span></td>
+                                            <td>Cartão de Crédito</td>
+                                            <td>{/* Actions placeholder for legacy */}</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )
+                }
+
+
+                {
+                    activeTab === 'photos' && (
+                        <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h3 style={{ margin: 0 }}>Galeria de Fotos</h3>
+                                <div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        id="photo-upload"
+                                        style={{ display: 'none' }}
+                                        onChange={handlePhotoUpload}
+                                        disabled={uploadingPhoto}
+                                    />
+                                    <label
+                                        htmlFor="photo-upload"
+                                        style={{
+                                            background: 'var(--primary)',
+                                            color: 'white',
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '8px',
+                                            cursor: uploadingPhoto ? 'not-allowed' : 'pointer',
+                                            display: 'flex',
+                                            gap: '0.5rem',
+                                            alignItems: 'center',
+                                            opacity: uploadingPhoto ? 0.7 : 1
+                                        }}
+                                    >
+                                        <Camera size={18} />
+                                        {uploadingPhoto ? 'Enviando...' : 'Adicionar Foto'}
+                                    </label>
+                                </div>
+                            </div>
+
+                            {!student.photoGallery || student.photoGallery.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+                                    <ImageIcon size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                                    <p>Nenhuma foto adicionada.</p>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                                    {student.photoGallery.map((photo, index) => (
+                                        <div key={index} className="glass-panel" style={{ padding: '0.5rem', position: 'relative', overflow: 'hidden' }}>
+                                            <div style={{ aspectRatio: '3/4', borderRadius: '6px', overflow: 'hidden', marginBottom: '0.5rem', background: '#000' }}>
+                                                <img src={photo.url} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.25rem' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(photo.date).toLocaleDateString()}</span>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        onClick={() => handleSetProfilePicture(photo.url)}
+                                                        title="Definir como Perfil"
+                                                        style={{
+                                                            background: 'transparent', border: 'none', cursor: 'pointer',
+                                                            color: student.profilePictureUrl === photo.url ? '#10b981' : 'var(--text-muted)'
+                                                        }}
+                                                    >
+                                                        <User size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeletePhoto(photo)}
+                                                        title="Excluir"
+                                                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            {student.profilePictureUrl === photo.url && (
+                                                <div style={{
+                                                    position: 'absolute', top: '10px', right: '10px',
+                                                    background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 'bold'
+                                                }}>
+                                                    Perfil
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )
+                }
+            </div >
+        </div >
+    );
+}
+

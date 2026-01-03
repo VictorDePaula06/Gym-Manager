@@ -1,0 +1,438 @@
+import { useState, useEffect } from 'react';
+import { useGym } from '../context/GymContext';
+import { useToast } from '../context/ToastContext';
+import { useDialog } from '../context/DialogContext';
+import { DollarSign, CheckCircle, XCircle, AlertCircle, TrendingUp, TrendingDown, Plus, Trash2, Calendar, Clock, Info } from 'lucide-react';
+
+export default function Financial() {
+    const { students, expenses, addExpense, deleteExpense } = useGym();
+    const { addToast } = useToast();
+    const { confirm } = useDialog();
+    const [filter, setFilter] = useState('all'); // all, paid, overdue
+    const [activeTab, setActiveTab] = useState('income'); // income, expenses
+    const [showExpenseForm, setShowExpenseForm] = useState(false);
+
+    // Expense Form State
+    const [newExpense, setNewExpense] = useState({
+        description: '',
+        category: 'Fixo',
+        value: '',
+        date: new Date().toISOString().split('T')[0]
+    });
+
+    const currentDate = new Date();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const currentMonthIdx = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
+    const currentMonthName = currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+    // --- Income Logic ---
+    const safeStudents = Array.isArray(students) ? students : [];
+    const studentsWithStatus = safeStudents.map(s => {
+        try {
+            if (!s) return null;
+
+            const history = Array.isArray(s.paymentHistory) ? s.paymentHistory : [];
+            let foundPaymentDate = null;
+            const hasPaymentThisMonth = history.some(payment => {
+                if (!payment) return false;
+                let pDate = payment.date;
+                if (!pDate) return false;
+
+                try {
+                    const parts = String(pDate).split('-');
+                    if (parts.length !== 3) return false;
+                    const [pYear, pMonth] = parts.map(Number);
+                    const isMatch = pYear === currentYear && (pMonth - 1) === currentMonthIdx;
+                    if (isMatch) foundPaymentDate = pDate;
+                    return isMatch;
+                } catch (err) {
+                    return false;
+                }
+            });
+
+            return {
+                ...s,
+                currentMonthStatus: hasPaymentThisMonth ? 'Paid' : 'Pending',
+                lastPaymentDate: foundPaymentDate,
+                displayPrice: parseFloat(s.price) || (s.plan === 'Premium' ? 120 : s.plan === 'Gold' ? 150 : 80),
+                nextPaymentDate: s.nextPaymentDate,
+                daysRemaining: s.nextPaymentDate ? Math.ceil((new Date(s.nextPaymentDate) - new Date()) / (1000 * 60 * 60 * 24)) : null
+            };
+        } catch (e) {
+            return null;
+        }
+    }).filter(Boolean).filter(s => s.status !== 'Inactive');
+
+    const totalIncome = studentsWithStatus.reduce((total, student) => {
+        const history = Array.isArray(student.paymentHistory) ? student.paymentHistory : [];
+        const monthlyTotal = history.reduce((sum, payment) => {
+            try {
+                if (!payment || !payment.date) return sum;
+                const parts = String(payment.date).split('-');
+                if (parts.length !== 3) return sum;
+                const [pYear, pMonth] = parts.map(Number);
+
+                if (pYear === currentYear && (pMonth - 1) === currentMonthIdx) {
+                    const val = parseFloat(payment.value);
+                    return sum + (isNaN(val) ? 0 : val);
+                }
+                return sum;
+            } catch (e) { return sum; }
+        }, 0);
+        return total + monthlyTotal;
+    }, 0);
+
+    const projectedRevenue = studentsWithStatus.reduce((acc, s) => acc + (s.displayPrice || 0), 0);
+
+    // --- Expenses Logic ---
+    const safeExpenses = Array.isArray(expenses) ? expenses : [];
+    const currentMonthExpenses = safeExpenses.filter(exp => {
+        if (!exp.date) return false;
+        const [y, m] = exp.date.split('-').map(Number);
+        return y === currentYear && (m - 1) === currentMonthIdx;
+    }).map(exp => ({
+        ...exp,
+        status: exp.date <= todayStr ? 'Paid' : 'Scheduled' // Auto-status based on date
+    }));
+
+    // Calculate totals
+    const totalPaidExpenses = currentMonthExpenses
+        .filter(e => e.status === 'Paid')
+        .reduce((acc, exp) => acc + (parseFloat(exp.value) || 0), 0);
+
+    const totalFutureExpenses = currentMonthExpenses
+        .filter(e => e.status === 'Scheduled')
+        .reduce((acc, exp) => acc + (parseFloat(exp.value) || 0), 0);
+
+    const balance = totalIncome - totalPaidExpenses; // Only subtract PAID expenses
+
+    const handleAddExpense = async (e) => {
+        e.preventDefault();
+        if (!newExpense.description || !newExpense.value) return;
+
+        try {
+            await addExpense({
+                ...newExpense,
+                createdAt: new Date().toISOString()
+            });
+            setNewExpense({ description: '', category: 'Fixo', value: '', date: new Date().toISOString().split('T')[0] });
+            setShowExpenseForm(false);
+            addToast("Despesa adicionada com sucesso!", 'success');
+        } catch (error) {
+            addToast("Erro ao adicionar despesa.", 'error');
+        }
+    };
+
+    const handleDeleteExpense = async (id) => {
+        const confirmed = await confirm({
+            title: 'Excluir Despesa',
+            message: 'Tem certeza que deseja excluir esta despesa?',
+            confirmText: 'Excluir',
+            type: 'danger'
+        });
+
+        if (confirmed) {
+            await deleteExpense(id);
+            addToast("Despesa excluída com sucesso!", 'success');
+        }
+    };
+
+    const buttonStyle = (isActive) => ({
+        padding: '0.5rem 1rem',
+        borderRadius: '8px',
+        border: 'none',
+        background: isActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.05)',
+        color: isActive ? '#fff' : 'var(--text-muted)',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        fontWeight: isActive ? '600' : 'normal',
+        display: 'flex', alignItems: 'center', gap: '0.5rem'
+    });
+
+    const categoryDescriptions = {
+        'Fixo': 'Custos recorrentes todo mês (Ex: Aluguel, Internet, Sistema).',
+        'Variavel': 'Custos pontuais ou que mudam (Ex: Manutenção, Limpeza).',
+        'Pessoal': 'Pagamentos de pessoas (Ex: Salário Professor, Recepção).'
+    };
+
+    return (
+        <div style={{ paddingBottom: '4rem' }}>
+            <div style={{ marginBottom: '2rem' }}>
+                <h1>Controle Financeiro</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Mês Referência: {currentMonthName}</p>
+            </div>
+
+            {/* Summary Cards */}
+            <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gap: '1.5rem',
+                marginBottom: '2rem'
+            }}>
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', color: '#10b981' }}>
+                        <TrendingUp size={24} />
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Receita Total</p>
+                        <h3>{totalIncome.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h3>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Projetado: {projectedRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                    </div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', color: '#ef4444' }}>
+                        <TrendingDown size={24} />
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Despesas (Realizadas)</p>
+                        <h3>{totalPaidExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h3>
+                        {totalFutureExpenses > 0 && (
+                            <div style={{ fontSize: '0.8rem', color: '#eab308', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
+                                <Clock size={12} />
+                                A vencer: {totalFutureExpenses.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ padding: '1rem', background: balance >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', color: balance >= 0 ? '#10b981' : '#ef4444' }}>
+                        <DollarSign size={24} />
+                    </div>
+                    <div>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Saldo Líquido</p>
+                        <h3 style={{ color: balance >= 0 ? '#10b981' : '#ef4444' }}>
+                            {balance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                <button onClick={() => setActiveTab('income')} style={buttonStyle(activeTab === 'income')}>
+                    <TrendingUp size={18} /> Receitas
+                </button>
+                <button onClick={() => setActiveTab('expenses')} style={buttonStyle(activeTab === 'expenses')}>
+                    <TrendingDown size={18} /> Despesas
+                </button>
+            </div>
+
+            {/* INCOME TAB */}
+            {activeTab === 'income' && (
+                <div className="glass-panel fade-in" style={{ padding: '2rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem' }}>
+                        <button onClick={() => setFilter('all')} style={{ ...buttonStyle(filter === 'all'), padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>Todos</button>
+                        <button onClick={() => setFilter('paid')} style={{ ...buttonStyle(filter === 'paid'), padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>Pagos</button>
+                        <button onClick={() => setFilter('overdue')} style={{ ...buttonStyle(filter === 'overdue'), padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>Pendentes</button>
+                    </div>
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
+                                <th style={{ padding: '1rem 0' }}>Aluno</th>
+                                <th>Plano</th>
+                                <th>Valor</th>
+                                <th>Data Pagamento</th>
+                                <th>Vencimento</th>
+                                <th>Dias Restantes</th>
+                                <th>Status (Mês Atual)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {studentsWithStatus.filter(s => {
+                                if (filter === 'paid') return s.currentMonthStatus === 'Paid';
+                                if (filter === 'overdue') return s.currentMonthStatus !== 'Paid';
+                                return true;
+                            }).map(student => (
+                                <tr key={student.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                    <td style={{ padding: '1rem 0' }}>{student.name}</td>
+                                    <td style={{ textTransform: 'capitalize' }}>{{ 'Monthly': 'Mensal', 'Quarterly': 'Trimestral', 'Semiannual': 'Semestral', 'Annual': 'Anual' }[student.plan] || student.plan}</td>
+                                    <td>R$ {(student.displayPrice || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td style={{ color: 'var(--text-muted)' }}>{student.currentMonthStatus === 'Paid' && student.lastPaymentDate ? new Date(student.lastPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td>{student.nextPaymentDate ? new Date(student.nextPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td>
+                                        {student.daysRemaining !== null ? (
+                                            <span style={{ color: student.daysRemaining < 0 ? '#ef4444' : student.daysRemaining <= 7 ? '#eab308' : '#10b981', fontWeight: 'bold' }}>
+                                                {student.daysRemaining} dias
+                                            </span>
+                                        ) : '-'}
+                                    </td>
+                                    <td>
+                                        <span style={{
+                                            padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem',
+                                            background: student.currentMonthStatus === 'Paid' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                            color: student.currentMonthStatus === 'Paid' ? '#10b981' : '#ef4444',
+                                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
+                                        }}>
+                                            {student.currentMonthStatus === 'Paid' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                            {student.currentMonthStatus === 'Paid' ? 'Pago' : 'Pendente'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {/* EXPENSES TAB */}
+            {activeTab === 'expenses' && (
+                <div className="glass-panel fade-in" style={{ padding: '2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                        <h3 style={{ margin: 0 }}>Despesas do Mês</h3>
+
+                        {!showExpenseForm && (
+                            <button
+                                onClick={() => setShowExpenseForm(true)}
+                                className="btn-primary"
+                                style={{
+                                    display: 'flex',
+                                    gap: '0.75rem',
+                                    alignItems: 'center',
+                                    padding: '0.75rem 1.5rem',
+                                    borderRadius: '12px',
+                                    background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                                    fontWeight: '600',
+                                    fontSize: '1rem',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    transition: 'transform 0.2s',
+                                    cursor: 'pointer',
+                                    color: '#fff'
+                                }}
+                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <Plus size={22} strokeWidth={3} />
+                                NOVA DESPESA
+                            </button>
+                        )}
+                    </div>
+
+                    {showExpenseForm && (
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid var(--border-glass)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Plus size={20} className="text-secondary" /> Registrar Saída</h4>
+                                <button onClick={() => setShowExpenseForm(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><XCircle size={24} /></button>
+                            </div>
+
+                            <form onSubmit={handleAddExpense} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr auto', gap: '1.5rem', alignItems: 'start' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Descrição</label>
+                                    <input
+                                        required
+                                        type="text"
+                                        placeholder="Ex: Aluguel, Luz, Pagamento Professor"
+                                        value={newExpense.description}
+                                        onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Categoria</label>
+                                    <select
+                                        value={newExpense.category}
+                                        onChange={e => setNewExpense({ ...newExpense, category: e.target.value })}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                    >
+                                        <option value="Fixo">Fixo</option>
+                                        <option value="Variavel">Variável</option>
+                                        <option value="Pessoal">Pessoal</option>
+                                    </select>
+                                    {/* Tooltip/Helper Text */}
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                                        <Info size={12} />
+                                        <span>{categoryDescriptions[newExpense.category]}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Data</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        value={newExpense.date}
+                                        onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Valor (R$)</label>
+                                    <input
+                                        required
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={newExpense.value}
+                                        onChange={e => setNewExpense({ ...newExpense, value: e.target.value })}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                    />
+                                </div>
+                                <div style={{ paddingTop: '1.7rem' }}>
+                                    <button type="submit" className="btn-primary" style={{ height: '48px', padding: '0 2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}>Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    )}
+
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: showExpenseForm ? '0' : '1rem' }}>
+                        <thead>
+                            <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
+                                <th style={{ padding: '1rem 0' }}>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th style={{ textAlign: 'right' }}>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {currentMonthExpenses.length > 0 ? (
+                                currentMonthExpenses.map(expense => (
+                                    <tr key={expense.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                        <td style={{ padding: '1rem 0' }}>{new Date(expense.date).toLocaleDateString('pt-BR')}</td>
+                                        <td>{expense.description}</td>
+                                        <td>
+                                            <span style={{
+                                                padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem',
+                                                background: expense.category === 'Pessoal' ? 'rgba(168, 85, 247, 0.2)' : expense.category === 'Fixo' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+                                                color: expense.category === 'Pessoal' ? '#a855f7' : expense.category === 'Fixo' ? '#3b82f6' : '#eab308'
+                                            }}>
+                                                {expense.category}
+                                            </span>
+                                        </td>
+                                        <td style={{ fontWeight: 'bold', color: expense.status === 'Paid' ? '#ef4444' : 'var(--text-muted)' }}>
+                                            - R$ {parseFloat(expense.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td>
+                                            <span style={{
+                                                padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem',
+                                                background: expense.status === 'Paid' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(234, 179, 8, 0.2)',
+                                                color: expense.status === 'Paid' ? '#ef4444' : '#eab308',
+                                                display: 'inline-flex', alignItems: 'center', gap: '0.3rem'
+                                            }}>
+                                                {expense.status === 'Paid' ? <CheckCircle size={12} /> : <Calendar size={12} />}
+                                                {expense.status === 'Paid' ? 'Pago' : 'Agendado'}
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <button onClick={() => handleDeleteExpense(expense.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhuma despesa registrada neste mês.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
