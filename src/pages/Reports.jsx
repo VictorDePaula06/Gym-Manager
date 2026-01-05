@@ -13,6 +13,19 @@ const formatCurrency = (value) => {
     }).format(value);
 };
 
+const getBase64FromUrl = async (url) => {
+    const data = await fetch(url);
+    const blob = await data.blob();
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+            const base64data = reader.result;
+            resolve(base64data);
+        }
+    });
+}
+
 const Reports = () => {
     const { students, expenses, settings } = useGym(); // Added expenses
     const { addToast } = useToast();
@@ -139,37 +152,56 @@ const Reports = () => {
 
 
     // --- PDF Generators ---
-    const exportFinancialPDF = () => {
+    const exportFinancialPDF = async () => {
         try {
             const doc = new jsPDF();
             const gymName = settings?.gymName || "GymManager";
             const periodStr = `${new Date(dateRange.start).toLocaleDateString('pt-BR')} a ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`;
 
-            // Header
-            doc.setFontSize(18);
-            doc.text(gymName, 105, 15, { align: "center" });
-            doc.setFontSize(14);
-            doc.text("Relatório Financeiro", 105, 25, { align: "center" });
-            doc.setFontSize(10);
-            doc.text(`Período: ${periodStr}`, 105, 32, { align: "center" });
+            // Header Layer (Professional Dark Theme)
+            doc.setFillColor(15, 23, 42); // Dark Slate/Blue
+            doc.rect(0, 0, 210, 40, 'F');
 
-            // Stats Box
+            // Logo
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
+            // Header Text
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text(gymName, 105, 18, { align: "center" });
+
+            doc.setFontSize(14);
+            doc.text("Relatório Financeiro", 105, 30, { align: "center" });
+
+            // Reset for Content
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            doc.text(`Período: ${periodStr}`, 14, 50);
+
+            // Stats Box (Shifted down)
             doc.setFillColor(245, 245, 245);
-            doc.rect(14, 40, 182, 30, 'F');
+            doc.rect(14, 55, 182, 25, 'F');
 
             doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text("Resumo do Período", 20, 48);
+            doc.text("Resumo do Período", 20, 62);
 
             doc.setFontSize(11);
             doc.setTextColor(0);
-            doc.text(`Receitas: ${formatCurrency(financialData.totalIncome)}`, 20, 58);
-            doc.text(`Despesas: ${formatCurrency(financialData.totalExpenses)}`, 80, 58);
+            doc.text(`Receitas: ${formatCurrency(financialData.totalIncome)}`, 20, 72);
+            doc.text(`Despesas: ${formatCurrency(financialData.totalExpenses)}`, 80, 72);
 
             // Profit Color
             if (financialData.netProfit >= 0) doc.setTextColor(0, 150, 0);
             else doc.setTextColor(200, 0, 0);
-            doc.text(`Lucro Líquido: ${formatCurrency(financialData.netProfit)}`, 140, 58);
+            doc.text(`Lucro Líquido: ${formatCurrency(financialData.netProfit)}`, 140, 72);
             doc.setTextColor(0);
 
             let currentY = 80;
@@ -234,20 +266,40 @@ const Reports = () => {
         }
     };
 
-    const exportStudentsPDF = () => {
+    const exportStudentsPDF = async () => {
         try {
             const doc = new jsPDF();
             const gymName = settings?.gymName || "GymManager";
 
-            doc.setFontSize(18);
-            doc.text(gymName, 105, 15, { align: "center" });
+            // Header Layer (Professional Dark Theme)
+            doc.setFillColor(15, 23, 42); // Dark Slate/Blue
+            doc.rect(0, 0, 210, 40, 'F');
+
+            // Logo
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
+            // Header Text
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text(gymName, 105, 18, { align: "center" });
+
             doc.setFontSize(14);
-            doc.text("Relatório de Alunos", 105, 25, { align: "center" });
+            doc.text("Relatório de Alunos", 105, 30, { align: "center" });
+
+            // Reset for Content
+            doc.setTextColor(0, 0, 0);
             doc.setFontSize(10);
-            doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 105, 32, { align: "center" });
+            doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 50);
 
             doc.setFontSize(11);
-            doc.text(`Total: ${studentData.total} | Ativos: ${studentData.active} | Inativos: ${studentData.inactive}`, 14, 45);
+            doc.text(`Total: ${studentData.total} | Ativos: ${studentData.active} | Inativos: ${studentData.inactive}`, 14, 58); // Adjusted Y
 
             const tableColumn = ["Nome", "Status", "Plano", "Próx. Vencimento"];
             const tableRows = studentData.list.map(s => [
@@ -282,6 +334,61 @@ const Reports = () => {
                 </p>
             </div>
 
+            <style>{`
+                .reports-table-responsive {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 0.9rem;
+                }
+
+                @media (max-width: 768px) {
+                    .reports-table-responsive thead {
+                        display: none;
+                    }
+
+                    .reports-table-responsive, 
+                    .reports-table-responsive tbody, 
+                    .reports-table-responsive tr, 
+                    .reports-table-responsive td {
+                        display: block;
+                        width: 100%;
+                    }
+
+                    .reports-table-responsive tr {
+                        margin-bottom: 1rem;
+                        background: var(--card-bg);
+                        border: 1px solid var(--border-glass);
+                        borderRadius: 12px;
+                        padding: 1rem;
+                        position: relative;
+                    }
+
+                    .reports-table-responsive td {
+                        text-align: left;
+                        padding: 0.5rem 0;
+                        border: none;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+
+                    .reports-table-responsive td::before {
+                        content: attr(data-label);
+                        font-weight: 600;
+                        color: var(--text-muted);
+                        font-size: 0.85rem;
+                        margin-right: 1rem;
+                    }
+                    
+                    /* Special styling for amounts to pop */
+                    .reports-table-responsive td[data-label="Valor"] {
+                        font-weight: bold;
+                        font-size: 1rem;
+                        justify-content: flex-end; /* Align right on mobile too for emphasis, or standard */
+                    }
+                }
+            `}</style>
+
             <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
                 <button
                     onClick={() => setActiveTab("financial")}
@@ -315,28 +422,30 @@ const Reports = () => {
                 <div className="fade-in">
                     {/* Actions Bar */}
                     <div className="glass-panel" style={{ padding: "1.5rem", marginBottom: "2rem", display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', marginRight: '1rem' }}>
                                 <Filter size={20} />
                                 <span style={{ fontWeight: 'bold' }}>Período</span>
                             </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>De</label>
-                                <input
-                                    type="date"
-                                    value={dateRange.start}
-                                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.5rem', borderRadius: '8px' }}
-                                />
-                            </div>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Até</label>
-                                <input
-                                    type="date"
-                                    value={dateRange.end}
-                                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.5rem', borderRadius: '8px' }}
-                                />
+                            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>De</label>
+                                    <input
+                                        type="date"
+                                        value={dateRange.start}
+                                        onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                        style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.5rem', borderRadius: '8px' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Até</label>
+                                    <input
+                                        type="date"
+                                        value={dateRange.end}
+                                        onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                        style={{ background: 'var(--input-bg)', border: '1px solid var(--border-color)', color: 'var(--text-main)', padding: '0.5rem', borderRadius: '8px' }}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -361,6 +470,8 @@ const Reports = () => {
                         </div>
                     </div>
 
+
+
                     {/* Data Preview Tables */}
                     <div style={{ display: 'grid', gap: '2rem' }}>
 
@@ -371,7 +482,7 @@ const Reports = () => {
                                 <h3 style={{ margin: 0, fontSize: '1rem' }}>Receitas</h3>
                             </div>
                             <div style={{ overflowX: 'auto', maxHeight: '300px', overflowY: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                <table className="reports-table-responsive">
                                     <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-glass)', backdropFilter: 'blur(10px)' }}>
                                         <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                                             <th style={{ padding: '1rem' }}>Data</th>
@@ -384,10 +495,10 @@ const Reports = () => {
                                         {financialData.detailedPayments.length > 0 ? (
                                             financialData.detailedPayments.map((p, idx) => (
                                                 <tr key={idx} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                                    <td style={{ padding: '1rem' }}>{p.date}</td>
-                                                    <td style={{ padding: '1rem' }}>{p.student}</td>
-                                                    <td style={{ padding: '1rem' }}>{p.method}</td>
-                                                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: '#10b981' }}>+ {formatCurrency(p.amount)}</td>
+                                                    <td data-label="Data" style={{ padding: '1rem' }}>{p.date}</td>
+                                                    <td data-label="Aluno" style={{ padding: '1rem' }}>{p.student}</td>
+                                                    <td data-label="Forma" style={{ padding: '1rem' }}>{p.method}</td>
+                                                    <td data-label="Valor" style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: '#10b981' }}>+ {formatCurrency(p.amount)}</td>
                                                 </tr>
                                             ))
                                         ) : (
@@ -407,7 +518,7 @@ const Reports = () => {
                                 <h3 style={{ margin: 0, fontSize: '1rem' }}>Despesas</h3>
                             </div>
                             <div style={{ overflowX: 'auto', maxHeight: '300px', overflowY: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                <table className="reports-table-responsive">
                                     <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-glass)', backdropFilter: 'blur(10px)' }}>
                                         <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                                             <th style={{ padding: '1rem' }}>Data</th>
@@ -420,14 +531,14 @@ const Reports = () => {
                                         {financialData.detailedExpenses.length > 0 ? (
                                             financialData.detailedExpenses.map((p, idx) => (
                                                 <tr key={idx} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                                    <td style={{ padding: '1rem' }}>{p.date}</td>
-                                                    <td style={{ padding: '1rem' }}>{p.description}</td>
-                                                    <td style={{ padding: '1rem' }}>
+                                                    <td data-label="Data" style={{ padding: '1rem' }}>{p.date}</td>
+                                                    <td data-label="Descrição" style={{ padding: '1rem' }}>{p.description}</td>
+                                                    <td data-label="Categoria" style={{ padding: '1rem' }}>
                                                         <span style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-glass)' }}>
                                                             {p.category}
                                                         </span>
                                                     </td>
-                                                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: '#ef4444' }}>- {formatCurrency(p.amount)}</td>
+                                                    <td data-label="Valor" style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: '#ef4444' }}>- {formatCurrency(p.amount)}</td>
                                                 </tr>
                                             ))
                                         ) : (
@@ -459,8 +570,8 @@ const Reports = () => {
 
                     <div className="glass-panel" style={{ padding: '0' }}>
                         <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                                <thead>
+                            <table className="reports-table-responsive">
+                                <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-glass)', backdropFilter: 'blur(10px)' }}>
                                     <tr style={{ background: 'rgba(255,255,255,0.03)', textAlign: 'left', color: 'var(--text-muted)' }}>
                                         <th style={{ padding: '1rem' }}>Nome</th>
                                         <th style={{ padding: '1rem' }}>Plano</th>
@@ -471,8 +582,8 @@ const Reports = () => {
                                 <tbody>
                                     {studentData.list.map((s, idx) => (
                                         <tr key={idx} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                            <td style={{ padding: '1rem', fontWeight: '500' }}>{s.name}</td>
-                                            <td style={{ padding: '1rem' }}>
+                                            <td data-label="Nome" style={{ padding: '1rem', fontWeight: '500' }}>{s.name}</td>
+                                            <td data-label="Plano" style={{ padding: '1rem' }}>
                                                 {{
                                                     'Monthly': 'Mensal',
                                                     'monthly': 'Mensal',
@@ -484,7 +595,7 @@ const Reports = () => {
                                                     'annual': 'Anual'
                                                 }[s.plan] || s.plan}
                                             </td>
-                                            <td style={{ padding: '1rem' }}>
+                                            <td data-label="Status" style={{ padding: '1rem' }}>
                                                 <span style={{
                                                     padding: '0.25rem 0.75rem',
                                                     borderRadius: '20px',
@@ -495,7 +606,7 @@ const Reports = () => {
                                                     {s.status}
                                                 </span>
                                             </td>
-                                            <td style={{ padding: '1rem', color: 'var(--text-muted)' }}>{s.nextPayment}</td>
+                                            <td data-label="Próx. Vencimento" style={{ padding: '1rem', color: 'var(--text-muted)' }}>{s.nextPayment}</td>
                                         </tr>
                                     ))}
                                 </tbody>

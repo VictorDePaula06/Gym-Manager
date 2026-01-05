@@ -18,7 +18,7 @@ export default function WorkoutBuilder() {
     const { id } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { students, updateStudent } = useGym();
+    const { students, updateStudent, settings } = useGym();
     const { addToast } = useToast();
 
     const student = students.find(s => s.id === id);
@@ -137,7 +137,20 @@ export default function WorkoutBuilder() {
         }
     };
 
-    const generatePDF = () => {
+    const getBase64FromUrl = async (url) => {
+        const data = await fetch(url);
+        const blob = await data.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = () => {
+                const base64data = reader.result;
+                resolve(base64data);
+            }
+        });
+    }
+
+    const generatePDF = async () => {
         const doc = new jsPDF();
         // Use targetWorkouts based on current sheet
         const workouts = getTargetWorkouts();
@@ -149,21 +162,38 @@ export default function WorkoutBuilder() {
             sheetName = student.workoutSheets[sheetId].name;
         }
 
-        // Title Page
-        doc.setFontSize(22);
-        doc.setTextColor(40, 40, 40);
-        doc.text("Ficha de Treino", 105, 20, { align: "center" });
+        // Header Layer (Professional Dark Theme)
+        doc.setFillColor(15, 23, 42); // Dark Slate/Blue
+        doc.rect(0, 0, 210, 40, 'F');
 
-        doc.setFontSize(16);
-        doc.text(sheetName, 105, 30, { align: "center" });
+        // Logo
+        if (settings?.logoUrl) {
+            try {
+                const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+            } catch (e) {
+                console.error("Failed to load logo", e);
+            }
+        }
+
+        // Header Text
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        const gymName = settings?.gymName || "GymManager";
+        doc.text(gymName, 105, 18, { align: "center" });
 
         doc.setFontSize(14);
-        doc.setTextColor(100);
-        doc.text(`Aluno: ${student.name}`, 14, 45); // Adjusted Y
-        doc.text(`Data de Emissão: ${new Date().toLocaleDateString()}`, 14, 52);
+        doc.text(sheetName, 105, 30, { align: "center" });
+
+        // Reset for Content
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+
+        doc.text(`Aluno: ${student.name}`, 14, 50); // Shifted down
+        doc.text(`Data de Emissão: ${new Date().toLocaleDateString()}`, 14, 58);
 
         // Iterate through all variations
-        let currentY = 65; // Adjusted Y
+        let currentY = 70; // Adjusted Y
 
         variations.forEach((variation, index) => {
             const data = workouts[variation];
@@ -235,10 +265,37 @@ export default function WorkoutBuilder() {
                 <ChevronLeft size={20} /> Voltar para Perfil
             </button>
 
+            <style>{`
+                .exercise-row {
+                    display: grid;
+                    grid-template-columns: minmax(200px, 3fr) 0.8fr 0.8fr 0.8fr auto;
+                    gap: 1rem;
+                    align-items: end;
+                    margin-bottom: 1rem;
+                    padding: 1rem;
+                    background: var(--card-bg);
+                    border-radius: 12px;
+                }
+                
+                @media (max-width: 768px) {
+                    .exercise-row {
+                        grid-template-columns: 1fr 1fr 1fr auto !important;
+                        gap: 0.5rem;
+                        padding: 0.75rem;
+                    }
+                    /* Exercise Name: Full width top row */
+                    .exercise-row > div:first-child {
+                        grid-column: 1 / -1;
+                        margin-bottom: 0.5rem;
+                    }
+                    /* Hide Delete Button text if any, keep icon */
+                }
+            `}</style>
+
             <div className="glass-panel" style={{ padding: '2rem' }}>
                 <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
-                        <h1 style={{ marginBottom: '0.5rem' }}>Editor de Treino</h1>
+                        <h1 style={{ marginBottom: '0.5rem', fontSize: '1.5rem' }}>Editor de Treino</h1>
                         <p style={{ color: 'var(--text-muted)' }}>Aluno: <span style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>{student.name}</span></p>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem' }}>
@@ -254,21 +311,20 @@ export default function WorkoutBuilder() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                fontSize: '0.9rem'
                             }}
                             title="Baixar PDF"
                         >
                             <FileDown size={20} />
-                            PDF
+                            <span className="hide-mobile">PDF</span>
                         </button>
                     </div>
 
 
-
-
                     {/* Sheet Name Input (Only for non-legacy) */}
                     {sheetId !== 'legacy' && (
-                        <div style={{ marginBottom: '2rem' }}>
+                        <div style={{ width: '100%', marginBottom: '1rem' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Nome da Ficha</label>
                             <input
                                 value={sheetName}
@@ -289,7 +345,7 @@ export default function WorkoutBuilder() {
                     )}
 
                     {/* Variation Selector */}
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem', overflowX: 'auto' }}>
+                    <div style={{ width: '100%', display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem', overflowX: 'auto' }}>
                         {variations.map(v => (
                             <button
                                 key={v}
@@ -298,14 +354,14 @@ export default function WorkoutBuilder() {
                                     background: currentVariation === v ? 'var(--primary)' : 'var(--input-bg)',
                                     color: currentVariation === v ? 'white' : 'var(--text-muted)',
                                     border: 'none',
-                                    padding: '0.75rem 1.5rem',
+                                    padding: '0.5rem 1rem',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     fontWeight: '600',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
-                                    minWidth: '80px',
+                                    minWidth: '60px',
                                     position: 'relative'
                                 }}
                             >
@@ -327,7 +383,7 @@ export default function WorkoutBuilder() {
                                 background: 'transparent',
                                 border: '1px dashed var(--border-glass)',
                                 color: 'var(--text-muted)',
-                                padding: '0.75rem 1rem',
+                                padding: '0.5rem 1rem',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 display: 'flex',
@@ -340,7 +396,7 @@ export default function WorkoutBuilder() {
                         </button>
                     </div>
 
-                    <div style={{ marginBottom: '2rem' }}>
+                    <div style={{ width: '100%', marginBottom: '2rem' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Nome do Treino</label>
                         <input
                             value={workoutName}
@@ -357,7 +413,7 @@ export default function WorkoutBuilder() {
                         />
                     </div>
 
-                    <div style={{ marginBottom: '2rem' }}>
+                    <div style={{ width: '100%', marginBottom: '2rem' }}>
                         {exercises.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: 'var(--card-bg)', borderRadius: '12px', marginBottom: '1rem' }}>
                                 <Dumbbell size={32} style={{ opacity: 0.5, marginBottom: '1rem' }} />
@@ -365,16 +421,7 @@ export default function WorkoutBuilder() {
                             </div>
                         ) : (
                             exercises.map((exercise, index) => (
-                                <div key={exercise.id} style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'minmax(200px, 3fr) 0.8fr 0.8fr 0.8fr auto',
-                                    gap: '1rem',
-                                    alignItems: 'end',
-                                    marginBottom: '1rem',
-                                    padding: '1rem',
-                                    background: 'var(--card-bg)',
-                                    borderRadius: '12px'
-                                }}>
+                                <div key={exercise.id} className="exercise-row">
                                     <div>
                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem', display: 'block' }}>Exercício</label>
                                         <input
@@ -411,7 +458,7 @@ export default function WorkoutBuilder() {
                                     </div>
                                     <button
                                         onClick={() => removeExercise(exercise.id)}
-                                        style={{ padding: '0.5rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', cursor: 'pointer', border: 'none' }}
+                                        style={{ padding: '0.5rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', cursor: 'pointer', border: 'none', height: 'fit-content', alignSelf: 'end' }}
                                     >
                                         <Trash2 size={18} />
                                     </button>

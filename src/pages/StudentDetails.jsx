@@ -248,7 +248,141 @@ export default function StudentDetails() {
         }
     }
 
-    const generatePDF = () => {
+    const shareSheetPDF = async () => {
+        try {
+            const doc = new jsPDF();
+            const currentSheet = getCurrentSheet();
+            const workouts = currentSheet.workouts || (currentSheet.type === 'legacy' ? currentSheet.workouts : {});
+            const variations = Object.keys(workouts).sort();
+
+            if (variations.length === 0) {
+                addToast("Nenhum treino encontrado nesta ficha para compartilhar.", 'info');
+                return;
+            }
+
+            // Header Layer (Professional Dark Theme)
+            doc.setFillColor(15, 23, 42); // Dark Slate/Blue
+            doc.rect(0, 0, 210, 40, 'F');
+
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setTextColor(255, 255, 255);
+            const gymName = settings?.gymName || "GymManager";
+            doc.text(gymName, 105, 18, { align: 'center' });
+
+            doc.setFontSize(14);
+            doc.text("Ficha de Treino", 105, 30, { align: 'center' });
+
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Aluno: ${student.name}`, 14, 50);
+            doc.text(`Ficha: ${currentSheet.name || 'Principal'}`, 14, 58);
+            if (student.goal) doc.text(`Objetivo: ${student.goal}`, 14, 66);
+
+            let yPos = 70;
+
+            variations.forEach((variation, index) => {
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                doc.setFillColor(33, 150, 243);
+                doc.rect(14, yPos - 8, 182, 10, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14);
+                doc.text(`Treino ${variation}`, 105, yPos - 1, { align: 'center' });
+
+                yPos += 10;
+
+                let exercises = workouts[variation];
+                if (!Array.isArray(exercises) && exercises?.exercises) {
+                    exercises = exercises.exercises;
+                }
+                const tableBody = Array.isArray(exercises) ? exercises.map(ex => [
+                    ex.name,
+                    ex.sets || '-',
+                    ex.reps || '-',
+                    ex.technique || '-'
+                ]) : [];
+
+                autoTable(doc, {
+                    startY: yPos,
+                    head: [['Exercício', 'Séries', 'Reps', 'Técnica']],
+                    body: tableBody,
+                    theme: 'grid',
+                    headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+                    styles: { fontSize: 10 },
+                    margin: { left: 14, right: 14 }
+                });
+
+                yPos = doc.lastAutoTable.finalY + 20;
+            });
+
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(10);
+                doc.setTextColor(150);
+                doc.text(`Gerado por GymManager - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+            }
+
+            // Generate Blob and Share
+            const blob = doc.output('blob');
+            const file = new File([blob], `Treino_${student.name}.pdf`, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Treino - ${student.name}`,
+                    text: `Olá ${student.name}, segue sua ficha de treino atualizada!`
+                });
+                addToast("Compartilhamento iniciado!", 'success');
+            } else {
+                // Fallback for Desktop: Notify user
+                const phone = student.phone ? student.phone.replace(/\D/g, '') : '';
+                if (phone) {
+                    // We can't attach file via URL, so we guide the user
+                    doc.save(`Treino_${student.name}.pdf`);
+                    const message = `Olá ${student.name}, segue sua ficha de treino em anexo.`;
+                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                    addToast("PDF baixado. Anexe-o no WhatsApp que foi aberto.", 'info');
+                } else {
+                    doc.save(`Treino_${student.name}.pdf`);
+                    addToast("Seu dispositivo não suporta compartilhamento direto. O PDF foi baixado.", 'info');
+                }
+            }
+
+        } catch (error) {
+            console.error("Erro ao compartilhar PDF:", error);
+            addToast("Ocorreu um erro ao compartilhar.", 'error');
+        }
+    };
+
+    const getBase64FromUrl = async (url) => {
+        const data = await fetch(url);
+        const blob = await data.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = () => {
+                const base64data = reader.result;
+                resolve(base64data);
+            }
+        });
+    }
+
+    const generatePDF = async () => {
         try {
             const doc = new jsPDF();
             const currentSheet = getCurrentSheet();
@@ -260,8 +394,93 @@ export default function StudentDetails() {
                 return;
             }
 
+            // Header Layer (Professional Dark Theme)
+            doc.setFillColor(15, 23, 42); // Dark Slate/Blue
+            doc.rect(0, 0, 210, 40, 'F');
+
+            // Logo
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    // Increased size from 25x25 to 35x35 and adjusted position
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
+            // Text
+            doc.setTextColor(255, 255, 255);
             doc.setFontSize(22);
-            // ... (omitted unaffected code)
+            const gymName = settings?.gymName || "GymManager";
+            doc.text(gymName, 105, 18, { align: 'center' });
+
+            doc.setFontSize(14); // Slightly larger title
+            doc.text("Ficha de Treino", 105, 30, { align: 'center' });
+
+            // Reset for Body
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(12);
+            doc.text(`Aluno: ${student.name}`, 14, 50); // Shifted down slightly
+            doc.text(`Ficha: ${currentSheet.name || 'Principal'}`, 14, 58);
+            if (student.objective) doc.text(`Objetivo: ${student.objective}`, 14, 66);
+
+            let yPos = 70;
+
+            variations.forEach((variation, index) => {
+                if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Check for 'Rest' day
+                if (workouts[variation]?.isRestDay) {
+                    // Skip or handle rest day differently? For now let's assume standard format
+                }
+
+                doc.setFillColor(33, 150, 243);
+                doc.rect(14, yPos - 8, 182, 10, 'F');
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(14);
+                doc.text(`Treino ${variation}`, 105, yPos - 1, { align: 'center' });
+
+                yPos += 10;
+
+                let exercises = workouts[variation];
+                if (!Array.isArray(exercises) && exercises?.exercises) {
+                    exercises = exercises.exercises;
+                }
+                // Ensure exercises is array
+                if (Array.isArray(exercises)) {
+                    const tableBody = exercises.map(ex => [
+                        ex.name,
+                        ex.sets || '-',
+                        ex.reps || '-',
+                        ex.technique || '-'
+                    ]);
+
+                    autoTable(doc, {
+                        startY: yPos,
+                        head: [['Exercício', 'Séries', 'Reps', 'Técnica']],
+                        body: tableBody,
+                        theme: 'grid',
+                        headStyles: { fillColor: [240, 240, 240], textColor: [0, 0, 0] },
+                        styles: { fontSize: 10 },
+                        margin: { left: 14, right: 14 }
+                    });
+                    yPos = doc.lastAutoTable.finalY + 20;
+                }
+            });
+
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(10);
+                doc.setTextColor(150);
+                doc.text(`Gerado por GymManager - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+            }
+
             doc.save(`${student.name}_${currentSheet.name || 'Ficha'}.pdf`);
             addToast("PDF gerado com sucesso!", 'success');
         } catch (error) {
@@ -520,7 +739,7 @@ export default function StudentDetails() {
             }
 
             return (
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '0.8rem', borderBottom: '1px solid var(--border-glass)', alignItems: 'center' }}>
+                <div className="comparison-grid" style={{ padding: '0.8rem', borderBottom: '1px solid var(--border-glass)' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{label}</span>
                     <span style={{ fontWeight: 'bold' }}>{a1[key] ? `${a1[key]}${unit}` : '-'}</span>
                     <span style={{ fontWeight: 'bold' }}>{a2[key] ? `${a2[key]}${unit}` : '-'}</span>
@@ -531,16 +750,27 @@ export default function StudentDetails() {
             );
         };
 
-        const downloadComparisonPDF = () => {
+        const downloadComparisonPDF = async () => {
             try {
                 const doc = new jsPDF();
 
                 // Header
                 doc.setFillColor(15, 23, 42); // Dark Blue
                 doc.rect(0, 0, 210, 40, 'F');
+
+                if (settings?.logoUrl) {
+                    try {
+                        const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } catch (e) {
+                        console.error("Failed to load logo", e);
+                    }
+                }
+
                 doc.setTextColor(255, 255, 255);
                 doc.setFontSize(22);
-                doc.text("GymManager", 105, 20, { align: 'center' });
+                const gymName = settings?.gymName || "GymManager";
+                doc.text(gymName, 105, 20, { align: 'center' });
                 doc.setFontSize(12);
                 doc.text("Relatório Comparativo de Evolução", 105, 30, { align: 'center' });
 
@@ -610,6 +840,117 @@ export default function StudentDetails() {
             }
         };
 
+        const shareComparisonPDF = async () => {
+            try {
+                const doc = new jsPDF();
+
+                // Header
+                doc.setFillColor(15, 23, 42); // Dark Blue
+                doc.rect(0, 0, 210, 40, 'F');
+
+                if (settings?.logoUrl) {
+                    try {
+                        const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } catch (e) {
+                        console.error("Failed to load logo", e);
+                    }
+                }
+
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(22);
+                const gymName = settings?.gymName || "GymManager";
+                doc.text(gymName, 105, 20, { align: 'center' });
+                doc.setFontSize(12);
+                doc.text("Relatório Comparativo de Evolução", 105, 30, { align: 'center' });
+
+                // Student Info
+                doc.setTextColor(0, 0, 0);
+                doc.setFontSize(11);
+                doc.text(`Aluno: ${student.name}`, 14, 50);
+                doc.text(`Comparação: ${a1.dateString} vs ${a2.dateString}`, 14, 58);
+
+                // Data Preparation
+                const rows = [
+                    // General
+                    ['Peso (kg)', `${a1.weight}`, `${a2.weight}`, (a2.weight - a1.weight).toFixed(1)],
+                    ['% Gordura', `${a1.bodyFat || '-'}`, `${a2.bodyFat || '-'}`, a1.bodyFat && a2.bodyFat ? (a2.bodyFat - a1.bodyFat).toFixed(1) : '-'],
+                    ['Massa Magra (kg)', `${a1.muscleMass || '-'}`, `${a2.muscleMass || '-'}`, a1.muscleMass && a2.muscleMass ? (a2.muscleMass - a1.muscleMass).toFixed(1) : '-'],
+
+                    // Upper Body
+                    ['Bíceps Dir. (cm)', `${a1.bicepsRight || '-'}`, `${a2.bicepsRight || '-'}`, a1.bicepsRight && a2.bicepsRight ? (a2.bicepsRight - a1.bicepsRight).toFixed(1) : '-'],
+                    ['Bíceps Esq. (cm)', `${a1.bicepsLeft || '-'}`, `${a2.bicepsLeft || '-'}`, a1.bicepsLeft && a2.bicepsLeft ? (a2.bicepsLeft - a1.bicepsLeft).toFixed(1) : '-'],
+                    ['Peitoral (cm)', `${a1.chest || '-'}`, `${a2.chest || '-'}`, a1.chest && a2.chest ? (a2.chest - a1.chest).toFixed(1) : '-'],
+
+                    // Trunk
+                    ['Cintura (cm)', `${a1.waist || '-'}`, `${a2.waist || '-'}`, a1.waist && a2.waist ? (a2.waist - a1.waist).toFixed(1) : '-'],
+                    ['Abdômen (cm)', `${a1.abdomen || '-'}`, `${a2.abdomen || '-'}`, a1.abdomen && a2.abdomen ? (a2.abdomen - a1.abdomen).toFixed(1) : '-'],
+                    ['Quadril (cm)', `${a1.hips || '-'}`, `${a2.hips || '-'}`, a1.hips && a2.hips ? (a2.hips - a1.hips).toFixed(1) : '-'],
+
+                    // Lower Body
+                    ['Coxa Dir. (cm)', `${a1.thighRight || '-'}`, `${a2.thighRight || '-'}`, a1.thighRight && a2.thighRight ? (a2.thighRight - a1.thighRight).toFixed(1) : '-'],
+                    ['Coxa Esq. (cm)', `${a1.thighLeft || '-'}`, `${a2.thighLeft || '-'}`, a1.thighLeft && a2.thighLeft ? (a2.thighLeft - a1.thighLeft).toFixed(1) : '-'],
+                    ['Panturrilha Dir. (cm)', `${a1.calfRight || '-'}`, `${a2.calfRight || '-'}`, a1.calfRight && a2.calfRight ? (a2.calfRight - a1.calfRight).toFixed(1) : '-'],
+                    ['Panturrilha Esq. (cm)', `${a1.calfLeft || '-'}`, `${a2.calfLeft || '-'}`, a1.calfLeft && a2.calfLeft ? (a2.calfLeft - a1.calfLeft).toFixed(1) : '-'],
+                ];
+
+                autoTable(doc, {
+                    startY: 70,
+                    head: [['Medida', `Valor (${a1.dateString})`, `Valor (${a2.dateString})`, 'Diferença']],
+                    body: rows,
+                    theme: 'grid',
+                    headStyles: { fillColor: [30, 41, 59] },
+                    styles: { fontSize: 10, halign: 'center' },
+                    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } },
+                    didParseCell: function (data) {
+                        if (data.section === 'body' && data.column.index === 3) {
+                            const val = parseFloat(data.cell.raw);
+                            if (!isNaN(val) && val !== 0) {
+                                // Logic for color: Weight/Fat/Waist/Abdomen Down is Good (Green), others Up is Good
+                                const measure = data.row.raw[0].toString().toLowerCase();
+                                const reverseColor = measure.includes('peso') || measure.includes('gordura') || measure.includes('cintura') || measure.includes('abdômen');
+
+                                if (reverseColor) {
+                                    data.cell.styles.textColor = val < 0 ? [16, 185, 129] : [239, 68, 68];
+                                } else {
+                                    data.cell.styles.textColor = val > 0 ? [16, 185, 129] : [239, 68, 68];
+                                }
+
+                                data.cell.text = (val > 0 ? '+' : '') + val.toFixed(1);
+                            }
+                        }
+                    }
+                });
+
+                const blob = doc.output('blob');
+                const file = new File([blob], `Comparativo_${student.name}.pdf`, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: `Comparativo - ${student.name}`,
+                        text: `Olá ${student.name}, confira seu comparativo de evolução!`
+                    });
+                    addToast("Compartilhamento iniciado!", 'success');
+                } else {
+                    const phone = student.phone ? student.phone.replace(/\D/g, '') : '';
+                    if (phone) {
+                        doc.save(`Comparativo_${student.name}.pdf`);
+                        const message = `Olá ${student.name}, segue seu comparativo de evolução em anexo.`;
+                        window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                        addToast("PDF baixado. Anexe-o no WhatsApp.", 'info');
+                    } else {
+                        doc.save(`Comparativo_${student.name}.pdf`);
+                        addToast("PDF baixado.", 'info');
+                    }
+                }
+
+            } catch (error) {
+                console.error("Erro ao compartilhar PDF comparativo:", error);
+                addToast("Erro ao compartilhar PDF comparativo.", 'error');
+            }
+        };
+
         return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                 <div className="glass-panel" style={{ width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: 'var(--card-bg)', padding: '0', color: 'var(--text-main)' }}>
@@ -619,6 +960,9 @@ export default function StudentDetails() {
                             Comparativo de Evolução
                         </h3>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <button onClick={shareComparisonPDF} title="Compartilhar WhatsApp" style={{ background: 'transparent', border: '1px solid #25D366', color: '#25D366', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <MessageCircle size={20} />
+                            </button>
                             <button onClick={downloadComparisonPDF} title="Baixar PDF" style={{ background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Download size={20} />
                             </button>
@@ -627,7 +971,7 @@ export default function StudentDetails() {
                     </div>
 
                     <div style={{ padding: '1.5rem' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '0.8rem', background: 'var(--input-bg)', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                        <div className="comparison-grid" style={{ padding: '0.8rem', background: 'var(--input-bg)', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-main)' }}>
                             <span>Medida</span>
                             <span>{a1.dateString}</span>
                             <span>{a2.dateString}</span>
@@ -667,17 +1011,28 @@ export default function StudentDetails() {
         );
     };
 
-    const downloadAssessmentPDF = (assessment) => {
+    const downloadAssessmentPDF = async (assessment) => {
         try {
             const doc = new jsPDF();
 
             // Header
             doc.setFillColor(15, 23, 42); // Dark Blue
             doc.rect(0, 0, 210, 40, 'F');
+
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(22);
-            doc.text("GymManager", 105, 20, { align: 'center' });
-            doc.setFontSize(12);
+            const gymName = settings?.gymName || "GymManager";
+            doc.text(gymName, 105, 18, { align: 'center' });
+            doc.setFontSize(14);
             doc.text("Relatório de Avaliação Física", 105, 30, { align: 'center' });
 
             // Student Info
@@ -744,16 +1099,187 @@ export default function StudentDetails() {
         }
     };
 
+    const shareAssessmentPDF = async (assessment) => {
+        try {
+            const doc = new jsPDF();
+
+            // Header
+            doc.setFillColor(15, 23, 42); // Dark Blue
+            doc.rect(0, 0, 210, 40, 'F');
+
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+
+            const gymName = settings?.gymName || "GymManager";
+            doc.text(gymName, 105, 18, { align: 'center' });
+            doc.setFontSize(14);
+            doc.text("Relatório de Avaliação Física", 105, 30, { align: 'center' });
+
+            // Student Info
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(11);
+            doc.text(`Aluno: ${student.name}`, 14, 50);
+            doc.text(`Data da Avaliação: ${assessment.dateString}`, 14, 58);
+            if (student.email) doc.text(`Email: ${student.email}`, 14, 66);
+
+            // Basic Measurements Table
+            const basicData = [
+                ['Peso', `${assessment.weight} kg`],
+                ['Altura', assessment.height ? `${assessment.height} m` : '-'],
+                ['Gordura Corporal', assessment.bodyFat ? `${assessment.bodyFat}%` : '-'],
+                ['Massa Magra', assessment.muscleMass ? `${assessment.muscleMass} kg` : '-'],
+            ];
+
+            autoTable(doc, {
+                startY: 75,
+                head: [['Medida', 'Valor']],
+                body: basicData,
+                theme: 'striped',
+                headStyles: { fillColor: [16, 185, 129] }, // Green primary
+                styles: { fontSize: 10 }
+            });
+
+            // Detailed Measurements
+            const detailedData = [
+                ['Bíceps (D / E)', `${assessment.bicepsRight || '-'} cm  /  ${assessment.bicepsLeft || '-'} cm`],
+                ['Tríceps (D / E)', `${assessment.tricepsRight || '-'} cm  /  ${assessment.tricepsLeft || '-'} cm`],
+                ['Coxa (D / E)', `${assessment.thighRight || '-'} cm  /  ${assessment.thighLeft || '-'} cm`],
+                ['Panturrilha (D / E)', `${assessment.calfRight || '-'} cm  /  ${assessment.calfLeft || '-'} cm`],
+                ['Peitoral', `${assessment.chest || '-'} cm`],
+                ['Cintura', `${assessment.waist || '-'} cm`],
+                ['Abdômen', `${assessment.abdomen || '-'} cm`],
+                ['Quadril', `${assessment.hips || '-'} cm`],
+            ];
+
+            doc.text("Medidas Circunferência", 14, doc.lastAutoTable.finalY + 15);
+
+            autoTable(doc, {
+                startY: doc.lastAutoTable.finalY + 20,
+                head: [['Região', 'Medidas']],
+                body: detailedData,
+                theme: 'grid',
+                headStyles: { fillColor: [30, 41, 59] }, // Slate
+                styles: { fontSize: 10 }
+            });
+
+            // Notes
+            if (assessment.notes) {
+                doc.text("Notas / Observações", 14, doc.lastAutoTable.finalY + 15);
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                const splitNotes = doc.splitTextToSize(assessment.notes, 180);
+                doc.text(splitNotes, 14, doc.lastAutoTable.finalY + 22);
+            }
+
+            const blob = doc.output('blob');
+            const file = new File([blob], `Avaliacao_${student.name}_${assessment.dateString.replace(/\//g, '-')}.pdf`, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: `Avaliação - ${student.name}`,
+                    text: `Olá ${student.name}, segue sua avaliação física de ${assessment.dateString}.`
+                });
+                addToast("Compartilhamento iniciado!", 'success');
+            } else {
+                const phone = student.phone ? student.phone.replace(/\D/g, '') : '';
+                if (phone) {
+                    doc.save(`Avaliacao_${student.name}.pdf`);
+                    const message = `Olá ${student.name}, segue sua avaliação física de ${assessment.dateString} em anexo.`;
+                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                    addToast("PDF baixado. Anexe-o no WhatsApp que foi aberto.", 'info');
+                } else {
+                    doc.save(`Avaliacao_${student.name}.pdf`);
+                    addToast("Seu dispositivo não suporta compartilhamento direto. O PDF foi baixado.", 'info');
+                }
+            }
+
+        } catch (error) {
+            console.error("Erro ao compartilhar PDF:", error);
+            addToast("Erro ao compartilhar PDF.", 'error');
+        }
+    };
+
     return (
         <div style={{ paddingBottom: '4rem' }}>
+            <style>{`
+                .student-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                }
+                .student-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                }
+                .student-actions {
+                    display: flex;
+                    gap: 1rem;
+                }
+                
+                @media (max-width: 768px) {
+                    .student-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 1.5rem;
+                    }
+                    .student-info { 
+                        width: 100%;
+                    }
+                    .student-info h1 {
+                        font-size: 1.5rem !important;
+                        word-break: break-word;
+                    }
+                    .student-actions {
+                        width: 100%;
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                    }
+                    .student-actions button, .student-actions a {
+                        justify-content: center;
+                    }
+                    .hide-mobile-chart {
+                        display: none !important;
+                    }
+                    .comparison-grid {
+                        grid-template-columns: 1.2fr 1fr 1fr 0.8fr !important;
+                        font-size: 0.75rem !important;
+                        gap: 0.25rem !important;
+                    }
+                    .comparison-grid span {
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                }
+
+                .comparison-grid {
+                    display: grid;
+                    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+                    gap: 1rem;
+                    align-items: center;
+                }
+            `}</style>
+
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <button onClick={() => navigate('/students')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div className="student-header">
+                <div className="student-info">
+                    <button onClick={() => navigate('/students')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0 }}>
                         <ArrowLeft size={24} />
                     </button>
                     <div>
-                        <h1 style={{ fontSize: '1.8rem', marginBottom: '0.25rem' }}>{student.name}</h1>
+                        <h1 style={{ fontSize: '1.8rem', marginBottom: '0.25rem', lineHeight: 1.2 }}>{student.name}</h1>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <span style={{
                                 fontSize: '0.85rem',
@@ -767,7 +1293,7 @@ export default function StudentDetails() {
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div className="student-actions">
                     {student.phone && (
                         <button onClick={handleWhatsApp} style={{
                             background: '#25D366',
@@ -783,7 +1309,7 @@ export default function StudentDetails() {
                             boxShadow: '0 4px 12px rgba(37, 211, 102, 0.4)'
                         }}>
                             <MessageCircle size={20} />
-                            WhatsApp
+                            <span className="hide-mobile">WhatsApp</span>
                         </button>
                     )}
                     <Link to={`/students/${id}/edit`} style={{
@@ -818,7 +1344,28 @@ export default function StudentDetails() {
             <div style={{ marginTop: '2rem' }}>
 
                 {activeTab === 'overview' && (<>
-                    <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2rem', alignItems: 'start' }}>
+                    <style>{`
+                        .details-overview-grid {
+                            display: grid;
+                            grid-template-columns: 350px 1fr;
+                            gap: 2rem;
+                            align-items: start;
+                        }
+
+                        @media (max-width: 1024px) {
+                            .details-overview-grid {
+                                grid-template-columns: 1fr 1fr; /* Tablet: 50/50 might be ok, or stacked? Let's go stacked for safety if narrow */
+                            }
+                        }
+
+                        @media (max-width: 768px) {
+                            .details-overview-grid {
+                                grid-template-columns: 1fr;
+                                gap: 1.5rem;
+                            }
+                        }
+                    `}</style>
+                    <div className="details-overview-grid">
                         {/* LEFT COLUMN: Profile & Personal */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {/* Profile Card */}
@@ -972,7 +1519,7 @@ export default function StudentDetails() {
 
                             {/* Progress Chart Section - Moved here for Dashboard Layout */}
                             {assessments.length > 0 && (
-                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                <div className="glass-panel hide-mobile-chart" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                         <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Progresso (Peso & Gordura)</h3>
                                         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -1343,6 +1890,13 @@ export default function StudentDetails() {
                                                                 <Trash2 size={16} />
                                                             </button>
                                                             <button
+                                                                onClick={(e) => { e.stopPropagation(); shareAssessmentPDF(item); }}
+                                                                title="Compartilhar WhatsApp"
+                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25D366', cursor: 'pointer' }}
+                                                            >
+                                                                <MessageCircle size={16} />
+                                                            </button>
+                                                            <button
                                                                 onClick={(e) => { e.stopPropagation(); downloadAssessmentPDF(item); }}
                                                                 title="Baixar PDF"
                                                                 style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', cursor: 'pointer' }}
@@ -1545,20 +2099,77 @@ export default function StudentDetails() {
 
                             {/* Single "Ficha" Container */}
                             <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--primary)', position: 'relative' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '2rem' }}>
+                                <style>{`
+                                    .sheet-header {
+                                        display: flex;
+                                        justify-content: space-between;
+                                        align-items: flex-start;
+                                        margin-bottom: 2rem;
+                                    }
+                                    .sheet-actions {
+                                        display: flex;
+                                        gap: 1rem;
+                                    }
+                                    .sheet-btn-text {
+                                        display: inline;
+                                    }
+                                    @media (max-width: 768px) {
+                                        .sheet-header {
+                                            flex-direction: column;
+                                            gap: 1rem;
+                                        }
+                                        .sheet-actions {
+                                            width: 100%;
+                                            display: grid;
+                                            grid-template-columns: 1fr 1fr 1fr; /* Share, Download, Edit(if any) - actually just 2 or 3 buttons */
+                                            gap: 0.5rem;
+                                        }
+                                        .sheet-actions button {
+                                            justify-content: center !important;
+                                            padding: 0.8rem !important;
+                                            flex: 1;
+                                        }
+                                        .sheet-btn-text {
+                                            display: none;
+                                        }
+                                    }
+                                `}</style>
+
+                                <div className="sheet-header">
                                     <div>
                                         <h2 style={{ fontSize: '1.5rem', margin: 0, marginBottom: '0.5rem' }}>{currentSheet?.name || 'Ficha de Treino'}</h2>
                                         <p style={{ color: 'var(--text-muted)' }}>
                                             {Object.keys(currentSheet?.workouts || {}).length} divisões ativas
                                         </p>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <div className="sheet-actions">
+                                        <button
+                                            onClick={shareSheetPDF}
+                                            title="Compartilhar no WhatsApp"
+                                            style={{
+                                                background: 'var(--input-bg)',
+                                                color: '#25D366',
+                                                border: '1px solid var(--border-glass)',
+                                                padding: '0.8rem 1.2rem',
+                                                borderRadius: '12px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                fontWeight: '600',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <MessageCircle size={20} />
+                                            <span className="sheet-btn-text">Compartilhar</span>
+                                        </button>
                                         <button
                                             onClick={generatePDF}
+                                            title="Baixar PDF"
                                             style={{
                                                 background: 'var(--input-bg)',
                                                 color: 'var(--text-main)',
-                                                border: 'none',
+                                                border: '1px solid var(--border-glass)',
                                                 padding: '0.75rem 1.5rem',
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
@@ -1568,7 +2179,8 @@ export default function StudentDetails() {
                                                 gap: '0.5rem'
                                             }}
                                         >
-                                            <Dumbbell size={18} /> Baixar PDF
+                                            <Dumbbell size={18} />
+                                            <span className="sheet-btn-text">Baixar PDF</span>
                                         </button>
                                         <button
                                             onClick={() => {
@@ -1707,7 +2319,96 @@ export default function StudentDetails() {
                 {
                     activeTab === 'financial' && (
                         <div>
-                            <div className="glass-panel" style={{ padding: '1rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <style>{`
+                                .status-card {
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    padding: 1rem;
+                                    background: rgba(16, 185, 129, 0.1);
+                                    border: 1px solid rgba(16, 185, 129, 0.2);
+                                    border-radius: 12px; /* radius from glass-panel */
+                                    margin-bottom: 2rem;
+                                }
+
+                                @media (max-width: 768px) {
+                                    .status-card {
+                                        flex-direction: column;
+                                        align-items: stretch;
+                                        gap: 1rem;
+                                        text-align: center;
+                                    }
+                                    .status-card > div {
+                                        flex-direction: column;
+                                        text-align: center;
+                                    }
+
+                                    /* Financial Table to Cards Transformation */
+                                    .financial-table, .financial-table tbody, .financial-table tr, .financial-table td {
+                                        display: block;
+                                        width: 100%;
+                                    }
+                                    
+                                    .financial-table thead {
+                                        display: none;
+                                    }
+
+                                    .financial-table tr {
+                                        position: relative;
+                                        margin-bottom: 1rem;
+                                        background: var(--card-bg);
+                                        border: 1px solid var(--border-glass);
+                                        border-radius: 12px;
+                                        padding: 1rem;
+                                    }
+
+                                    .financial-table td {
+                                        padding: 0.25rem 0;
+                                        text-align: left;
+                                        border: none !important;
+                                    }
+
+                                    /* Date */
+                                    .financial-table td:nth-child(1) {
+                                        font-size: 0.85rem;
+                                        color: var(--text-muted);
+                                        margin-bottom: 0.25rem;
+                                    }
+
+                                    /* Description */
+                                    .financial-table td:nth-child(2) {
+                                        font-size: 1rem;
+                                        font-weight: 500;
+                                        margin-bottom: 0.5rem;
+                                    }
+
+                                    /* Value */
+                                    .financial-table td:nth-child(3) {
+                                        font-size: 1.2rem;
+                                        font-weight: bold;
+                                        color: var(--text-main);
+                                        margin-bottom: 0.5rem;
+                                    }
+
+                                    /* Status & Method (Inline) */
+                                    .financial-table td:nth-child(4),
+                                    .financial-table td:nth-child(5) {
+                                        display: inline-block;
+                                        width: auto;
+                                        margin-right: 1rem;
+                                    }
+
+                                    /* Delete Button */
+                                    .financial-table td:nth-child(6) {
+                                        position: absolute;
+                                        top: 1rem;
+                                        right: 1rem;
+                                        width: auto;
+                                    }
+                                }
+                            `}</style>
+
+                            <div className="glass-panel status-card">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <CheckCircle color="#047857" />
                                     <div>
@@ -1795,7 +2496,7 @@ export default function StudentDetails() {
                             )}
 
                             <h3 style={{ marginBottom: '1rem' }}>Histórico Financeiro</h3>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                            <table className="financial-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                                 <thead>
                                     <tr style={{ color: 'var(--text-muted)', textAlign: 'left', borderBottom: '1px solid var(--border-glass)' }}>
                                         <th style={{ padding: '1rem' }}>Data</th>

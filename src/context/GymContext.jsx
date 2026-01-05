@@ -10,7 +10,11 @@ import { useAuth } from './AuthContext';
 export const GymProvider = ({ children }) => {
     const { user } = useAuth();
     const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loadingStudents, setLoadingStudents] = useState(true);
+    const [loadingSettings, setLoadingSettings] = useState(true);
+
+    const loading = loadingStudents || loadingSettings;
+
     const [settings, setSettings] = useState({
         gymName: 'GymManager',
         logoUrl: null,
@@ -21,18 +25,22 @@ export const GymProvider = ({ children }) => {
     const [teacherPayments, setTeacherPayments] = useState([]);
 
     useEffect(() => {
-        // If no user, reset state and stop loading
+        // If no user, reset state
         if (!user) {
             setStudents([]);
             setExpenses([]);
             setTeachers([]);
             setTeacherPayments([]);
             setSettings({ gymName: 'GymManager', logoUrl: null, theme: 'dark' });
-            setLoading(false);
+
+            // RESET LOADING STATES to prevent flash on next login
+            setLoadingStudents(true);
+            setLoadingSettings(true);
             return;
         }
 
-        setLoading(true);
+        setLoadingStudents(true);
+        setLoadingSettings(true);
 
         // Define Base Path for current user
         const userBasePath = `users/${user.uid}`;
@@ -44,10 +52,10 @@ export const GymProvider = ({ children }) => {
                 ...doc.data()
             }));
             setStudents(studentsData);
-            setLoading(false);
+            setLoadingStudents(false);
         }, (error) => {
             console.error("Error fetching students:", error);
-            setLoading(false);
+            setLoadingStudents(false);
         });
 
         // Listener for expenses collection
@@ -89,7 +97,8 @@ export const GymProvider = ({ children }) => {
 
             setSettings({
                 gymName: data.gymName || 'GymManager',
-                logoUrl: data.logoUrl || null,
+                // Use local demo logo if DB has none, for preview purposes
+                logoUrl: data.logoUrl || '/logo-demo.png',
                 whatsapp: data.whatsapp || '',
                 theme: data.theme || 'dark'
             });
@@ -99,6 +108,7 @@ export const GymProvider = ({ children }) => {
             } else {
                 document.documentElement.setAttribute('data-theme', 'dark');
             }
+            setLoadingSettings(false);
         });
 
         return () => {

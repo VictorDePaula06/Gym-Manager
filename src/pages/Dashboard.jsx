@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Users, DollarSign, Activity, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Users, DollarSign, Activity, TrendingUp, AlertTriangle, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatsCard from '../components/StatsCard';
 import { useGym } from '../context/GymContext';
@@ -26,7 +26,9 @@ const formatCurrency = (value) => {
 };
 
 export default function Dashboard() {
-    const { students, settings } = useGym();
+    const { students, settings, loading } = useGym();
+
+    const showOnboardingAlert = !loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp);
 
     // --- Stats & Charts Logic ---
 
@@ -136,7 +138,7 @@ export default function Dashboard() {
             </div>
 
             {/* Onboarding Alert */}
-            {(!students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp)) && (
+            {(!loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp)) && (
                 <div style={{
                     background: 'rgba(245, 158, 11, 0.1)',
                     border: '1px solid #f59e0b',
@@ -179,6 +181,111 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Birthday Alert */}
+            {(() => {
+                const today = new Date();
+                const currentDay = today.getDate();
+                const currentMonth = today.getMonth() + 1; // 0-indexed to 1-indexed
+
+                const birthdayStudents = students.filter(s => {
+                    if (!s.birthDate) return false;
+                    const [_, m, d] = s.birthDate.split('-').map(Number);
+                    return d === currentDay && m === currentMonth;
+                });
+
+                if (birthdayStudents.length === 0) return null;
+
+                return (
+                    <div className="glass-panel" style={{
+                        marginBottom: '2rem',
+                        background: 'linear-gradient(to right, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.1))',
+                        border: '1px solid var(--primary)',
+                        padding: '1.5rem'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                            <div style={{
+                                background: 'var(--primary)',
+                                padding: '0.5rem',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                <span style={{ fontSize: '1.5rem' }}>🎂</span>
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Aniversariantes do Dia!</h3>
+                                <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                                    {birthdayStudents.length} {birthdayStudents.length === 1 ? 'aluno completando' : 'alunos completando'} ano de vida hoje.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: '0.75rem' }}>
+                            {birthdayStudents.map(student => (
+                                <div key={student.id} style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    background: 'var(--card-bg)',
+                                    padding: '1rem',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-glass)'
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '50%',
+                                            background: 'var(--input-bg)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            overflow: 'hidden'
+                                        }}>
+                                            {student.profilePictureUrl ? (
+                                                <img src={student.profilePictureUrl} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <Users size={20} color="var(--text-muted)" />
+                                            )}
+                                        </div>
+                                        <span style={{ fontWeight: '500' }}>{student.name}</span>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            const phone = student.phone ? student.phone.replace(/\D/g, '') : '';
+                                            if (!phone) {
+                                                alert('Aluno sem telefone cadastrado.');
+                                                return;
+                                            }
+                                            const message = `Parabéns ${student.name.split(' ')[0]}! 🎉\n\nFeliz aniversário! Desejamos muita saúde, paz e muitos treinos. Que seja um novo ciclo de muitas conquistas!\n\nAtt, ${settings?.gymName || 'Academia'}`;
+                                            window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            background: '#25D366', // WhatsApp Green
+                                            color: 'white',
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '6px',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            fontSize: '0.9rem'
+                                        }}
+                                    >
+                                        <MessageCircle size={18} />
+                                        Enviar Parabéns
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Stats Grid */}
             <div style={{

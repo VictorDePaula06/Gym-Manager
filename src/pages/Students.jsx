@@ -92,7 +92,28 @@ export default function Students() {
 
     return (
         <div style={{ paddingBottom: '4rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <style>{`
+                .students-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                }
+                
+                @media (max-width: 768px) {
+                    .students-header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 1rem;
+                    }
+                    .students-header > a {
+                        width: 100%;
+                        justify-content: center;
+                    }
+                }
+            `}</style>
+
+            <div className="students-header">
                 <div>
                     <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Alunos</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Gerencie os membros da sua academia</p>

@@ -224,7 +224,7 @@ export default function StudentForm() {
                                 placeholder="ex: João da Silva"
                             />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className="responsive-grid">
                             <div>
                                 <label style={labelStyle}>CPF</label>
                                 <input
@@ -257,7 +257,7 @@ export default function StudentForm() {
                                 />
                             </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                        <div className="responsive-grid">
                             <div>
                                 <label style={labelStyle}>Telefone</label>
                                 <input
@@ -335,7 +335,7 @@ export default function StudentForm() {
                                     ))}
                                 </div>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                            <div className="responsive-grid">
                                 <div>
                                     <label style={labelStyle}>Frequência Semanal Desejada</label>
                                     <input
@@ -412,7 +412,7 @@ export default function StudentForm() {
                     <div style={sectionTitleStyle}>
                         <Activity size={18} /> Dados Físicos Iniciais
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="responsive-grid">
                         <div>
                             <label style={labelStyle}>Peso (kg)</label>
                             <input
@@ -443,7 +443,7 @@ export default function StudentForm() {
                     <div style={sectionTitleStyle}>
                         <CreditCard size={18} /> Plano e Financeiro
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="responsive-grid">
                         <div>
                             <label style={labelStyle}>Tipo de Plano</label>
                             <select name="plan" value={formData.plan} onChange={handleChange} style={inputStyle}>

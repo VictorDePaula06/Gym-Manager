@@ -220,16 +220,225 @@ export default function Financial() {
                 </button>
             </div>
 
+            <style>{`
+                .financial-table-responsive {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                @media (max-width: 768px) {
+                    .financial-table-responsive thead {
+                        display: none;
+                    }
+
+                    .financial-table-responsive, 
+                    .financial-table-responsive tbody, 
+                    .financial-table-responsive tr, 
+                    .financial-table-responsive td {
+                        display: block;
+                        width: 100%;
+                    }
+
+                    .financial-table-responsive tr {
+                        margin-bottom: 1rem;
+                        background: var(--card-bg);
+                        border: 1px solid var(--border-glass);
+                        border-radius: 12px;
+                        padding: 1rem;
+                        position: relative;
+                    }
+
+                    .financial-table-responsive td {
+                        text-align: left;
+                        padding: 0.5rem 0;
+                        border: none;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                    }
+
+                    .financial-table-responsive td::before {
+                        content: attr(data-label);
+                        font-weight: 600;
+                        color: var(--text-muted);
+                        font-size: 0.85rem;
+                        margin-right: 1rem;
+                    }
+
+                    /* Specific Styling for Income Table */
+                    .income-row td:first-child { /* Name */
+                        font-weight: bold;
+                        font-size: 1.1rem;
+                        color: var(--text-main);
+                        padding-bottom: 0.25rem;
+                    }
+                    .income-row td:first-child::before { content: none; }
+
+                    .income-row td:nth-child(3) { /* Value */
+                        color: var(--primary);
+                        font-weight: bold;
+                        font-size: 1.1rem;
+                    }
+                    
+                    /* Specific Styling for Expenses Table */
+                    .expense-row td:nth-child(2) { /* Description */
+                        font-weight: bold;
+                        color: var(--text-main);
+                        font-size: 1.1rem;
+                        padding-bottom: 0.25rem;
+                    }
+                    .expense-row td:nth-child(2)::before { content: none; }
+                    
+                    .expense-row td:nth-child(4) { /* Value */
+                         font-weight: bold;
+                         font-size: 1.1rem;
+                    }
+
+                    /* Hide empty headers or unwanted content */
+                   .hide-label-mobile::before {
+                       display: none;
+                   }
+                }
+            `}</style>
+
+            <style>{`
+                .financial-table-responsive {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+
+                .expense-form-grid {
+                    display: grid;
+                    grid-template-columns: 2fr 1.5fr 1fr 1fr auto;
+                    gap: 1.5rem;
+                    align-items: start;
+                }
+
+                @media (max-width: 768px) {
+                    .expense-form-grid {
+                        grid-template-columns: 1fr;
+                        gap: 1rem;
+                    }
+                    .expense-form-grid button[type="submit"] {
+                        width: 100%;
+                        margin-top: 1rem;
+                    }
+
+                    .financial-table-responsive thead {
+                        display: none;
+                    }
+
+                    .financial-table-responsive, 
+                    .financial-table-responsive tbody, 
+                    .financial-table-responsive tr, 
+                    .financial-table-responsive td {
+                        display: block;
+                        width: 100%;
+                    }
+
+                    .financial-table-responsive tr {
+                        margin-bottom: 1rem;
+                        background: var(--card-bg);
+                        border: 1px solid var(--border-glass);
+                        border-radius: 12px;
+                        padding: 1rem;
+                        position: relative;
+                        display: flex !important; /* Enable flex for ordering */
+                        flex-direction: column;
+                    }
+
+                    .financial-table-responsive td {
+                        text-align: left;
+                        padding: 0.25rem 0; /* Tighter padding */
+                        border: none;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        width: 100%;
+                    }
+
+                    .financial-table-responsive td::before {
+                        content: attr(data-label);
+                        font-weight: 600;
+                        color: var(--text-muted);
+                        font-size: 0.85rem;
+                        margin-right: 1rem;
+                    }
+
+                    /* Specific Styling for Income Table */
+                    .income-row td:first-child { /* Name */
+                        font-weight: bold;
+                        font-size: 1.1rem;
+                        color: var(--text-main);
+                        padding-bottom: 0.5rem;
+                        order: -2;
+                    }
+                    .income-row td:first-child::before { content: none; }
+
+                    .income-row td:nth-child(3) { /* Value */
+                        color: var(--primary);
+                        font-weight: bold;
+                        font-size: 1.1rem;
+                    }
+                    
+                    /* Specific Styling for Expenses Table */
+                    .expense-row td:nth-child(2) { /* Description */
+                        font-weight: bold;
+                        color: var(--text-main);
+                        font-size: 1.1rem;
+                        padding-bottom: 0.25rem;
+                        order: -2; /* Move to top */
+                    }
+                    .expense-row td:nth-child(2)::before { content: none; }
+                    
+                    .expense-row td:nth-child(4) { /* Value */
+                         font-weight: bold;
+                         font-size: 1.1rem;
+                         order: -1; /* Move below description */
+                         margin-bottom: 0.5rem;
+                         justify-content: flex-start;
+                    }
+                    .expense-row td:nth-child(4)::before {
+                        /* Keep label for value or maybe hide it? Let's keep it for clarity but style it */
+                        margin-right: 0.5rem;
+                    }
+
+                    /* Date slightly smaller */
+                    .expense-row td:first-child {
+                        font-size: 0.85rem;
+                        color: var(--text-muted);
+                        order: 0;
+                    }
+
+                    /* Hide empty headers or unwanted content */
+                   .hide-label-mobile::before {
+                       display: none;
+                   }
+                   
+                   /* Action button absolute positioning */
+                   .financial-table-responsive tr {
+                       position: relative;
+                   }
+                   .expense-row td:last-child {
+                       position: absolute;
+                       top: 1rem;
+                       right: 1rem;
+                       width: auto;
+                       justify-content: flex-end;
+                   }
+                }
+            `}</style>
+
             {/* INCOME TAB */}
             {activeTab === 'income' && (
                 <div className="glass-panel fade-in" style={{ padding: '2rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem' }}>
-                        <button onClick={() => setFilter('all')} style={{ ...buttonStyle(filter === 'all'), padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>Todos</button>
-                        <button onClick={() => setFilter('paid')} style={{ ...buttonStyle(filter === 'paid'), padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>Pagos</button>
-                        <button onClick={() => setFilter('overdue')} style={{ ...buttonStyle(filter === 'overdue'), padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>Pendentes</button>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem', overflowX: 'auto' }}>
+                        <button onClick={() => setFilter('all')} style={{ ...buttonStyle(filter === 'all'), padding: '0.4rem 0.8rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Todos</button>
+                        <button onClick={() => setFilter('paid')} style={{ ...buttonStyle(filter === 'paid'), padding: '0.4rem 0.8rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Pagos</button>
+                        <button onClick={() => setFilter('overdue')} style={{ ...buttonStyle(filter === 'overdue'), padding: '0.4rem 0.8rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Pendentes</button>
                     </div>
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <table className="financial-table-responsive">
                         <thead>
                             <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                                 <th style={{ padding: '1rem 0' }}>Aluno</th>
@@ -247,20 +456,20 @@ export default function Financial() {
                                 if (filter === 'overdue') return s.currentMonthStatus !== 'Paid';
                                 return true;
                             }).map(student => (
-                                <tr key={student.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                    <td style={{ padding: '1rem 0' }}>{student.name}</td>
-                                    <td style={{ textTransform: 'capitalize' }}>{{ 'Monthly': 'Mensal', 'Quarterly': 'Trimestral', 'Semiannual': 'Semestral', 'Annual': 'Anual' }[student.plan] || student.plan}</td>
-                                    <td>R$ {(student.displayPrice || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    <td style={{ color: 'var(--text-muted)' }}>{student.currentMonthStatus === 'Paid' && student.lastPaymentDate ? new Date(student.lastPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
-                                    <td>{student.nextPaymentDate ? new Date(student.nextPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
-                                    <td>
+                                <tr key={student.id} className="income-row" style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                    <td data-label="Aluno" style={{ padding: '1rem 0' }}>{student.name}</td>
+                                    <td data-label="Plano" style={{ textTransform: 'capitalize' }}>{{ 'Monthly': 'Mensal', 'Quarterly': 'Trimestral', 'Semiannual': 'Semestral', 'Annual': 'Anual' }[student.plan] || student.plan}</td>
+                                    <td data-label="Valor">R$ {(student.displayPrice || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td data-label="Data Pagamento" style={{ color: 'var(--text-muted)' }}>{student.currentMonthStatus === 'Paid' && student.lastPaymentDate ? new Date(student.lastPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td data-label="Vencimento">{student.nextPaymentDate ? new Date(student.nextPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td data-label="Dias Restantes">
                                         {student.daysRemaining !== null ? (
                                             <span style={{ color: student.daysRemaining < 0 ? '#ef4444' : student.daysRemaining <= 7 ? '#eab308' : '#10b981', fontWeight: 'bold' }}>
                                                 {student.daysRemaining} dias
                                             </span>
                                         ) : '-'}
                                     </td>
-                                    <td>
+                                    <td data-label="Status">
                                         <span style={{
                                             padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem',
                                             background: student.currentMonthStatus === 'Paid' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
@@ -307,25 +516,26 @@ export default function Financial() {
                                 onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
                             >
                                 <Plus size={22} strokeWidth={3} />
-                                NOVA DESPESA
+                                <span className="hide-mobile">NOVA DESPESA</span>
+                                <span className="show-mobile-only" style={{ display: 'none' }}>+</span>
                             </button>
                         )}
                     </div>
 
                     {showExpenseForm && (
-                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '2rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid var(--border-glass)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid var(--border-glass)', boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                 <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Plus size={20} className="text-secondary" /> Registrar Saída</h4>
                                 <button onClick={() => setShowExpenseForm(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><XCircle size={24} /></button>
                             </div>
 
-                            <form onSubmit={handleAddExpense} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr auto', gap: '1.5rem', alignItems: 'start' }}>
+                            <form onSubmit={handleAddExpense} className="expense-form-grid">
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Descrição</label>
                                     <input
                                         required
                                         type="text"
-                                        placeholder="Ex: Aluguel, Luz, Pagamento Professor"
+                                        placeholder="Ex: Aluguel"
                                         value={newExpense.description}
                                         onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
                                         style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
@@ -377,7 +587,7 @@ export default function Financial() {
                         </div>
                     )}
 
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: showExpenseForm ? '0' : '1rem' }}>
+                    <table className="financial-table-responsive" style={{ marginTop: showExpenseForm ? '0' : '1rem' }}>
                         <thead>
                             <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
                                 <th style={{ padding: '1rem 0' }}>Data</th>
@@ -391,10 +601,10 @@ export default function Financial() {
                         <tbody>
                             {currentMonthExpenses.length > 0 ? (
                                 currentMonthExpenses.map(expense => (
-                                    <tr key={expense.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                        <td style={{ padding: '1rem 0' }}>{new Date(expense.date).toLocaleDateString('pt-BR')}</td>
-                                        <td>{expense.description}</td>
-                                        <td>
+                                    <tr key={expense.id} className="expense-row" style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                        <td data-label="Data" style={{ padding: '1rem 0' }}>{new Date(expense.date).toLocaleDateString('pt-BR')}</td>
+                                        <td data-label="Descrição">{expense.description}</td>
+                                        <td data-label="Categoria">
                                             <span style={{
                                                 padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem',
                                                 background: expense.category === 'Pessoal' ? 'rgba(168, 85, 247, 0.2)' : expense.category === 'Fixo' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(234, 179, 8, 0.2)',
@@ -403,10 +613,10 @@ export default function Financial() {
                                                 {expense.category}
                                             </span>
                                         </td>
-                                        <td style={{ fontWeight: 'bold', color: expense.status === 'Paid' ? '#ef4444' : 'var(--text-muted)' }}>
+                                        <td data-label="Valor" style={{ fontWeight: 'bold', color: expense.status === 'Paid' ? '#ef4444' : 'var(--text-muted)' }}>
                                             - R$ {parseFloat(expense.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td>
+                                        <td data-label="Status">
                                             <span style={{
                                                 padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem',
                                                 background: expense.status === 'Paid' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(234, 179, 8, 0.2)',
@@ -417,7 +627,7 @@ export default function Financial() {
                                                 {expense.status === 'Paid' ? 'Pago' : 'Agendado'}
                                             </span>
                                         </td>
-                                        <td style={{ textAlign: 'right' }}>
+                                        <td data-label="Ações" className="hide-label-mobile" style={{ textAlign: 'right' }}>
                                             <button onClick={() => handleDeleteExpense(expense.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
                                                 <Trash2 size={18} />
                                             </button>
