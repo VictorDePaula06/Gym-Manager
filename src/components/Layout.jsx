@@ -215,6 +215,8 @@ export default function Layout() {
                             border-radius: 0 !important;
                             background: var(--background) !important;
                             z-index: 50;
+                            overflow-y: auto; /* Allow scrolling if content is too tall */
+                            padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* Safe area for iOS */
                         }
                         
                         .desktop-sidebar.open {
