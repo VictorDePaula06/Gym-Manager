@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
@@ -71,7 +71,7 @@ const Login = () => {
             background: '#0f172a'
         }}>
             {/* Animated Background Elements */}
-            < div style={{
+            <div style={{
                 position: 'absolute',
                 top: '-20%',
                 left: '-10%',
@@ -81,7 +81,7 @@ const Login = () => {
                 filter: 'blur(100px)',
                 animation: 'float 12s infinite ease-in-out'
             }} />
-            < div style={{
+            <div style={{
                 position: 'absolute',
                 bottom: '-20%',
                 right: '-5%',
@@ -91,7 +91,7 @@ const Login = () => {
                 filter: 'blur(100px)',
                 animation: 'float 15s infinite ease-in-out reverse'
             }} />
-            < div style={{
+            <div style={{
                 position: 'absolute',
                 top: '40%',
                 left: '40%',
@@ -102,7 +102,7 @@ const Login = () => {
                 animation: 'pulse 8s infinite ease-in-out'
             }} />
 
-            < style >
+            <style>
                 {`
                 @keyframes float {
                     0% { transform: translate(0, 0); }
@@ -119,7 +119,7 @@ const Login = () => {
                     to { transform: translateY(0); opacity: 1; }
                 }
                 `}
-            </style >
+            </style>
 
             <div className="glass-panel" style={{
                 padding: '3.5rem',
@@ -298,7 +298,7 @@ const Login = () => {
                     </button>
                 </form>
             </div>
-        </div >
+        </div>
     );
 };
 
