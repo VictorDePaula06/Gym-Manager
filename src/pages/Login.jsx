@@ -28,9 +28,12 @@ const Login = () => {
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            // Navigation handles by useEffect now
+            // SUCCESS: Do NOT set loadingLocal(false). 
+            // The useEffect will detect the user change and redirect.
+            // Keeping loadingLocal=true keeps the spinner/disabled state active preventing double-submit.
         } catch (err) {
             console.error("Login Error:", err);
+            setLoadingLocal(false); // Only stop loading on error
             if (err.code === 'auth/user-disabled') {
                 setError('Sua conta foi suspensa. Entre em contato com o administrador.');
             } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
@@ -38,8 +41,6 @@ const Login = () => {
             } else {
                 setError('Falha ao fazer login. Tente novamente.');
             }
-        } finally {
-            setLoadingLocal(false);
         }
     };
 
@@ -63,14 +64,14 @@ const Login = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '100vh',
+            minHeight: '100dvh', // Modern mobile viewport fix
             fontFamily: "'Outfit', sans-serif",
             position: 'relative',
             overflow: 'hidden',
             background: '#0f172a'
         }}>
             {/* Animated Background Elements */}
-            <div style={{
+            < div style={{
                 position: 'absolute',
                 top: '-20%',
                 left: '-10%',
@@ -80,7 +81,7 @@ const Login = () => {
                 filter: 'blur(100px)',
                 animation: 'float 12s infinite ease-in-out'
             }} />
-            <div style={{
+            < div style={{
                 position: 'absolute',
                 bottom: '-20%',
                 right: '-5%',
@@ -90,7 +91,7 @@ const Login = () => {
                 filter: 'blur(100px)',
                 animation: 'float 15s infinite ease-in-out reverse'
             }} />
-            <div style={{
+            < div style={{
                 position: 'absolute',
                 top: '40%',
                 left: '40%',
@@ -101,7 +102,7 @@ const Login = () => {
                 animation: 'pulse 8s infinite ease-in-out'
             }} />
 
-            <style>
+            < style >
                 {`
                 @keyframes float {
                     0% { transform: translate(0, 0); }
@@ -118,7 +119,7 @@ const Login = () => {
                     to { transform: translateY(0); opacity: 1; }
                 }
                 `}
-            </style>
+            </style >
 
             <div className="glass-panel" style={{
                 padding: '3.5rem',
@@ -297,7 +298,7 @@ const Login = () => {
                     </button>
                 </form>
             </div>
-        </div>
+        </div >
     );
 };
 

@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 const AuthContext = createContext();
 
@@ -88,7 +89,20 @@ export const AuthProvider = ({ children }) => {
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {loading ? (
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '100vh',
+                    backgroundColor: '#0f172a',
+                    color: 'white'
+                }}>
+                    <Loader2 size={48} className="animate-spin" color="#10b981" />
+                </div>
+            ) : (
+                children
+            )}
         </AuthContext.Provider>
     );
 };

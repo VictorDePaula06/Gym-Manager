@@ -208,3 +208,125 @@ button {
         transform: translateY(0);
     }
 }
+
+/* Mobile Responsive Styles - Ported from index.css */
+@media (max-width: 768px) {
+    .desktop-sidebar {
+        position: fixed !important;
+        z-index: 50;
+        top: 0 !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        left: -100%;
+        transition: left 0.3s ease;
+        width: 85% !important;
+        background: var(--background) !important;
+    }
+
+    .desktop-sidebar.open {
+        left: 0;
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .mobile-close-btn {
+        display: flex !important;
+    }
+
+    .mobile-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 40;
+        backdrop-filter: blur(4px);
+    }
+
+    .main-content {
+        padding: 1rem !important;
+        padding-top: 4rem !important;
+        /* Space for mobile header */
+    }
+
+    /* Stack grids on mobile */
+    .responsive-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Adjust glass panels padding */
+    .glass-panel {
+        padding: 1.5rem !important;
+    }
+
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Modal Backdrop */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.2s ease-out;
+}
+
+:root[data-theme="light"] .modal-backdrop {
+    background: rgba(0, 0, 0, 0.2);
+    /* Much lighter for light mode */
+}
+
+/* Comparison Modal Grid */
+.comparison-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    .comparison-grid {
+        grid-template-columns: 1fr 1fr 1fr 1fr !important;
+        font-size: 0.8rem;
+    }
+
+    .comparison-grid span:first-child {
+        grid-column: 1 / -1;
+        margin-bottom: 0.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Responsive Header */
+    .responsive-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1rem !important;
+    }
+
+    .responsive-header>div:last-child {
+        width: 100%;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .responsive-header>div:last-child button,
+    .responsive-header>div:last-child>a {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* Utilities */
+.responsive-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
