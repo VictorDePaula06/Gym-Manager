@@ -118,27 +118,64 @@ export default function TeacherDetails() {
             </button>
 
             {/* Header Card */}
-            <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '2rem' }}>
-                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+            <style>
+                {`
+                    .teacher-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        gap: 2rem;
+                        flex-wrap: wrap;
+                    }
+                    .teacher-profile {
+                        display: flex;
+                        gap: 1.5rem;
+                        align-items: center;
+                    }
+                    .teacher-stats {
+                        text-align: right;
+                    }
+                    @media (max-width: 768px) {
+                        .teacher-header {
+                            flex-direction: column;
+                            gap: 1.5rem;
+                        }
+                        .teacher-profile {
+                            flex-direction: column;
+                            align-items: flex-start;
+                            gap: 1rem;
+                        }
+                        .teacher-stats {
+                            text-align: left;
+                            width: 100%;
+                            border-top: 1px solid var(--border-glass);
+                            padding-top: 1rem;
+                        }
+                    }
+                `}
+            </style>
+            <div className="glass-panel teacher-header" style={{ padding: '2rem', marginBottom: '2rem' }}>
+                <div className="teacher-profile">
                     <div style={{
                         width: '80px', height: '80px', borderRadius: '50%',
                         background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '2rem', fontWeight: 'bold', color: 'white'
+                        fontSize: '2rem', fontWeight: 'bold', color: 'white', flexShrink: 0
                     }}>
                         {teacher.name.charAt(0)}
                     </div>
                     <div>
-                        <h1 style={{ marginBottom: '0.5rem' }}>{teacher.name}</h1>
+                        <h1 style={{ marginBottom: '0.5rem', lineHeight: '1.2' }}>{teacher.name}</h1>
                         <p style={{ color: 'var(--text-muted)' }}>{teacher.specialty || 'Instrutor'}</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                             <span>{teacher.phone || 'Sem telefone'}</span>
-                            <span>•</span>
+                            <span className="hide-mobile">•</span>
+                            <div className="hide-desktop" style={{ width: '100%', height: '0' }}></div>
                             <span>{teacher.email || 'Sem e-mail'}</span>
                         </div>
                     </div>
                 </div>
 
-                <div style={{ textAlign: 'right' }}>
+                <div className="teacher-stats">
                     <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Comissão Configurada</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
                         {teacher.commissionType === 'Fixed'
@@ -209,9 +246,9 @@ export default function TeacherDetails() {
                     {linkedStudents.length === 0 ? (
                         <p style={{ color: 'var(--text-muted)' }}>Nenhum aluno ativo vinculado a este professor.</p>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', width: '100%' }}>
                             {linkedStudents.map(student => (
-                                <div key={student.id} style={{ position: 'relative' }}>
+                                <div key={student.id} style={{ display: 'flex', justifyContent: 'center' }}>
                                     <StudentCard student={student} settings={settings} />
                                 </div>
                             ))}
@@ -270,42 +307,44 @@ export default function TeacherDetails() {
                     )}
 
                     <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
-                                <tr>
-                                    <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Data</th>
-                                    <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Referência</th>
-                                    <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Valor</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {teacherHistory.length === 0 ? (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
+                                <thead style={{ background: 'rgba(255,255,255,0.05)' }}>
                                     <tr>
-                                        <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum pagamento registrado.</td>
+                                        <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Data</th>
+                                        <th style={{ padding: '1rem', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Referência</th>
+                                        <th style={{ padding: '1rem', textAlign: 'right', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Valor</th>
+                                        <th style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Ações</th>
                                     </tr>
-                                ) : (
-                                    teacherHistory.map(payment => (
-                                        <tr key={payment.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                            <td style={{ padding: '1rem' }}>{new Date(payment.date).toLocaleDateString('pt-BR')}</td>
-                                            <td style={{ padding: '1rem' }}>{payment.reference || '-'}</td>
-                                            <td style={{ padding: '1rem', textAlign: 'right', color: '#10b981', fontWeight: 'bold' }}>
-                                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.amount)}
-                                            </td>
-                                            <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => handleDeletePayment(payment.id)}
-                                                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
-                                                    title="Excluir"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </td>
+                                </thead>
+                                <tbody>
+                                    {teacherHistory.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="4" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Nenhum pagamento registrado.</td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        teacherHistory.map(payment => (
+                                            <tr key={payment.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                                <td style={{ padding: '1rem' }}>{new Date(payment.date).toLocaleDateString('pt-BR')}</td>
+                                                <td style={{ padding: '1rem' }}>{payment.reference || '-'}</td>
+                                                <td style={{ padding: '1rem', textAlign: 'right', color: '#10b981', fontWeight: 'bold' }}>
+                                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(payment.amount)}
+                                                </td>
+                                                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                    <button
+                                                        onClick={() => handleDeletePayment(payment.id)}
+                                                        style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

@@ -20,6 +20,7 @@ import TeacherDetails from './pages/TeacherDetails';
 import PaymentRequired from './pages/PaymentRequired';
 import ChangePassword from './pages/ChangePassword';
 import PrivateRoute from './components/PrivateRoute';
+import InstallPrompt from './components/InstallPrompt';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <ToastProvider>
           <DialogProvider>
             <BrowserRouter>
+              <InstallPrompt />
               <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />

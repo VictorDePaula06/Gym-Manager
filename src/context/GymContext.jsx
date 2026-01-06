@@ -97,8 +97,8 @@ export const GymProvider = ({ children }) => {
 
             setSettings({
                 gymName: data.gymName || 'GymManager',
-                // Use local demo logo if DB has none, for preview purposes
-                logoUrl: data.logoUrl || '/logo-demo.png',
+                // Use local default logo if DB has none
+                logoUrl: data.logoUrl || '/logo.png',
                 whatsapp: data.whatsapp || '',
                 theme: data.theme || 'dark'
             });

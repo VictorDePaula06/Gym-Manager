@@ -23,5 +23,9 @@ export default function PrivateRoute({ children }) {
         return <Navigate to="/change-password" />;
     }
 
+    if (!user) {
+        return <Navigate to="/login" />;
+    }
+
     return children;
 }
