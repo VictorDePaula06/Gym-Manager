@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { commonExercises } from '../constants/exercises';
 
 const getSortedVariations = (workouts, current) => {
     const keys = Object.keys(workouts || {});
@@ -427,6 +428,7 @@ export default function WorkoutBuilder() {
                                         <input
                                             placeholder="ex: Supino Reto"
                                             value={exercise.name}
+                                            list="exercise-suggestions"
                                             onChange={(e) => updateExercise(exercise.id, 'name', e.target.value)}
                                             style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
                                         />
@@ -510,6 +512,12 @@ export default function WorkoutBuilder() {
                     </div>
                 </div>
             </div>
+
+            <datalist id="exercise-suggestions">
+                {commonExercises.map((ex) => (
+                    <option key={ex} value={ex} />
+                ))}
+            </datalist>
         </div>
     );
 }
