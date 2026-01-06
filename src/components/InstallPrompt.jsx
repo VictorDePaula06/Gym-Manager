@@ -58,12 +58,12 @@ const InstallPrompt = () => {
     return (
         <div style={{
             position: 'fixed',
-            bottom: '20px',
+            bottom: '24px', // Increased form 20px
             left: '50%',
             transform: 'translateX(-50%)',
-            width: '90%',
-            maxWidth: '400px',
-            zIndex: 1000,
+            width: '95%', // Increased from 90% for mobile
+            maxWidth: '380px', // Slightly reduced max-width to ensure it fits well
+            zIndex: 9999, // Very high z-index
             animation: 'slideUp 0.5s ease-out'
         }}>
             <style>

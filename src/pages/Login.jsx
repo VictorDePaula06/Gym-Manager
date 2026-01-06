@@ -4,25 +4,33 @@ import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { Lock, Mail, Loader2, Dumbbell } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext'; // Assuming AuthContext provides useAuth
 
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [loadingLocal, setLoadingLocal] = useState(false); // Renamed to avoid conflict with auth loading
     const navigate = useNavigate();
     const { addToast } = useToast();
+    const { user, loading: authLoading } = useAuth(); // Get user and loading from context
+
+    useEffect(() => {
+        if (user) {
+            navigate('/');
+        }
+    }, [user, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
-        setLoading(true);
+        setLoadingLocal(true);
 
         try {
             await signInWithEmailAndPassword(auth, email, password);
-            navigate('/');
+            // Navigation handles by useEffect now
         } catch (err) {
-            console.error(err);
+            console.error("Login Error:", err);
             if (err.code === 'auth/user-disabled') {
                 setError('Sua conta foi suspensa. Entre em contato com o administrador.');
             } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
@@ -31,7 +39,7 @@ const Login = () => {
                 setError('Falha ao fazer login. Tente novamente.');
             }
         } finally {
-            setLoading(false);
+            setLoadingLocal(false);
         }
     };
 
@@ -262,7 +270,7 @@ const Login = () => {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loadingLocal}
                         style={{
                             width: '100%',
                             backgroundColor: 'var(--primary)',
@@ -272,20 +280,20 @@ const Login = () => {
                             border: 'none',
                             fontWeight: '600',
                             fontSize: '1.1rem',
-                            cursor: loading ? 'not-allowed' : 'pointer',
+                            cursor: loadingLocal ? 'not-allowed' : 'pointer',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
                             gap: '0.75rem',
                             marginTop: '0.5rem',
-                            opacity: loading ? 0.7 : 1,
+                            opacity: loadingLocal ? 0.7 : 1,
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             boxShadow: '0 10px 15px -3px var(--primary-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
                         }}
-                        onMouseOver={(e) => !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 20px 25px -5px var(--primary-glow), 0 10px 10px -5px rgba(0, 0, 0, 0.04)')}
-                        onMouseOut={(e) => !loading && (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 10px 15px -3px var(--primary-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05)')}
+                        onMouseOver={(e) => !loadingLocal && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 20px 25px -5px var(--primary-glow), 0 10px 10px -5px rgba(0, 0, 0, 0.04)')}
+                        onMouseOut={(e) => !loadingLocal && (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 10px 15px -3px var(--primary-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05)')}
                     >
-                        {loading ? <Loader2 size={24} className="animate-spin" /> : 'Entrar no Sistema'}
+                        {loadingLocal ? <Loader2 size={24} className="animate-spin" /> : 'Entrar no Sistema'}
                     </button>
                 </form>
             </div>
