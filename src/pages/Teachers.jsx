@@ -19,7 +19,7 @@ export default function Teachers() {
     );
 
     const handleEdit = (teacher) => {
-        navigate(`/teachers/edit/${teacher.id}`);
+        navigate(`/app/teachers/edit/${teacher.id}`);
     };
 
     const handleDelete = async (id) => {
@@ -43,7 +43,7 @@ export default function Teachers() {
                     <h1>Professores</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Gerencie a equipe da academia</p>
                 </div>
-                <Link to="/teachers/new" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                <Link to="/app/teachers/new" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
                     <Plus size={20} /> Novo Professor
                 </Link>
             </div>

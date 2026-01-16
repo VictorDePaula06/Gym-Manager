@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Download, X, Share } from 'lucide-react';
 
 const InstallPrompt = () => {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [isVisible, setIsVisible] = useState(false);
     const [isIOS, setIsIOS] = useState(false);
+    const location = useLocation();
 
     useEffect(() => {
         // Check if already installed
@@ -53,7 +55,7 @@ const InstallPrompt = () => {
         }
     };
 
-    if (!isVisible) return null;
+    if (!isVisible || location.pathname === '/') return null;
 
     return (
         <div style={{

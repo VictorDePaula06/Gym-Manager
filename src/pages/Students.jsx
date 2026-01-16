@@ -82,7 +82,7 @@ export default function Students() {
             });
 
             if (confirmed) {
-                navigate('/settings');
+                navigate('/app/settings');
             }
             return;
         }
@@ -118,7 +118,7 @@ export default function Students() {
                     <h1 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Alunos</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Gerencie os membros da sua academia</p>
                 </div>
-                <Link to="/students/new" style={{
+                <Link to="/app/students/new" style={{
                     background: 'var(--primary)',
                     color: 'white',
                     padding: '0.75rem 1.5rem',
@@ -218,7 +218,7 @@ export default function Students() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem' }}>
                     {filteredStudents.map(student => (
                         <div key={student.id} style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-                            <Link to={`/students/${student.id}`} style={{ textDecoration: 'none', transition: 'transform 0.2s', display: 'block' }}>
+                            <Link to={`/app/students/${student.id}`} style={{ textDecoration: 'none', transition: 'transform 0.2s', display: 'block' }}>
                                 <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
                                     <StudentCard student={student} settings={settings} />
                                 </div>

@@ -49,7 +49,7 @@ export default function TeacherForm() {
                 await addTeacher({ ...formData, createdAt: new Date().toISOString() });
                 addToast('Professor cadastrado com sucesso!', 'success');
             }
-            navigate('/teachers');
+            navigate('/app/teachers');
         } catch (error) {
             addToast('Erro ao salvar professor. Tente novamente.', 'error');
             console.error(error);

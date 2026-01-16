@@ -109,7 +109,7 @@ export default function TeacherDetails() {
 
     return (
         <div className="fade-in" style={{ paddingBottom: '4rem' }}>
-            <button onClick={() => navigate('/teachers')} style={{
+            <button onClick={() => navigate('/app/teachers')} style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
                 color: 'var(--text-muted)', marginBottom: '1.5rem',
                 background: 'transparent', border: 'none', cursor: 'pointer'

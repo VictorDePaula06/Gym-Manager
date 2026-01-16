@@ -53,7 +53,7 @@ const TeacherCard = ({ teacher, onEdit, onDelete }) => {
                     <Edit2 size={18} />
                 </button>
                 <button
-                    onClick={() => navigate(`/teachers/${teacher.id}`)}
+                    onClick={() => navigate(`/app/teachers/${teacher.id}`)}
                     className="action-btn"
                     title="Financeiro & Detalhes"
                     style={{ color: '#10b981' }}

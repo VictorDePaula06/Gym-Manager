@@ -20,6 +20,7 @@ import TeacherDetails from './pages/TeacherDetails';
 import PaymentRequired from './pages/PaymentRequired';
 import ChangePassword from './pages/ChangePassword';
 import PrivateRoute from './components/PrivateRoute';
+import LandingPage from './pages/LandingPage';
 import InstallPrompt from './components/InstallPrompt';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
             <BrowserRouter>
               <InstallPrompt />
               <Routes>
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/change-password" element={
@@ -38,7 +40,7 @@ function App() {
                     <ChangePassword />
                   </PrivateRoute>
                 } />
-                <Route path="/" element={
+                <Route path="/app" element={
                   <PrivateRoute>
                     <Layout />
                   </PrivateRoute>

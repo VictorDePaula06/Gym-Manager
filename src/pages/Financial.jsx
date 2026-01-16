@@ -51,9 +51,12 @@ export default function Financial() {
                 }
             });
 
+            // Status is valid if paid this month OR if due date is in future
+            const isUpToDate = hasPaymentThisMonth || (s.nextPaymentDate && new Date(s.nextPaymentDate) >= new Date().setHours(0, 0, 0, 0));
+
             return {
                 ...s,
-                currentMonthStatus: hasPaymentThisMonth ? 'Paid' : 'Pending',
+                currentMonthStatus: isUpToDate ? 'Paid' : 'Pending',
                 lastPaymentDate: foundPaymentDate,
                 displayPrice: parseFloat(s.price) || (s.plan === 'Premium' ? 120 : s.plan === 'Gold' ? 150 : 80),
                 nextPaymentDate: s.nextPaymentDate,
@@ -447,7 +450,7 @@ export default function Financial() {
                                 <th>Data Pagamento</th>
                                 <th>Vencimento</th>
                                 <th>Dias Restantes</th>
-                                <th>Status (Mês Atual)</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -477,7 +480,7 @@ export default function Financial() {
                                             display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
                                         }}>
                                             {student.currentMonthStatus === 'Paid' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-                                            {student.currentMonthStatus === 'Paid' ? 'Pago' : 'Pendente'}
+                                            {student.currentMonthStatus === 'Paid' ? 'Em dia' : 'Pendente'}
                                         </span>
                                     </td>
                                 </tr>

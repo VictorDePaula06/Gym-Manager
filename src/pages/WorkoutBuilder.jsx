@@ -253,7 +253,7 @@ export default function WorkoutBuilder() {
 
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
-            <button onClick={() => navigate(`/students/${id}`, { state: { activeTab: 'workouts' } })} style={{
+            <button onClick={() => navigate(`/app/students/${id}`, { state: { activeTab: 'workouts' } })} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',

@@ -138,14 +138,14 @@ export default function StudentForm() {
             if (id) {
                 await updateStudent(id, formData);
                 addToast('Aluno atualizado com sucesso!', 'success');
-                navigate(`/students/${id}`);
+                navigate(`/app/students/${id}`);
             } else {
                 await addStudent({
                     ...formData,
                     createdAt: new Date().toISOString() // Store creation time for sorting
                 });
                 addToast('Aluno cadastrado com sucesso!', 'success');
-                navigate('/students');
+                navigate('/app/students');
             }
         } catch (error) {
             addToast('Erro ao salvar aluno. Tente novamente.', 'error');

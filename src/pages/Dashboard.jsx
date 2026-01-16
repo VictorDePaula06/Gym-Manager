@@ -164,7 +164,7 @@ export default function Dashboard() {
                         <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: '1.5' }}>
                             Parece que faltam algumas informações importantes. Cadastre o <strong>WhatsApp</strong> e o <strong>Nome da Academia</strong> para deixar tudo pronto.
                         </p>
-                        <Link to="/settings" style={{
+                        <Link to="/app/settings" style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.5rem',

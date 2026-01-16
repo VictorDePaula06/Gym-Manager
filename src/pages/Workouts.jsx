@@ -14,7 +14,7 @@ export default function Workouts() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 {students.map(student => (
-                    <Link key={student.id} to={`/workouts/${student.id}`} style={{ textDecoration: 'none' }}>
+                    <Link key={student.id} to={`/app/workouts/${student.id}`} style={{ textDecoration: 'none' }}>
                         <div className="glass-panel" style={{
                             padding: '1.5rem',
                             transition: 'transform 0.2s',

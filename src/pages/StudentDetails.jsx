@@ -2,23 +2,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import BodyMeasurementMap from '../components/BodyMeasurementMap';
 import StudentCard from '../components/StudentCard';
+import { generateWorkout } from '../utils/workoutRecommendations';
 
 export default function StudentDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const { students, updateStudent, settings } = useGym();
+    const { user } = useAuth();
     const { addToast } = useToast();
     const { confirm } = useDialog();
     const [student, setStudent] = useState(null);
@@ -31,6 +34,8 @@ export default function StudentDetails() {
     const [selectedSheetId, setSelectedSheetId] = useState('default');
     const [isCreatingSheet, setIsCreatingSheet] = useState(false);
     const [newSheetName, setNewSheetName] = useState('');
+    const [useRecommendation, setUseRecommendation] = useState(false); // New state for AI gen
+    const [selectedLevel, setSelectedLevel] = useState('Iniciante'); // Manual override
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     const [newAssessment, setNewAssessment] = useState({
@@ -79,9 +84,10 @@ export default function StudentDetails() {
     }, [id, students]);
 
     useEffect(() => {
-        if (!id) return;
+        if (!id || !user) return;
 
-        const q = query(collection(db, 'students', id, 'assessments'), orderBy('date', 'desc'));
+        const basePath = `users/${user.uid}`;
+        const q = query(collection(db, `${basePath}/students`, id, 'assessments'), orderBy('date', 'desc'));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             setAssessments(snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -90,7 +96,7 @@ export default function StudentDetails() {
         });
 
         return () => unsubscribe();
-    }, [id]);
+    }, [id, user]);
 
     const handleAddAssessment = async (e) => {
         e.preventDefault();
@@ -111,14 +117,16 @@ export default function StudentDetails() {
                     if (cleanAssessment[k]) cleanAssessment[k] = cleanAssessment[k].toString().replace(',', '.');
                 });
 
-                await updateDoc(doc(db, 'students', id, 'assessments', editingAssessmentId), cleanAssessment);
+                const basePath = `users/${user.uid}`;
+                await updateDoc(doc(db, `${basePath}/students`, id, 'assessments', editingAssessmentId), cleanAssessment);
                 addToast("Avaliação atualizada!", 'success');
             } else {
                 const cleanAssessment = { ...assessmentData };
                 ['weight', 'height', 'bodyFat', 'muscleMass'].forEach(k => {
                     if (cleanAssessment[k]) cleanAssessment[k] = cleanAssessment[k].toString().replace(',', '.');
                 });
-                await addDoc(collection(db, 'students', id, 'assessments'), cleanAssessment);
+                const basePath = `users/${user.uid}`;
+                await addDoc(collection(db, `${basePath}/students`, id, 'assessments'), cleanAssessment);
                 addToast("Avaliação criada com sucesso!", 'success');
             }
 
@@ -142,7 +150,8 @@ export default function StudentDetails() {
         if (!confirmed) return;
 
         try {
-            await deleteDoc(doc(db, 'students', id, 'assessments', assessmentId));
+            const basePath = `users/${user.uid}`;
+            await deleteDoc(doc(db, `${basePath}/students`, id, 'assessments', assessmentId));
             addToast("Avaliação excluída com sucesso!", 'success');
         } catch (e) {
             addToast("Erro ao excluir avaliação.", 'error');
@@ -156,17 +165,47 @@ export default function StudentDetails() {
                 message: 'Para entrar em contato com alunos, você precisa primeiro cadastrar o seu número de WhatsApp nas configurações.',
                 confirmText: 'Ir para Configurações',
                 cancelText: 'Cancelar',
-                type: 'info' // Using info type for blue color (or default) instead of danger
+                type: 'info'
             });
 
             if (confirmed) {
-                navigate('/settings');
+                navigate('/app/settings');
             }
             return;
         }
+
         if (!student.phone) return;
+
+        let message = '';
         const phone = student.phone.replace(/\D/g, '');
-        window.open(`https://wa.me/55${phone}`, '_blank');
+
+        // Check for overdue payment
+        if (student.nextPaymentDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dueDate = new Date(student.nextPaymentDate);
+            dueDate.setHours(0, 0, 0, 0);
+
+            if (dueDate < today) {
+                const sendCharge = await confirm({
+                    title: '⚠️ Pagamento Pendente',
+                    message: `O pagamento de ${student.name} venceu em ${dueDate.toLocaleDateString('pt-BR')}. Deseja enviar uma mensagem de cobrança?`,
+                    confirmText: 'Enviar Cobrança',
+                    cancelText: 'Mensagem Normal',
+                    type: 'warning'
+                });
+
+                if (sendCharge) {
+                    message = `Olá ${student.name.split(' ')[0]}, notamos que sua mensalidade venceu em ${dueDate.toLocaleDateString('pt-BR')}. Gostaria de renovar seu plano?`;
+                }
+            }
+        }
+
+        const url = message
+            ? `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`
+            : `https://wa.me/55${phone}`;
+
+        window.open(url, '_blank');
     };
 
     const getCurrentSheet = () => {
@@ -184,14 +223,42 @@ export default function StudentDetails() {
     };
 
     const handleCreateSheet = async () => {
-        if (!newSheetName.trim()) return;
+        if (!newSheetName.trim() && !useRecommendation) return;
 
         try {
+            // Generate or use name
+            let finalName = newSheetName;
+            let initialWorkouts = {};
+            let generated = null;
+
+            if (useRecommendation) {
+                generated = generateWorkout(student, selectedLevel);
+                initialWorkouts = generated.workouts;
+                if (!finalName) finalName = generated.name;
+
+                if (generated.needsProfessionalReview) {
+                    const confirmed = await confirm({
+                        title: '⚠️ Atenção: Limitações Identificadas',
+                        message: `Este aluno possui histórico médico ou limitações (${generated.reviewReason}). A ficha foi adaptada para evitar movimentos lesivos, mas sugerimos fortemente que um profissional revise os exercícios. Deseja prosseguir?`,
+                        confirmText: 'Estou ciente, criar ficha',
+                        cancelText: 'Revisar agora',
+                        type: 'warning'
+                    });
+
+                    if (!confirmed) return;
+                }
+            }
+
+            if (!finalName) return;
+
             const sheetId = crypto.randomUUID();
             const newSheet = {
-                name: newSheetName,
+                name: finalName,
                 createdAt: new Date().toISOString(),
-                workouts: {}
+                workouts: initialWorkouts,
+                // Persist safety data
+                needsProfessionalReview: useRecommendation && generated?.needsProfessionalReview,
+                reviewReason: useRecommendation ? generated?.reviewReason : null
             };
 
             const updatedSheets = {
@@ -201,25 +268,70 @@ export default function StudentDetails() {
 
             let finalUpdate = { workoutSheets: updatedSheets };
 
-            if (!student.workoutSheets && student.workouts && Object.keys(student.workouts).length > 0) {
+            if ((!student.workoutSheets || Object.keys(student.workoutSheets).length === 0) &&
+                student.workouts &&
+                Object.keys(student.workouts).length > 0) {
+
                 const legacyId = crypto.randomUUID();
                 finalUpdate.workoutSheets[legacyId] = {
                     name: "Ficha Anterior",
                     createdAt: new Date().toISOString(),
                     workouts: student.workouts
                 };
+
+                // Also explicitly define it so we don't rely only on merged updatedSheets
+                updatedSheets[legacyId] = finalUpdate.workoutSheets[legacyId];
             }
 
-            await updateDoc(doc(db, 'students', id), finalUpdate);
+            await updateStudent(id, finalUpdate);
 
             setNewSheetName('');
+            setUseRecommendation(false);
             setIsCreatingSheet(false);
             setSelectedSheetId(sheetId);
-            addToast("Nova ficha criada com sucesso!", 'success');
+            addToast(useRecommendation ? "Ficha gerada com sucesso!" : "Ficha criada com sucesso!", 'success');
 
         } catch (error) {
             console.error("Error creating sheet:", error);
             addToast("Erro ao criar nova ficha.", 'error');
+        }
+    };
+
+    const handleAutoFillSheet = async (targetSheetId, level) => {
+        try {
+            const generated = generateWorkout(student, level);
+
+            // Validation with Alert
+            if (generated.needsProfessionalReview) {
+                const confirmed = await confirm({
+                    title: '⚠️ Atenção: Limitações Identificadas',
+                    message: `Este aluno possui histórico médico ou limitações (${generated.reviewReason}). O treino será adaptado. Deseja prosseguir?`,
+                    confirmText: 'Sim, preencher ficha',
+                    cancelText: 'Cancelar',
+                    type: 'warning'
+                });
+                if (!confirmed) return;
+            }
+
+            const updatedSheet = {
+                ...student.workoutSheets[targetSheetId],
+                name: generated.name || student.workoutSheets[targetSheetId].name, // Update name with generated one
+                workouts: generated.workouts,
+                needsProfessionalReview: generated.needsProfessionalReview,
+                reviewReason: generated.reviewReason
+            };
+
+            const updatedSheets = {
+                ...student.workoutSheets,
+                [targetSheetId]: updatedSheet
+            };
+
+            await updateStudent(id, { workoutSheets: updatedSheets });
+            addToast("Ficha preenchida automaticamente!", 'success');
+
+        } catch (error) {
+            console.error("Error auto-filling sheet:", error);
+            addToast("Erro ao gerar treino.", 'error');
         }
     };
 
@@ -237,7 +349,7 @@ export default function StudentDetails() {
             const newSheets = { ...student.workoutSheets };
             delete newSheets[sheetId];
 
-            await updateDoc(doc(db, 'students', id), {
+            await updateStudent(id, {
                 workoutSheets: newSheets
             });
             setSelectedSheetId('default');
@@ -332,16 +444,27 @@ export default function StudentDetails() {
             const pageCount = doc.internal.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
+
+                // Safety Warning if applicable
+                if (currentSheet.needsProfessionalReview) {
+                    doc.setFontSize(9);
+                    doc.setTextColor(220, 38, 38); // Red
+                    const reason = currentSheet.reviewReason || 'Limitações Identificadas';
+                    doc.text(`⚠️ ATENÇÃO: Treino adaptado para: ${reason}. Recomendada revisão profissional.`, 105, 285, { align: 'center' });
+                }
+
                 doc.setFontSize(10);
                 doc.setTextColor(150);
-                doc.text(`Gerado por GymManager - Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
+                doc.text(`Gerado por GymManager - Página ${i} de ${pageCount}`, 105, 292, { align: 'center' });
             }
 
             // Generate Blob and Share
             const blob = doc.output('blob');
             const file = new File([blob], `Treino_${student.name}.pdf`, { type: 'application/pdf' });
 
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: `Treino - ${student.name}`,
@@ -535,9 +658,38 @@ export default function StudentDetails() {
         try {
             const newHistory = student.paymentHistory.filter((_, index) => index !== indexToDelete);
 
+            // Recalculate dates based on remaining history
+            let newLastPaymentDate = null;
+            let newNextPaymentDate = null;
+
+            // Sort history to find the latest payment
+            // Note: History is typically displayed DESC, but let's sort to be safe
+            const sortedHistory = [...newHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (sortedHistory.length > 0) {
+                const latestPayment = sortedHistory[0];
+                newLastPaymentDate = latestPayment.date;
+
+                const paymentDateObj = new Date(latestPayment.date);
+
+                // Calculate next due date based on plan (Duplicate logic from register for safety/isolation)
+                let monthsToAdd = 1;
+                const plan = (student.plan || '').toLowerCase();
+                if (plan.includes('trimestral') || plan.includes('quarterly')) monthsToAdd = 3;
+                else if (plan.includes('semestral') || plan.includes('semiannual')) monthsToAdd = 6;
+                else if (plan.includes('anual') || plan.includes('annual')) monthsToAdd = 12;
+
+                const nextDueDate = new Date(paymentDateObj);
+                nextDueDate.setMonth(nextDueDate.getMonth() + monthsToAdd);
+                newNextPaymentDate = nextDueDate.toISOString();
+            }
+            // If no history remains, newNextPaymentDate is null (triggers fallback "due day this month" logic)
+
             await updateStudent(id, {
                 ...student,
-                paymentHistory: newHistory
+                paymentHistory: newHistory,
+                lastPaymentDate: newLastPaymentDate,
+                nextPaymentDate: newNextPaymentDate
             });
             addToast("Pagamento removido com sucesso.", 'success');
         } catch (error) {
@@ -640,7 +792,7 @@ export default function StudentDetails() {
                 name: file.name
             };
 
-            await updateDoc(doc(db, 'students', id), {
+            await updateStudent(id, {
                 photoGallery: arrayUnion(photoData)
             });
 
@@ -651,7 +803,7 @@ export default function StudentDetails() {
 
             // If it's the first photo, set as profile picture automatically
             if (!student.profilePictureUrl) {
-                await updateDoc(doc(db, 'students', id), {
+                await updateStudent(id, {
                     profilePictureUrl: downloadURL
                 });
                 setStudent(prev => ({ ...prev, profilePictureUrl: downloadURL }));
@@ -680,13 +832,13 @@ export default function StudentDetails() {
             const storageRef = ref(storage, photo.path);
             await deleteObject(storageRef);
 
-            await updateDoc(doc(db, 'students', id), {
+            await updateStudent(id, {
                 photoGallery: arrayRemove(photo)
             });
 
             // If deleted photo was profile picture, unset it
             if (student.profilePictureUrl === photo.url) {
-                await updateDoc(doc(db, 'students', id), {
+                await updateStudent(id, {
                     profilePictureUrl: null
                 });
                 setStudent(prev => ({ ...prev, profilePictureUrl: null }));
@@ -706,7 +858,7 @@ export default function StudentDetails() {
 
     const handleSetProfilePicture = async (photoUrl) => {
         try {
-            await updateDoc(doc(db, 'students', id), {
+            await updateStudent(id, {
                 profilePictureUrl: photoUrl
             });
             setStudent(prev => ({ ...prev, profilePictureUrl: photoUrl }));
@@ -1183,7 +1335,9 @@ export default function StudentDetails() {
             const blob = doc.output('blob');
             const file = new File([blob], `Avaliacao_${student.name}_${assessment.dateString.replace(/\//g, '-')}.pdf`, { type: 'application/pdf' });
 
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({
                     files: [file],
                     title: `Avaliação - ${student.name}`,
@@ -1275,7 +1429,7 @@ export default function StudentDetails() {
             {/* Header */}
             <div className="student-header">
                 <div className="student-info">
-                    <button onClick={() => navigate('/students')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0 }}>
+                    <button onClick={() => navigate('/app/students')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0 }}>
                         <ArrowLeft size={24} />
                     </button>
                     <div>
@@ -1312,7 +1466,7 @@ export default function StudentDetails() {
                             <span className="hide-mobile">WhatsApp</span>
                         </button>
                     )}
-                    <Link to={`/students/${id}/edit`} style={{
+                    <Link to={`/app/students/${id}/edit`} style={{
                         background: 'var(--input-bg)',
                         color: 'var(--text-main)',
                         padding: '0.75rem 1.5rem',
@@ -1374,29 +1528,88 @@ export default function StudentDetails() {
                             </div>
 
                             {/* Plan Summary */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
-                                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Plano Atual</h4>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                    <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
-                                        {{
-                                            'Monthly': 'Mensal',
-                                            'monthly': 'Mensal',
-                                            'Quarterly': 'Trimestral',
-                                            'quarterly': 'Trimestral',
-                                            'Semiannual': 'Semestral',
-                                            'semiannual': 'Semestral',
-                                            'Annual': 'Anual',
-                                            'annual': 'Anual'
-                                        }[student.plan] || student.plan}
-                                    </span>
-                                    <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
-                                        {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
-                                    </span>
-                                </div>
-                                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                                    Vence dia <span style={{ color: 'var(--text-main)' }}>{student.paymentDay}</span>
-                                </p>
-                            </div>
+                            {/* Plan Summary */}
+                            {(() => {
+                                // Payment Logic Lifted for Overview
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+
+                                let nextPaymentDate = null;
+                                if (student.nextPaymentDate) {
+                                    nextPaymentDate = new Date(student.nextPaymentDate);
+                                } else {
+                                    const dueDay = parseInt(student.paymentDay);
+                                    if (!isNaN(dueDay)) {
+                                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+                                    }
+                                }
+
+                                if (nextPaymentDate) nextPaymentDate.setHours(0, 0, 0, 0);
+                                const isOverdue = nextPaymentDate && nextPaymentDate < today;
+
+                                return (
+                                    <div className="glass-panel" style={{
+                                        padding: '1.5rem',
+                                        background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'var(--card-bg)',
+                                        border: isOverdue ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-glass)',
+                                        position: 'relative'
+                                    }}>
+                                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                                            Plano Atual
+                                            {isOverdue && <span style={{ marginLeft: '0.5rem', color: '#ef4444', fontWeight: 'bold' }}>(PENDENTE)</span>}
+                                        </h4>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                                {{
+                                                    'Monthly': 'Mensal',
+                                                    'monthly': 'Mensal',
+                                                    'Quarterly': 'Trimestral',
+                                                    'quarterly': 'Trimestral',
+                                                    'Semiannual': 'Semestral',
+                                                    'semiannual': 'Semestral',
+                                                    'Annual': 'Anual',
+                                                    'annual': 'Anual'
+                                                }[student.plan] || student.plan}
+                                            </span>
+                                            <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+                                                {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
+                                            </span>
+                                        </div>
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                                            {isOverdue ? 'Venceu em ' : 'Vence dia '}
+                                            <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
+                                                {nextPaymentDate
+                                                    ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+                                                    : student.paymentDay}
+                                            </span>
+                                        </p>
+
+                                        {isOverdue && (
+                                            <button
+                                                onClick={handleWhatsApp}
+                                                style={{
+                                                    marginTop: '1rem',
+                                                    width: '100%',
+                                                    background: '#25D366',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    padding: '0.6rem',
+                                                    borderRadius: '8px',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '0.5rem'
+                                                }}
+                                            >
+                                                <MessageCircle size={18} />
+                                                Cobrar no WhatsApp
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })()}
 
                             {/* Contact Info */}
                             <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
@@ -2073,16 +2286,45 @@ export default function StudentDetails() {
                             {isCreatingSheet && (
                                 <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', border: '1px dashed var(--primary)' }}>
                                     <h4 style={{ margin: 0, marginBottom: '1rem' }}>Criar Nova Ficha</h4>
+
+                                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <input
+                                            type="checkbox"
+                                            id="useRecommendation"
+                                            checked={useRecommendation}
+                                            onChange={(e) => setUseRecommendation(e.target.checked)}
+                                            style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                        <label htmlFor="useRecommendation" style={{ cursor: 'pointer', color: useRecommendation ? 'var(--primary)' : 'var(--text-muted)', fontWeight: useRecommendation ? 'bold' : 'normal' }}>
+                                            Gerar Recomendação Inteligente (Baseado no Perfil)
+                                        </label>
+                                    </div>
+
+                                    {useRecommendation && (
+                                        <div style={{ marginBottom: '1rem' }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Nível do Treino</label>
+                                            <select
+                                                value={selectedLevel}
+                                                onChange={e => setSelectedLevel(e.target.value)}
+                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
+                                            >
+                                                <option value="Iniciante">Iniciante (Adaptação / AB)</option>
+                                                <option value="Intermediário">Intermediário (Divisão ABC/ABCD)</option>
+                                                <option value="Avançado">Avançado (Volume Maior)</option>
+                                            </select>
+                                        </div>
+                                    )}
+
                                     <div style={{ display: 'flex', gap: '1rem' }}>
                                         <input
                                             value={newSheetName}
                                             onChange={e => setNewSheetName(e.target.value)}
-                                            placeholder="Nome da ficha (ex: Hipertrofia 2025)"
+                                            placeholder={useRecommendation ? "Nome da ficha (Opcional - Será gerado se vazio)" : "Nome da ficha (ex: Hipertrofia 2025)"}
                                             style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
                                         />
                                         <button
                                             onClick={handleCreateSheet}
-                                            disabled={!newSheetName.trim()}
+                                            disabled={!useRecommendation && !newSheetName.trim()}
                                             style={{ padding: '0 1.5rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
                                         >
                                             Criar
@@ -2143,6 +2385,33 @@ export default function StudentDetails() {
                                         </p>
                                     </div>
                                     <div className="sheet-actions">
+                                        {/* Magic Fill (Only if empty) */}
+                                        {Object.keys(currentSheet?.workouts || {}).length === 0 && (
+                                            <div style={{ display: 'flex', gap: '0.5rem', marginRight: '0.5rem', background: 'rgba(16, 185, 129, 0.1)', padding: '0.3rem', borderRadius: '10px' }}>
+                                                <select
+                                                    value={selectedLevel}
+                                                    onChange={e => setSelectedLevel(e.target.value)}
+                                                    style={{
+                                                        background: 'transparent', color: 'var(--primary)',
+                                                        border: 'none', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', outline: 'none'
+                                                    }}
+                                                >
+                                                    <option value="Iniciante">Iniciante</option>
+                                                    <option value="Intermediário">Intermediário</option>
+                                                    <option value="Avançado">Avançado</option>
+                                                </select>
+                                                <button
+                                                    onClick={() => handleAutoFillSheet(selectedSheetId, selectedLevel)}
+                                                    title="Preencher ficha automaticamente"
+                                                    style={{
+                                                        background: 'var(--primary)', border: 'none', borderRadius: '8px',
+                                                        color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0 0.8rem'
+                                                    }}
+                                                >
+                                                    <Sparkles size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                         <button
                                             onClick={shareSheetPDF}
                                             title="Compartilhar no WhatsApp"
@@ -2187,7 +2456,7 @@ export default function StudentDetails() {
                                                 const keys = Object.keys(currentSheet?.workouts || {}).sort();
                                                 const firstVar = keys.length > 0 ? keys[0] : 'A';
                                                 // Pass sheetId param
-                                                navigate(`/workouts/${id}?variation=${firstVar}&sheetId=${currentSheet?.id || 'legacy'}`);
+                                                navigate(`/app/workouts/${id}?variation=${firstVar}&sheetId=${currentSheet?.id || 'legacy'}`);
                                             }}
                                             style={{
                                                 background: 'var(--primary)',
@@ -2208,11 +2477,15 @@ export default function StudentDetails() {
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1.5rem' }}>
+
+                                    {/* Magic Fill Option (Only if empty) */}
+
+
                                     {/* List Divisions Inside */}
                                     {Object.keys(currentSheet?.workouts || {}).sort().map(variation => (
                                         <div
                                             key={variation}
-                                            onClick={() => navigate(`/workouts/${id}?variation=${variation}&sheetId=${currentSheet?.id || 'legacy'}`)}
+                                            onClick={() => navigate(`/app/workouts/${id}?variation=${variation}&sheetId=${currentSheet?.id || 'legacy'}`)}
                                             className="glass-card-interactive"
                                             style={{
                                                 padding: '1.5rem',
@@ -2275,7 +2548,7 @@ export default function StudentDetails() {
                                         onClick={() => {
                                             const keys = Object.keys(currentSheet?.workouts || {}).sort();
                                             const nextVar = keys.length === 0 ? 'A' : String.fromCharCode(keys[keys.length - 1].charCodeAt(0) + 1);
-                                            navigate(`/workouts/${id}?variation=${nextVar}&sheetId=${currentSheet?.id || 'legacy'}`);
+                                            navigate(`/app/workouts/${id}?variation=${nextVar}&sheetId=${currentSheet?.id || 'legacy'}`);
                                         }}
                                         style={{
                                             background: 'rgba(255,255,255,0.02)',
@@ -2409,35 +2682,66 @@ export default function StudentDetails() {
                             `}</style>
 
                             <div className="glass-panel status-card">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <CheckCircle color="#047857" />
-                                    <div>
-                                        <h4 style={{ color: '#047857', margin: 0 }}>Status: Em dia</h4>
-                                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            Próximo pagamento em {(() => {
-                                                if (student.nextPaymentDate && new Date(student.nextPaymentDate) > new Date()) {
-                                                    return new Date(student.nextPaymentDate).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-                                                }
+                                {(() => {
+                                    const today = new Date();
+                                    today.setHours(0, 0, 0, 0);
 
-                                                // Fallback existing logic
-                                                const today = new Date();
-                                                const dueDay = parseInt(student.paymentDay);
-                                                let dueDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+                                    let nextPaymentDate = null;
+                                    if (student.nextPaymentDate) {
+                                        nextPaymentDate = new Date(student.nextPaymentDate);
+                                    } else {
+                                        // Fallback if no nextPaymentDate set but paymentDay exists
+                                        const dueDay = parseInt(student.paymentDay);
+                                        if (!isNaN(dueDay)) {
+                                            nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+                                            // If today is past due day, assume next month? 
+                                            // ideally we rely on stored nextPaymentDate. 
+                                            // If we are guessing, and today > dueDay, maybe they are late for THIS month?
+                                            // Let's stick to a simple logic: if no date stored, assume current month's day.
+                                        }
+                                    }
 
-                                                if (today.getDate() > dueDay) {
-                                                    dueDate.setMonth(dueDate.getMonth() + 1);
-                                                }
+                                    // Check overlap
+                                    // Make sure we clear time for comparison
+                                    if (nextPaymentDate) {
+                                        nextPaymentDate.setHours(0, 0, 0, 0);
+                                    }
 
-                                                return dueDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
-                                            })()}
-                                        </p>
-                                    </div>
-                                </div>
+                                    const isOverdue = nextPaymentDate && nextPaymentDate < today;
+
+                                    return (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            {isOverdue ? (
+                                                <AlertCircle color="#ef4444" size={24} />
+                                            ) : (
+                                                <CheckCircle color="#10b981" size={24} />
+                                            )}
+                                            <div>
+                                                <h4 style={{ color: isOverdue ? '#ef4444' : '#10b981', margin: 0 }}>
+                                                    Status: {isOverdue ? 'Pendente' : 'Em dia'}
+                                                </h4>
+                                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                                    {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
+                                                    {nextPaymentDate
+                                                        ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+                                                        : 'Data não def.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                                 <button
                                     onClick={handleOpenPaymentModal}
-                                    style={{ background: 'transparent', border: '1px solid #047857', color: '#047857', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer' }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: '1px solid var(--primary)',
+                                        color: 'var(--primary)',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                    }}
                                 >
-                                    Registrar Pagamento Manual
+                                    Registrar Pagamento
                                 </button>
                             </div>
 

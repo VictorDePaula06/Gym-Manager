@@ -83,8 +83,8 @@ const Reports = () => {
                 if (!exp.date) return;
                 const eDateYMD = exp.date; // stored as YYYY-MM-DD
 
-                // Filter by Range AND "Paid" status (date <= today)
-                if (eDateYMD >= activeStartDateStr && eDateYMD <= activeEndDateStr && eDateYMD <= todayStr) {
+                // Filter by Range (Future expenses allowed for projection)
+                if (eDateYMD >= activeStartDateStr && eDateYMD <= activeEndDateStr) {
                     const val = parseFloat(exp.value || 0);
                     totalExpenses += val;
                     expenseCount++;
@@ -461,7 +461,7 @@ const Reports = () => {
                             <div style={{ fontSize: '1.5rem', color: '#10b981', fontWeight: 'bold' }}>{formatCurrency(financialData.totalIncome)}</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center' }}>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Despesas (Pagas)</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Despesas</span>
                             <div style={{ fontSize: '1.5rem', color: '#ef4444', fontWeight: 'bold' }}>{formatCurrency(financialData.totalExpenses)}</div>
                         </div>
                         <div className="glass-panel" style={{ padding: '1rem', textAlign: 'center', border: financialData.netProfit < 0 ? '1px solid #ef4444' : '1px solid #10b981' }}>

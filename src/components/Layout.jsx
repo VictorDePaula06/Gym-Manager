@@ -152,34 +152,34 @@ export default function Layout() {
                 </div>
 
                 <nav style={{ flex: 1, padding: '0 1rem' }}>
-                    <Link to="/" style={linkStyle('/')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app" style={linkStyle('/app')} onClick={() => setSidebarOpen(false)}>
                         <LayoutDashboard size={20} />
                         <span>Visão Geral</span>
                     </Link>
-                    <Link to="/students" style={linkStyle('/students')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app/students" style={linkStyle('/app/students')} onClick={() => setSidebarOpen(false)}>
                         <Users size={20} />
                         <span>Alunos</span>
                     </Link>
-                    <Link to="/teachers" style={linkStyle('/teachers')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app/teachers" style={linkStyle('/app/teachers')} onClick={() => setSidebarOpen(false)}>
                         <Briefcase size={20} />
                         <span>Professores</span>
                     </Link>
-                    <Link to="/financial" style={linkStyle('/financial')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app/financial" style={linkStyle('/app/financial')} onClick={() => setSidebarOpen(false)}>
                         <CreditCard size={20} />
                         <span>Financeiro</span>
                     </Link>
-                    <Link to="/workouts" style={linkStyle('/workouts')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app/workouts" style={linkStyle('/app/workouts')} onClick={() => setSidebarOpen(false)}>
                         <Dumbbell size={20} />
                         <span>Treinos</span>
                     </Link>
-                    <Link to="/reports" style={linkStyle('/reports')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app/reports" style={linkStyle('/app/reports')} onClick={() => setSidebarOpen(false)}>
                         <PieChart size={20} />
                         <span>Relatórios</span>
                     </Link>
                 </nav>
 
                 <div style={{ padding: '1rem' }}>
-                    <Link to="/settings" style={linkStyle('/settings')} onClick={() => setSidebarOpen(false)}>
+                    <Link to="/app/settings" style={linkStyle('/app/settings')} onClick={() => setSidebarOpen(false)}>
                         <Settings size={20} />
                         <span>Configurações</span>
                     </Link>

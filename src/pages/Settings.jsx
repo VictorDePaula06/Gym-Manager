@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGym } from '../context/GymContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle } from 'lucide-react';
-import { storage } from '../firebase';
+import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle } from 'lucide-react';
+import { storage, db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 export default function Settings() {
     const { settings, updateSettings } = useGym();
+    const { user } = useAuth();
     const { addToast } = useToast();
     const [formData, setFormData] = useState({
         gymName: '',
@@ -14,6 +17,8 @@ export default function Settings() {
         theme: 'dark'
     });
     const [isSaving, setIsSaving] = useState(false);
+    const [isMigrating, setIsMigrating] = useState(false);
+    const [isDeletingInactive, setIsDeletingInactive] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
@@ -86,6 +91,112 @@ export default function Settings() {
             addToast("Erro ao salvar configurações.", 'error');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    // ... (handleMigrateData remains unchanged)
+
+    const handleDeleteInactive = async () => {
+        if (!confirm("Tem certeza que deseja EXCLUIR TODOS os alunos marcados como 'Inativo'? Essa ação não pode ser desfeita.")) return;
+
+        setIsDeletingInactive(true);
+        try {
+            // 1. Fetch All Students for User
+            const studentsRef = collection(db, `users/${user.uid}/students`);
+            const snapshot = await getDocs(studentsRef);
+
+            if (snapshot.empty) {
+                addToast("Nenhum aluno encontrado.", 'info');
+                return;
+            }
+
+            let deletedCount = 0;
+            const batchPromises = [];
+
+            // 2. Iterate and Filter
+            for (const studentDoc of snapshot.docs) {
+                const data = studentDoc.data();
+
+                // Check if Inactive (Case insensitive safety or just property check)
+                // Assuming status is stored as 'Inactive' (English) or 'Inativo' (Portuguese) - covering both just in case
+                if (data.status === 'Inactive' || data.status === 'Inativo') {
+
+                    // deleteDoc wrapper
+                    const p = (async () => {
+                        // Delete Assessments Subcollection docs first
+                        const assessmentsRef = collection(db, `users/${user.uid}/students/${studentDoc.id}/assessments`);
+                        const assessSnapshot = await getDocs(assessmentsRef);
+                        const assessDeletes = assessSnapshot.docs.map(adoc => deleteDoc(doc(db, `users/${user.uid}/students/${studentDoc.id}/assessments`, adoc.id)));
+                        await Promise.all(assessDeletes);
+
+                        // Delete Student Doc
+                        await deleteDoc(doc(db, `users/${user.uid}/students`, studentDoc.id));
+                    })();
+
+                    batchPromises.push(p);
+                    deletedCount++;
+                }
+            }
+
+            await Promise.all(batchPromises);
+
+            if (deletedCount > 0) {
+                addToast(`${deletedCount} alunos inativos removidos!`, 'success');
+                // Force a reload or wait for listener to update UI (UI should update automatically via GymContext listener)
+            } else {
+                addToast("Nenhum aluno inativo encontrado para excluir.", 'info');
+            }
+
+        } catch (error) {
+            console.error("Erro ao excluir inativos:", error);
+            addToast("Erro na limpeza de dados.", 'error');
+        } finally {
+            setIsDeletingInactive(false);
+        }
+    };
+
+    const handleMigrateData = async () => {
+        if (!confirm("Isso irá buscar buscar dados antigos e salvá-los na sua conta segura. Deseja continuar?")) return;
+
+        setIsMigrating(true);
+        try {
+            // 1. Fetch Legacy Data (Root 'students' collection)
+            const legacyRef = collection(db, 'students');
+            const snapshot = await getDocs(legacyRef);
+
+            if (snapshot.empty) {
+                addToast("Nenhum dado antigo encontrado para recuperar.", 'info');
+                return;
+            }
+
+            let migratedCount = 0;
+
+            // 2. Migrate each student
+            for (const studentDoc of snapshot.docs) {
+                const studentData = studentDoc.data();
+                const newStudentRef = doc(db, `users/${user.uid}/students`, studentDoc.id);
+
+                // Copy Student Data
+                await setDoc(newStudentRef, studentData, { merge: true });
+
+                // 3. Migrate Assessments (Subcollection)
+                const legacyAssessmentsRef = collection(db, `students/${studentDoc.id}/assessments`);
+                const assessmentsSnapshot = await getDocs(legacyAssessmentsRef);
+
+                for (const assessDoc of assessmentsSnapshot.docs) {
+                    const newAssessRef = doc(db, `users/${user.uid}/students/${studentDoc.id}/assessments`, assessDoc.id);
+                    await setDoc(newAssessRef, assessDoc.data(), { merge: true });
+                }
+
+                migratedCount++;
+            }
+
+            addToast(`${migratedCount} alunos recuperados com sucesso!`, 'success');
+        } catch (error) {
+            console.error("Erro na migração:", error);
+            addToast("Erro ao recuperar dados.", 'error');
+        } finally {
+            setIsMigrating(false);
         }
     };
 
@@ -225,7 +336,68 @@ export default function Settings() {
                     )}
                 </div>
             </div>
+
+            {/* Advanced / Maintenance Section */}
+            <div className="glass-panel" style={{ padding: '2rem', marginTop: '2rem', border: '1px dashed var(--border-glass)' }}>
+                <h2 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', color: 'var(--text-muted)' }}>Manutenção e Dados</h2>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <h4 style={{ margin: 0, marginBottom: '0.5rem' }}>Recuperação de Dados Antigos</h4>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            Use esta opção se notar que alguns alunos ou dados sumiram após a atualização de segurança.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleMigrateData}
+                        disabled={isMigrating}
+                        style={{
+                            background: 'rgba(234, 179, 8, 0.1)',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(234, 179, 8, 0.3)',
+                            padding: '0.75rem 1.5rem',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontWeight: '600'
+                        }}
+                    >
+                        {isMigrating ? <Loader2 className="animate-spin" size={18} /> : <Database size={18} />}
+                        {isMigrating ? 'Recuperando...' : 'Resgatar Dados'}
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border-glass)' }}>
+                    <div>
+                        <h4 style={{ margin: 0, marginBottom: '0.5rem' }}>Limpeza de Banco de Dados</h4>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                            Excluir permanentemente todos os alunos com status "Inativo" para liberar espaço.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleDeleteInactive}
+                        disabled={isDeletingInactive}
+                        style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            padding: '0.75rem 1.5rem',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            fontWeight: '600'
+                        }}
+                    >
+                        {isDeletingInactive ? <Loader2 className="animate-spin" size={18} /> : <AlertCircle size={18} />}
+                        {isDeletingInactive ? 'Limpando...' : 'Excluir Inativos'}
+                    </button>
+                </div>
+
+            </div>
         </div>
     );
 }
-
