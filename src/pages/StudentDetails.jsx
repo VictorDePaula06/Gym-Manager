@@ -313,20 +313,46 @@ export default function StudentDetails() {
                 if (!confirmed) return;
             }
 
+            // Handle Legacy/Missing Sheet Case
+            let currentSheetData = {};
+            let finalSheetId = targetSheetId;
+
+            if (student.workoutSheets && student.workoutSheets[targetSheetId]) {
+                currentSheetData = student.workoutSheets[targetSheetId];
+            } else {
+                // Legacy or New Sheet
+                currentSheetData = {
+                    name: 'Ficha Principal', // Default name
+                    createdAt: new Date().toISOString(),
+                    workouts: {}
+                };
+
+                // If it's the virtual 'default' or 'legacy' ID, generate a real UUID
+                if (targetSheetId === 'default' || targetSheetId === 'legacy') {
+                    finalSheetId = crypto.randomUUID();
+                }
+            }
+
             const updatedSheet = {
-                ...student.workoutSheets[targetSheetId],
-                name: generated.name || student.workoutSheets[targetSheetId].name, // Update name with generated one
+                ...currentSheetData,
+                name: generated.name || currentSheetData.name, // Update name with generated one
                 workouts: generated.workouts,
                 needsProfessionalReview: generated.needsProfessionalReview,
                 reviewReason: generated.reviewReason
             };
 
             const updatedSheets = {
-                ...student.workoutSheets,
-                [targetSheetId]: updatedSheet
+                ...(student.workoutSheets || {}),
+                [finalSheetId]: updatedSheet
             };
 
             await updateStudent(id, { workoutSheets: updatedSheets });
+
+            // If we migrated from legacy/default to a real ID, update the selection
+            if (finalSheetId !== targetSheetId) {
+                setSelectedSheetId(finalSheetId);
+            }
+
             addToast("Ficha preenchida automaticamente!", 'success');
 
         } catch (error) {
@@ -346,13 +372,23 @@ export default function StudentDetails() {
         if (!confirmed) return;
 
         try {
-            const newSheets = { ...student.workoutSheets };
-            delete newSheets[sheetId];
+            // Handle Legacy Sheet Removal
+            if (sheetId === 'legacy' || sheetId === 'default') {
+                // Legacy sheets are stored in the root `workouts` field, not `workoutSheets`
+                await updateStudent(id, {
+                    workouts: {} // Clear the legacy field
+                });
+            } else {
+                // Modern Sheet Removal
+                const newSheets = { ...student.workoutSheets };
+                delete newSheets[sheetId];
 
-            await updateStudent(id, {
-                workoutSheets: newSheets
-            });
-            setSelectedSheetId('default');
+                await updateStudent(id, {
+                    workoutSheets: newSheets
+                });
+            }
+
+            setSelectedSheetId('default'); // Reset selection
             addToast("Ficha excluída com sucesso!", 'success');
         } catch (error) {
             console.error("Error deleting sheet:", error);
@@ -758,9 +794,11 @@ export default function StudentDetails() {
     const currentSheet = getCurrentSheet();
     const isLegacy = currentSheet?.type === 'legacy';
 
-    // Sort legacy vs new
+    // Sort legacy vs new (Newest First)
     const availableSheets = student.workoutSheets
-        ? Object.entries(student.workoutSheets).map(([k, v]) => ({ id: k, ...v }))
+        ? Object.entries(student.workoutSheets)
+            .map(([k, v]) => ({ id: k, ...v }))
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         : [];
 
     const toggleAssessmentSelection = (assessment) => {
@@ -1880,7 +1918,8 @@ export default function StudentDetails() {
                                     )}
                                     <button
                                         onClick={() => setShowAssessmentForm(!showAssessmentForm)}
-                                        style={{ background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid var(--border-glass)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                                        className="btn-primary"
+                                        style={{ padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.9rem' }}
                                     >
                                         <Plus size={18} /> Nova Avaliação
                                     </button>
@@ -2252,6 +2291,11 @@ export default function StudentDetails() {
                                                     }}
                                                 >
                                                     {s.name}
+                                                    {s.createdAt && (
+                                                        <span style={{ fontSize: '0.75em', opacity: 0.7, fontWeight: 'normal' }}>
+                                                            {' '}({new Date(s.createdAt).toLocaleDateString('pt-BR')})
+                                                        </span>
+                                                    )}
                                                 </button>
                                                 {selectedSheetId === s.id && (
                                                     <button
@@ -2285,28 +2329,38 @@ export default function StudentDetails() {
 
                             {isCreatingSheet && (
                                 <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', border: '1px dashed var(--primary)' }}>
-                                    <h4 style={{ margin: 0, marginBottom: '1rem' }}>Criar Nova Ficha</h4>
+                                    <h4 style={{ margin: 0, marginBottom: '1.25rem', fontSize: '1.1rem' }}>Criar Nova Ficha</h4>
 
-                                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <div style={{ marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '0.75rem', borderRadius: '8px' }}>
                                         <input
                                             type="checkbox"
                                             id="useRecommendation"
                                             checked={useRecommendation}
                                             onChange={(e) => setUseRecommendation(e.target.checked)}
-                                            style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                            style={{ accentColor: 'var(--primary)', width: '18px', height: '18px', cursor: 'pointer' }}
                                         />
-                                        <label htmlFor="useRecommendation" style={{ cursor: 'pointer', color: useRecommendation ? 'var(--primary)' : 'var(--text-muted)', fontWeight: useRecommendation ? 'bold' : 'normal' }}>
-                                            Gerar Recomendação Inteligente (Baseado no Perfil)
+                                        <label htmlFor="useRecommendation" style={{ cursor: 'pointer', color: useRecommendation ? 'var(--primary)' : 'var(--text-muted)', fontWeight: useRecommendation ? 'bold' : 'normal', fontSize: '0.95rem' }}>
+                                            Gerar Recomendação Inteligente
                                         </label>
                                     </div>
 
                                     {useRecommendation && (
-                                        <div style={{ marginBottom: '1rem' }}>
-                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Nível do Treino</label>
+                                        <div style={{ marginBottom: '1.25rem' }}>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', marginLeft: '0.2rem' }}>Nível do Treino</label>
                                             <select
                                                 value={selectedLevel}
                                                 onChange={e => setSelectedLevel(e.target.value)}
-                                                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.875rem',
+                                                    borderRadius: '12px',
+                                                    border: '1px solid var(--border-glass)',
+                                                    background: 'var(--input-bg)',
+                                                    color: 'var(--text-main)',
+                                                    fontSize: '0.95rem',
+                                                    outline: 'none',
+                                                    cursor: 'pointer'
+                                                }}
                                             >
                                                 <option value="Iniciante">Iniciante (Adaptação / AB)</option>
                                                 <option value="Intermediário">Intermediário (Divisão ABC/ABCD)</option>
@@ -2315,26 +2369,70 @@ export default function StudentDetails() {
                                         </div>
                                     )}
 
-                                    <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', flexDirection: 'row', flexWrap: 'wrap' }}>
+                                        <style>
+                                            {`
+                                                @media (max-width: 640px) {
+                                                    .sheet-form-actions {
+                                                        flex-direction: column !important;
+                                                    }
+                                                    .sheet-form-actions button {
+                                                        width: 100%;
+                                                    }
+                                                }
+                                            `}
+                                        </style>
                                         <input
                                             value={newSheetName}
                                             onChange={e => setNewSheetName(e.target.value)}
-                                            placeholder={useRecommendation ? "Nome da ficha (Opcional - Será gerado se vazio)" : "Nome da ficha (ex: Hipertrofia 2025)"}
-                                            style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
+                                            placeholder={useRecommendation ? "Nome da ficha (Opcional)" : "Nome da ficha (ex: Hipertrofia 2025)"}
+                                            style={{
+                                                flex: 2,
+                                                padding: '0.875rem',
+                                                borderRadius: '12px',
+                                                border: '1px solid var(--border-glass)',
+                                                background: 'var(--input-bg)',
+                                                color: 'var(--text-main)',
+                                                outline: 'none',
+                                                fontSize: '0.95rem',
+                                                minWidth: '200px'
+                                            }}
                                         />
-                                        <button
-                                            onClick={handleCreateSheet}
-                                            disabled={!useRecommendation && !newSheetName.trim()}
-                                            style={{ padding: '0 1.5rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-                                        >
-                                            Criar
-                                        </button>
-                                        <button
-                                            onClick={() => setIsCreatingSheet(false)}
-                                            style={{ padding: '0 1.5rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', borderRadius: '8px', cursor: 'pointer' }}
-                                        >
-                                            Cancelar
-                                        </button>
+                                        <div className="sheet-form-actions" style={{ display: 'flex', gap: '0.75rem', flex: 1 }}>
+                                            <button
+                                                onClick={handleCreateSheet}
+                                                disabled={!useRecommendation && !newSheetName.trim()}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0 1.5rem',
+                                                    background: 'var(--primary)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '12px',
+                                                    cursor: 'pointer',
+                                                    fontWeight: '600',
+                                                    minHeight: '48px',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                Criar
+                                            </button>
+                                            <button
+                                                onClick={() => setIsCreatingSheet(false)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0 1.5rem',
+                                                    background: 'transparent',
+                                                    color: 'var(--text-muted)',
+                                                    border: '1px solid var(--border-glass)',
+                                                    borderRadius: '12px',
+                                                    cursor: 'pointer',
+                                                    minHeight: '48px'
+                                                }}
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -2455,8 +2553,9 @@ export default function StudentDetails() {
                                             onClick={() => {
                                                 const keys = Object.keys(currentSheet?.workouts || {}).sort();
                                                 const firstVar = keys.length > 0 ? keys[0] : 'A';
-                                                // Pass sheetId param
-                                                navigate(`/app/workouts/${id}?variation=${firstVar}&sheetId=${currentSheet?.id || 'legacy'}`);
+                                                // Use selectedSheetId directly if available to prevent legacy fallback issues
+                                                const targetId = selectedSheetId && selectedSheetId !== 'default' ? selectedSheetId : (currentSheet?.id || 'legacy');
+                                                navigate(`/app/workouts/${id}?variation=${firstVar}&sheetId=${targetId}`);
                                             }}
                                             style={{
                                                 background: 'var(--primary)',
@@ -2485,7 +2584,10 @@ export default function StudentDetails() {
                                     {Object.keys(currentSheet?.workouts || {}).sort().map(variation => (
                                         <div
                                             key={variation}
-                                            onClick={() => navigate(`/app/workouts/${id}?variation=${variation}&sheetId=${currentSheet?.id || 'legacy'}`)}
+                                            onClick={() => {
+                                                const targetId = selectedSheetId && selectedSheetId !== 'default' ? selectedSheetId : (currentSheet?.id || 'legacy');
+                                                navigate(`/app/workouts/${id}?variation=${variation}&sheetId=${targetId}`);
+                                            }}
                                             className="glass-card-interactive"
                                             style={{
                                                 padding: '1.5rem',

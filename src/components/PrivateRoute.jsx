@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function PrivateRoute({ children }) {
-    const { user, loading, accessDenied, requiresPasswordChange } = useAuth();
+    const { user, loading, accessDenied, trialExpired, requiresPasswordChange } = useAuth();
 
     if (loading) {
         return (
@@ -11,6 +11,10 @@ export default function PrivateRoute({ children }) {
                 <Loader2 className="animate-spin" size={32} />
             </div>
         );
+    }
+
+    if (trialExpired) {
+        return <Navigate to="/trial-expired" />;
     }
 
     if (accessDenied) {

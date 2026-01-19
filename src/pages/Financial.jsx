@@ -506,7 +506,8 @@ export default function Financial() {
                                     alignItems: 'center',
                                     padding: '0.75rem 1.5rem',
                                     borderRadius: '12px',
-                                    background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+                                    borderRadius: '12px',
+                                    // background: handled by btn-primary class
                                     boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                                     fontWeight: '600',
                                     fontSize: '1rem',
@@ -541,7 +542,7 @@ export default function Financial() {
                                         placeholder="Ex: Aluguel"
                                         value={newExpense.description}
                                         onChange={e => setNewExpense({ ...newExpense, description: e.target.value })}
-                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem' }}
                                     />
                                 </div>
                                 <div>
@@ -549,7 +550,7 @@ export default function Financial() {
                                     <select
                                         value={newExpense.category}
                                         onChange={e => setNewExpense({ ...newExpense, category: e.target.value })}
-                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem' }}
                                     >
                                         <option value="Fixo">Fixo</option>
                                         <option value="Variavel">Variável</option>
@@ -568,7 +569,7 @@ export default function Financial() {
                                         required
                                         value={newExpense.date}
                                         onChange={e => setNewExpense({ ...newExpense, date: e.target.value })}
-                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem' }}
                                     />
                                 </div>
                                 <div>
@@ -580,7 +581,7 @@ export default function Financial() {
                                         placeholder="0.00"
                                         value={newExpense.value}
                                         onChange={e => setNewExpense({ ...newExpense, value: e.target.value })}
-                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'white', fontSize: '0.95rem' }}
+                                        style={{ width: '100%', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem' }}
                                     />
                                 </div>
                                 <div style={{ paddingTop: '1.7rem' }}>

@@ -3,6 +3,7 @@ import { Users, DollarSign, Activity, TrendingUp, AlertTriangle, MessageCircle }
 import { Link } from 'react-router-dom';
 import StatsCard from '../components/StatsCard';
 import { useGym } from '../context/GymContext';
+import { useAuth } from '../context/AuthContext';
 import {
     BarChart,
     Bar,
@@ -27,6 +28,7 @@ const formatCurrency = (value) => {
 
 export default function Dashboard() {
     const { students, settings, loading } = useGym();
+    const { user, trialInfo } = useAuth();
 
     const showOnboardingAlert = !loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp);
 
@@ -136,6 +138,49 @@ export default function Dashboard() {
                 <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Visão Geral</h1>
                 <p style={{ color: 'var(--text-muted)' }}>Bem-vindo de volta, gerencie sua academia com eficiência.</p>
             </div>
+
+            {/* Trial Mode Alert - High Priority */}
+            {trialInfo && trialInfo.isTrial && (
+                <div style={{
+                    background: 'rgba(59, 130, 246, 0.15)', // Blue tint
+                    border: '1px solid #3b82f6',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    marginBottom: '2rem',
+                    display: 'flex',
+                    alignItems: 'start',
+                    gap: '1rem',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                }}>
+                    <div style={{
+                        background: '#3b82f6',
+                        padding: '0.5rem',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        <Activity size={24} color="white" />
+                    </div>
+                    <div>
+                        <h3 style={{ color: '#60a5fa', marginBottom: '0.5rem', fontSize: '1.25rem' }}>Período de Teste Ativo</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: '1.5' }}>
+                            Você está utilizando a versão de avaliação gratuita.
+                        </p>
+                        <div style={{
+                            display: 'inline-block',
+                            background: trialInfo.daysRemaining <= 1 ? '#ef4444' : '#10b981',
+                            color: 'white',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '20px',
+                            fontWeight: '600',
+                            fontSize: '0.9rem'
+                        }}>
+                            {trialInfo.daysRemaining} {trialInfo.daysRemaining === 1 ? 'dia restante' : 'dias restantes'}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Onboarding Alert */}
             {(!loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp)) && (

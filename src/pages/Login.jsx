@@ -61,193 +61,199 @@ const Login = () => {
 
     return (
         <div style={{
+            minHeight: '100vh',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: '100dvh', // Modern mobile viewport fix
-            fontFamily: "'Outfit', sans-serif",
+            padding: '1rem',
             position: 'relative',
             overflow: 'hidden',
-            background: '#0f172a'
+            backgroundColor: '#020617', // slate-950 fallback
+            fontFamily: "'Outfit', sans-serif"
         }}>
-            {/* Animated Background Elements */}
+            {/* Background Image with Overlay */}
             <div style={{
                 position: 'absolute',
-                top: '-20%',
-                left: '-10%',
-                width: '60%',
-                height: '60%',
-                background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%)',
-                filter: 'blur(100px)',
-                animation: 'float 12s infinite ease-in-out'
-            }} />
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundImage: 'url(/img/login-bg.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                zIndex: 1
+            }}></div>
+
+            {/* Gradient Overlay for better readability */}
             <div style={{
                 position: 'absolute',
-                bottom: '-20%',
-                right: '-5%',
-                width: '60%',
-                height: '60%',
-                background: 'radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%)',
-                filter: 'blur(100px)',
-                animation: 'float 15s infinite ease-in-out reverse'
-            }} />
-            <div style={{
-                position: 'absolute',
-                top: '40%',
-                left: '40%',
-                width: '30%',
-                height: '30%',
-                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)',
-                filter: 'blur(80px)',
-                animation: 'pulse 8s infinite ease-in-out'
-            }} />
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'linear-gradient(to bottom right, rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.7))',
+                zIndex: 2,
+                backdropFilter: 'blur(3px)' // Subtle blur on BG
+            }}></div>
 
             <style>
                 {`
-                @keyframes float {
-                    0% { transform: translate(0, 0); }
-                    50% { transform: translate(30px, 30px); }
-                    100% { transform: translate(0, 0); }
-                }
-                @keyframes pulse {
-                    0% { opacity: 0.5; transform: scale(1); }
-                    50% { opacity: 0.8; transform: scale(1.1); }
-                    100% { opacity: 0.5; transform: scale(1); }
-                }
                 @keyframes slideUp {
                     from { transform: translateY(20px); opacity: 0; }
                     to { transform: translateY(0); opacity: 1; }
                 }
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .glass-input::placeholder {
+                    color: #94a3b8 !important;
+                    opacity: 0.7;
+                }
                 `}
             </style>
 
-            <div className="glass-panel" style={{
-                padding: '3.5rem',
-                borderRadius: '2rem',
+            <div style={{
+                maxWidth: '26rem', // Somewhat narrower for elegance
                 width: '100%',
-                maxWidth: '450px',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: 'rgba(15, 23, 42, 0.65)', // More transparent
+                backdropFilter: 'blur(16px)',
+                WebkitBackdropFilter: 'blur(16px)',
+                borderRadius: '1.5rem',
+                border: '1px solid rgba(255, 255, 255, 0.1)', // Light border
+                padding: '2.5rem',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
                 position: 'relative',
                 zIndex: 10,
-                backdropFilter: 'blur(20px)',
-                backgroundColor: 'rgba(30, 41, 59, 0.6)',
-                animation: 'slideUp 0.6s ease-out'
+                animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
-                <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <div style={{
-                        width: '80px',
-                        height: '80px',
-                        borderRadius: '24px',
-                        background: 'linear-gradient(135deg, var(--primary) 0%, #059669 100%)',
+                        width: '4rem',
+                        height: '4rem',
+                        borderRadius: '1rem',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 1.5rem auto',
-                        boxShadow: '0 20px 25px -5px rgba(16, 185, 129, 0.3), 0 8px 10px -6px rgba(16, 185, 129, 0.2)'
+                        boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.4)'
                     }}>
-                        <Dumbbell color="white" size={40} strokeWidth={2.5} />
+                        <Dumbbell color="white" size={32} />
                     </div>
                     <h1 style={{
-                        fontSize: '2rem',
+                        fontSize: '1.875rem',
                         fontWeight: '700',
                         color: 'white',
                         marginBottom: '0.5rem',
-                        letterSpacing: '-0.02em'
+                        letterSpacing: '-0.025em',
+                        textShadow: '0 2px 10px rgba(0,0,0,0.3)'
                     }}>
                         Gym Manager
                     </h1>
-                    <p style={{ color: '#94a3b8', fontSize: '1.1rem' }}>Faça login para continuar</p>
+                    <p style={{ color: '#cbd5e1', fontSize: '0.95rem', fontWeight: '300' }}>Gerencie sua academia com excelência</p>
                 </div>
 
                 {error && (
                     <div style={{
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        color: '#ef4444',
-                        padding: '1rem',
-                        borderRadius: '1rem',
+                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                        color: '#fca5a5',
+                        padding: '0.75rem',
+                        borderRadius: '0.75rem',
                         marginBottom: '1.5rem',
-                        fontSize: '0.9rem',
+                        fontSize: '0.85rem',
                         border: '1px solid rgba(239, 68, 68, 0.2)',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.5rem',
+                        animation: 'fadeIn 0.3s ease'
                     }}>
-                        {error}
+                        <span>⚠️</span> {error}
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
                     <div style={{ position: 'relative' }}>
-                        <div style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', transition: 'color 0.2s' }}>
-                            <Mail size={22} />
+                        <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', transition: 'color 0.2s', zIndex: 20 }}>
+                            <Mail size={18} />
                         </div>
                         <input
                             type="email"
+                            className="glass-input"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
                             style={{
                                 width: '100%',
-                                padding: '1rem 1rem 1rem 3.5rem',
-                                backgroundColor: 'rgba(15, 23, 42, 0.5)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                borderRadius: '1rem',
+                                padding: '1rem 1rem 1rem 3rem',
+                                backgroundColor: 'rgba(2, 6, 23, 0.4)',
+                                border: '1px solid rgba(148, 163, 184, 0.2)',
+                                borderRadius: '0.75rem',
                                 outline: 'none',
                                 color: 'white',
                                 boxSizing: 'border-box',
-                                fontSize: '1rem',
-                                transition: 'all 0.2s'
+                                fontSize: '0.95rem',
+                                transition: 'all 0.2s',
+                                fontFamily: 'inherit'
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = 'var(--primary)';
-                                e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.8)';
-                                e.target.previousSibling.style.color = 'var(--primary)';
+                                e.target.style.borderColor = '#10b981';
+                                e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.6)';
+                                e.target.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)';
+                                e.target.previousSibling.style.color = '#10b981';
                             }}
                             onBlur={(e) => {
-                                e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                                e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.5)';
-                                e.target.previousSibling.style.color = '#64748b';
+                                e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                                e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.4)';
+                                e.target.style.boxShadow = 'none';
+                                e.target.previousSibling.style.color = '#94a3b8';
                             }}
-                            placeholder="Seu e-mail"
+                            placeholder="Seu e-mail de acesso"
                         />
                     </div>
 
                     <div>
-                        {/* Wrapper for Password Input ONLY - ensuring separation */}
                         <div style={{ position: 'relative' }}>
-                            <div style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#64748b', transition: 'color 0.2s' }}>
-                                <Lock size={22} />
+                            <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', transition: 'color 0.2s', zIndex: 20 }}>
+                                <Lock size={18} />
                             </div>
                             <input
                                 type="password"
+                                className="glass-input"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 style={{
                                     width: '100%',
-                                    padding: '1rem 1rem 1rem 3.5rem',
-                                    backgroundColor: 'rgba(15, 23, 42, 0.5)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                                    borderRadius: '1rem',
+                                    padding: '1rem 1rem 1rem 3rem',
+                                    backgroundColor: 'rgba(2, 6, 23, 0.4)',
+                                    border: '1px solid rgba(148, 163, 184, 0.2)',
+                                    borderRadius: '0.75rem',
                                     outline: 'none',
                                     color: 'white',
                                     boxSizing: 'border-box',
-                                    fontSize: '1rem',
-                                    transition: 'all 0.2s'
+                                    fontSize: '0.95rem',
+                                    transition: 'all 0.2s',
+                                    fontFamily: 'inherit'
                                 }}
                                 onFocus={(e) => {
-                                    e.target.style.borderColor = 'var(--primary)';
-                                    e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.8)';
-                                    e.target.previousSibling.style.color = 'var(--primary)';
+                                    e.target.style.borderColor = '#10b981';
+                                    e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.6)';
+                                    e.target.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)';
+                                    e.target.previousSibling.style.color = '#10b981';
                                 }}
                                 onBlur={(e) => {
-                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                                    e.target.style.backgroundColor = 'rgba(15, 23, 42, 0.5)';
-                                    e.target.previousSibling.style.color = '#64748b';
+                                    e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                                    e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.4)';
+                                    e.target.style.boxShadow = 'none';
+                                    e.target.previousSibling.style.color = '#94a3b8';
                                 }}
-                                placeholder="Sua senha"
+                                placeholder="Sua senha secreta"
                             />
                         </div>
-                        {/* Forgot Password Link - OUTSIDE the input wrapper */}
                         <div style={{ textAlign: 'right', marginTop: '0.75rem' }}>
                             <button
                                 type="button"
@@ -256,12 +262,12 @@ const Login = () => {
                                     background: 'none',
                                     border: 'none',
                                     color: '#94a3b8',
-                                    fontSize: '0.9rem',
+                                    fontSize: '0.85rem',
                                     cursor: 'pointer',
-                                    padding: 0,
+                                    padding: '4px',
                                     transition: 'color 0.2s'
                                 }}
-                                onMouseOver={(e) => e.target.style.color = 'var(--primary)'}
+                                onMouseOver={(e) => e.target.style.color = '#10b981'}
                                 onMouseOut={(e) => e.target.style.color = '#94a3b8'}
                             >
                                 Esqueceu a senha?
@@ -274,29 +280,41 @@ const Login = () => {
                         disabled={loadingLocal}
                         style={{
                             width: '100%',
-                            backgroundColor: 'var(--primary)',
+                            backgroundColor: '#10b981',
+                            backgroundImage: 'linear-gradient(to right, #10b981, #059669)',
                             color: 'white',
-                            padding: '1.1rem',
-                            borderRadius: '1rem',
+                            padding: '1rem',
+                            borderRadius: '0.75rem',
                             border: 'none',
                             fontWeight: '600',
-                            fontSize: '1.1rem',
+                            fontSize: '1rem',
                             cursor: loadingLocal ? 'not-allowed' : 'pointer',
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            gap: '0.75rem',
+                            gap: '0.5rem',
                             marginTop: '0.5rem',
-                            opacity: loadingLocal ? 0.7 : 1,
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            boxShadow: '0 10px 15px -3px var(--primary-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+                            opacity: loadingLocal ? 0.8 : 1,
+                            transition: 'all 0.2s',
+                            boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
                         }}
-                        onMouseOver={(e) => !loadingLocal && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 20px 25px -5px var(--primary-glow), 0 10px 10px -5px rgba(0, 0, 0, 0.04)')}
-                        onMouseOut={(e) => !loadingLocal && (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 10px 15px -3px var(--primary-glow), 0 4px 6px -2px rgba(0, 0, 0, 0.05)')}
+                        onMouseOver={(e) => !loadingLocal && (e.target.style.transform = 'translateY(-1px)')}
+                        onMouseOut={(e) => !loadingLocal && (e.target.style.transform = 'translateY(0)')}
                     >
-                        {loadingLocal ? <Loader2 size={24} className="animate-spin" /> : 'Entrar no Sistema'}
+                        {loadingLocal ? <Loader2 size={20} className="animate-spin" /> : 'Acessar Plataforma'}
                     </button>
                 </form>
+            </div>
+
+            {/* Version or footer text subtle */}
+            <div style={{
+                position: 'absolute',
+                bottom: '1rem',
+                color: 'rgba(255,255,255,0.2)',
+                fontSize: '0.75rem',
+                zIndex: 20
+            }}>
+                v1.0.0
             </div>
         </div>
     );

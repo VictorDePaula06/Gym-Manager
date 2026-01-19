@@ -12,6 +12,8 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
     const [accessDenied, setAccessDenied] = useState(false);
+    const [trialExpired, setTrialExpired] = useState(false);
+    const [trialInfo, setTrialInfo] = useState({ isTrial: false, daysRemaining: 0, totalDays: 0 });
     const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
 
     useEffect(() => {
@@ -25,11 +27,48 @@ export const AuthProvider = ({ children }) => {
                     if (tenantSnap.exists()) {
                         const data = tenantSnap.data();
 
-                        // Check Access
+                        // Check Access (Banned/Inactive)
                         if (data.active === false) {
                             setAccessDenied(true);
                         } else {
-                            setAccessDenied(false);
+                            // Check Trial Status
+                            // Legacy users (undefined status) or Active status -> ALLOW
+                            const subscriptionStatus = data.subscriptionStatus;
+                            const isSubscriber = subscriptionStatus === 'active' || subscriptionStatus === undefined;
+
+                            if (!isSubscriber) {
+                                // Must be in trial or explicitly expired
+                                // Calculate days since creation
+                                const createdDate = new Date(data.createdAt);
+                                const now = new Date();
+
+                                // TRIAL LIMIT SET TO 7 DAYS
+                                const TRIAL_DAYS = 7;
+
+                                const trialEndDate = new Date(createdDate);
+                                trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DAYS);
+
+                                const timeRemaining = trialEndDate - now;
+                                const daysLeft = Math.ceil(timeRemaining / (1000 * 60 * 60 * 24));
+
+                                setTrialInfo({
+                                    isTrial: true,
+                                    daysRemaining: daysLeft,
+                                    totalDays: TRIAL_DAYS
+                                });
+
+                                if (daysLeft <= 0) {
+                                    setAccessDenied(true);
+                                    setTrialExpired(true);
+                                } else {
+                                    setTrialExpired(false);
+                                    setAccessDenied(false);
+                                }
+                            } else {
+                                setTrialInfo({ isTrial: false, daysRemaining: 0, totalDays: 0 });
+                                setTrialExpired(false);
+                                setAccessDenied(false);
+                            }
                         }
 
                         // Check Password Change Requirement
@@ -40,26 +79,34 @@ export const AuthProvider = ({ children }) => {
                         }
 
                     } else {
-                        // Initialize new tenant as active AND requiring password change
+                        // Initialize new tenant
                         await setDoc(tenantRef, {
                             active: true,
                             requiresPasswordChange: true, // Force change on first login
                             email: currentUser.email,
-                            createdAt: new Date().toISOString()
+                            createdAt: new Date().toISOString(),
+                            subscriptionStatus: 'trial' // Default new users to trial
+                        });
+
+                        setTrialInfo({
+                            isTrial: true,
+                            daysRemaining: 1, // Default 1 day for testing
+                            totalDays: 1
                         });
                         setAccessDenied(false);
+                        setTrialExpired(false);
                         setRequiresPasswordChange(true);
                     }
                 } catch (error) {
                     console.error("Error checking tenant status:", error);
-                    // Fallback to allow access if DB fails, or block? 
-                    // Let's allow but log error. Or maybe safer to default deny?
-                    // For now, default allow to prevent lockout during bugs.
+                    // Default allow to prevent lockout during bugs, but maybe log this
                     setAccessDenied(false);
+                    setTrialExpired(false);
                     setRequiresPasswordChange(false);
                 }
             } else {
                 setAccessDenied(false);
+                setTrialExpired(false);
                 setRequiresPasswordChange(false);
             }
 
@@ -83,6 +130,8 @@ export const AuthProvider = ({ children }) => {
         user,
         loading,
         accessDenied,
+        trialExpired,
+        trialInfo,
         requiresPasswordChange,
         logout
     };

@@ -18,6 +18,7 @@ import Reports from './pages/Reports';
 import Teachers from './pages/Teachers';
 import TeacherDetails from './pages/TeacherDetails';
 import PaymentRequired from './pages/PaymentRequired';
+import TrialExpired from './pages/TrialExpired';
 import ChangePassword from './pages/ChangePassword';
 import PrivateRoute from './components/PrivateRoute';
 import LandingPage from './pages/LandingPage';
@@ -35,6 +36,7 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />
+                <Route path="/trial-expired" element={<TrialExpired />} />
                 <Route path="/change-password" element={
                   <PrivateRoute>
                     <ChangePassword />

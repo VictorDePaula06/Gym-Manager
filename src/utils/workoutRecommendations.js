@@ -63,14 +63,16 @@ export const generateWorkout = (student, overrideLevel) => {
     }
 
     // Parse Limitations & Diseases
+    const invalidTerms = ['nenhuma', 'nenhum', 'não se aplica', 'nao se aplica', 'n/a', ''];
+
     let limitations = [];
     if (student.limitations) {
-        limitations = student.limitations.split(',').map(l => l.trim().toLowerCase()).filter(l => l && l !== 'nenhuma' && l !== 'nenhum');
+        limitations = student.limitations.split(',').map(l => l.trim().toLowerCase()).filter(l => !invalidTerms.includes(l));
     }
 
     let diseases = [];
     if (student.diseases) {
-        diseases = student.diseases.split(',').map(d => d.trim().toLowerCase()).filter(d => d && d !== 'nenhuma' && d !== 'nenhum');
+        diseases = student.diseases.split(',').map(d => d.trim().toLowerCase()).filter(d => !invalidTerms.includes(d));
     }
 
     let recommendation = {};
@@ -89,14 +91,23 @@ export const generateWorkout = (student, overrideLevel) => {
 
     // --- STRATEGY SELECTION ---
     if (age > 60) {
-        recommendation = getElderlyTemplate();
+        recommendation = getElderlyTemplate(student.diseases || '');
         sheetName = "Melhor Idade / Adaptação";
+    } else if (age < 18) {
+        recommendation = getTeenTemplate();
+        sheetName = "Iniciante / Teen (Aprendizado Motor)";
     } else if (goal.includes('emagreci') || goal.includes('perda')) {
         recommendation = getWeightLossTemplate(level, frequency);
         sheetName = "Emagrecimento & Metabólico";
     } else if (level === 'iniciante') {
-        recommendation = getAdaptationTemplate(frequency);
-        sheetName = "Adaptação / Iniciante";
+        // Beginner Logic
+        if (frequency >= 4) {
+            recommendation = getAdaptationABCTemplate(gender);
+            sheetName = "Adaptação ABC (Intro à Divisão)";
+        } else {
+            recommendation = getAdaptationTemplate(frequency, gender);
+            sheetName = gender === 'feminino' || gender === 'female' ? "Adaptação (Feminino)" : "Adaptação / Iniciante";
+        }
     } else {
         // Hypertrophy / Strength Logic
         if (frequency <= 2) {
@@ -112,6 +123,12 @@ export const generateWorkout = (student, overrideLevel) => {
             recommendation = getHypertrophyABCDE(gender);
             sheetName = "Hipertrofia ABCDE (Intenso)";
         }
+    }
+
+    // --- ADVANCED LEVEL LOGIC ---
+    if (level === 'avançado' || level === 'avancado') {
+        recommendation = applyAdvancedTechniques(recommendation);
+        sheetName += " (Advanced)";
     }
 
     // Append Cardio if not already present in circuit
@@ -141,21 +158,88 @@ export const generateWorkout = (student, overrideLevel) => {
     };
 };
 
+// --- ADVANCED TECHNIQUE LOGIC ---
+const applyAdvancedTechniques = (workouts) => {
+    const newWorkouts = JSON.parse(JSON.stringify(workouts));
+
+    // Exercises to swap for advanced versions
+    const replacements = {
+        'supino máquina': 'Supino c/ Halteres (Amplitude Max)',
+        'supino reto': 'Supino c/ Halteres (Amplitude Max)',
+        'puxada frontal': 'Barra Fixa (ou Graviton)',
+        'leg press': 'Agachamento Búlgaro (Halteres)',
+        'leg press 45': 'Agachamento Búlgaro (Halteres)',
+        'rosca direta': 'Rosca 21 (Técnica Avançada)',
+        'tríceps corda': 'Tríceps Testa + Supinado (Bi-set)',
+        'elevação lateral': 'Elevação Lateral (Drop-set mecânico)',
+        'cadeira extensora': 'Cadeira Extensora (Pico de Contração 2s)',
+        'mesa flexora': 'Mesa Flexora (Negativa Lenta 3s)',
+        'agachamento livre': 'Agachamento (Pausa 2s embaixo)'
+    };
+
+    Object.keys(newWorkouts).forEach(key => {
+        const division = newWorkouts[key];
+
+        // 1. Apply Advanced Variations (Substitutions)
+        division.exercises = division.exercises.map(ex => {
+            const lowerName = ex.name.toLowerCase();
+            const match = Object.keys(replacements).find(k => lowerName.includes(k));
+
+            if (match) {
+                return {
+                    ...ex,
+                    name: replacements[match],
+                    notes: (ex.notes ? ex.notes + '. ' : '') + 'Variação Avançada'
+                };
+            }
+            return ex;
+        });
+
+        // 2. Increase Volume (Sets) for first 2 exercises
+        division.exercises.slice(0, 2).forEach(ex => {
+            if (ex.sets === 3) ex.sets = 4;
+            if (typeof ex.sets === 'string' && ex.sets.includes('3')) ex.sets = 4;
+            // If already 4, add a technique note
+            if (ex.sets === 4) {
+                ex.notes = (ex.notes ? ex.notes + '. ' : '') + 'Falha Concêntrica';
+            }
+        });
+
+        // 3. Add Drop-sets to the last isolation exercise before cardio
+        const exercisesInOrder = division.exercises;
+        for (let i = exercisesInOrder.length - 2; i >= 0; i--) {
+            const ex = exercisesInOrder[i];
+            const name = ex.name.toLowerCase();
+            // Apply drop to safe isolation movements
+            // Expanded list to catch more exercises (Abdutora, Glúteo, etc)
+            if (name.includes('extensora') || name.includes('flexora') || name.includes('lateral') || name.includes('corda') || name.includes('rosca') || name.includes('abdutora') || name.includes('adutora') || name.includes('glúteo') || name.includes('gluteo') || name.includes('panturrilha') || name.includes('peck') || name.includes('crucifixo')) {
+                ex.reps = '10 + 10 + 10 (Drop-set)';
+                ex.notes = (ex.notes ? ex.notes + '. ' : '') + 'Reduzir 20% carga a cada falha';
+                break; // Apply only once per workout
+            }
+        }
+    });
+
+    return newWorkouts;
+};
+
 // --- RESTRICTION LOGIC ---
 const applyHealthRestrictions = (workouts, limitations, diseases) => {
     const newWorkouts = JSON.parse(JSON.stringify(workouts)); // Deep copy
 
-    const hasKneeIssue = limitations.some(l => l.includes('joelho'));
+    const hasKneeIssue = limitations.some(l => l.includes('joelho') || l.includes('condromalácia') || l.includes('condromalacia'));
     const hasAnkleIssue = limitations.some(l => l.includes('tornozelo') || l.includes('pé'));
     const hasHipIssue = limitations.some(l => l.includes('quadril'));
     const hasShoulderIssue = limitations.some(l => l.includes('ombro'));
-    const hasSpineIssue = limitations.some(l => l.includes('coluna') || l.includes('lombar') || l.includes('hernia') || l.includes('costas'));
+    const hasSpineIssue = limitations.some(l => l.includes('coluna') || l.includes('lombar') || l.includes('hernia') || l.includes('h\u00e9rnia') || l.includes('costas'));
 
     const hasHypertension = diseases.some(d => d.includes('hipertensão') || d.includes('pressão'));
     const hasHeartCondition = diseases.some(d => d.includes('cardio') || d.includes('coração'));
     const hasLabrynthitis = diseases.some(d => d.includes('labirintite'));
+    const hasDiabetes = diseases.some(d => d.includes('diabetes') || d.includes('diabético'));
+    const hasAsthma = diseases.some(d => d.includes('asma') || d.includes('bronquite'));
 
-    const avoidImpact = hasKneeIssue || hasAnkleIssue || hasHipIssue || hasLabrynthitis;
+    const avoidImpact = hasKneeIssue || hasAnkleIssue || hasHipIssue || hasLabrynthitis || hasSpineIssue;
 
     Object.keys(newWorkouts).forEach(key => {
         const division = newWorkouts[key];
@@ -173,6 +257,20 @@ const applyHealthRestrictions = (workouts, limitations, diseases) => {
                     if (exName.includes('polichinelo')) return { ...newEx, name: 'Deslocamento Lateral (Passo)', notes: 'Sem saltar' };
                     if (exName.includes('corrida') || exName.includes('esteira')) return { ...newEx, name: 'Elíptico / Bike', notes: 'Baixo impacto' };
                 }
+            }
+
+            // --- DIABETES ---
+            if (hasDiabetes) {
+                // Precaution note
+                newEx.notes = (newEx.notes ? newEx.notes + '. ' : '') + 'Monitorar glicemia / Intensidade Moderada';
+            }
+
+            // --- ASMA / BRONQUITE ---
+            if (hasAsthma) {
+                if (exName.includes('hiit') || exName.includes('coração')) {
+                    return { ...newEx, name: 'Caminhada (Ritmo Constante)', notes: 'Evitar picos extenuantes' };
+                }
+                newEx.notes = (newEx.notes ? newEx.notes + '. ' : '') + 'Descanso aumentado se necessário';
             }
 
             // --- HIPERTENSÃO / CARDIO ---
@@ -206,16 +304,25 @@ const applyHealthRestrictions = (workouts, limitations, diseases) => {
 
             // --- JOINTS SPECIFIC ---
 
-            // JOELHO
+            // JOELHO & CONDROMALÁCIA
             if (hasKneeIssue) {
+                // Specific substitutions first
+                if (exName.includes('sumô') || exName.includes('sumo')) {
+                    return { ...newEx, name: 'Elevação Pélvica (No Chão ou Banco)', notes: 'Foco Glúteo / Baixo Impacto' };
+                }
+
                 if (exName.includes('agachamento') && !exName.includes('bola')) {
-                    return { ...newEx, name: 'Agachamento na Bola (Parede)', weight: 'Leve' };
+                    return { ...newEx, name: 'Agachamento na Bola (Parede)', weight: 'Leve', notes: 'Amplitude sem dor' };
                 }
                 if (exName.includes('afundo') || exName.includes('passada') || exName.includes('stiff')) {
                     return { ...newEx, name: 'Mesa Flexora', reps: '15' };
                 }
                 if (exName.includes('extensora')) {
-                    return { ...newEx, name: 'Cadeira Extensora (Isometria)', reps: '30 seg', notes: 'Ângulo de conforto' };
+                    // Condromalacia precaution: Avoid full extension often
+                    return { ...newEx, name: 'Cadeira Extensora (Isometria)', reps: '30 seg', notes: 'Ângulo de conforto (não estender tudo)' };
+                }
+                if (exName.includes('leg press')) {
+                    newEx.notes = (newEx.notes ? newEx.notes + '. ' : '') + 'Não estender joelho totalmente';
                 }
             }
 
@@ -252,7 +359,7 @@ const applyHealthRestrictions = (workouts, limitations, diseases) => {
                 }
             }
 
-            // COLUNA
+            // COLUNA & HÉRNIA
             if (hasSpineIssue) {
                 if (exName.includes('agachamento livre') || exName.includes('terra') || exName.includes('remada curvada') || exName.includes('stiff')) {
                     if (exName.includes('remada')) return { ...newEx, name: 'Remada Máquina (Peito Apoiado)' };
@@ -260,11 +367,30 @@ const applyHealthRestrictions = (workouts, limitations, diseases) => {
                     if (exName.includes('stiff')) return { ...newEx, name: 'Mesa Flexora' };
                 }
                 if (exName.includes('desenvolvimento')) {
-                    return { ...newEx, name: 'Elevação Frontal (Sentado)' };
+                    return { ...newEx, name: 'Elevação Frontal (Sentado)', notes: 'Costas apoiadas' };
+                }
+                if (exName.includes('abdominal') && !exName.includes('prancha')) {
+                    return { ...newEx, name: 'Prancha Isométrica', notes: 'Estabilidade Core' };
                 }
             }
 
             return newEx;
+        });
+
+        // Deduplicate exercises in the division
+        const seenNames = new Set();
+        division.exercises = division.exercises.filter(ex => {
+            if (!ex.name) return false; // Should not happen, but safety check
+            const cleanName = ex.name.trim().toLowerCase();
+
+            // If already seen, skip (return false)
+            if (seenNames.has(cleanName)) {
+                return false;
+            }
+
+            // Otherwise add to set and keep (return true)
+            seenNames.add(cleanName);
+            return true;
         });
     });
 
@@ -274,7 +400,95 @@ const applyHealthRestrictions = (workouts, limitations, diseases) => {
 
 // --- TEMPLATES ---
 
-const getAdaptationTemplate = (frequency) => {
+const getTeenTemplate = () => ({
+    'A': {
+        name: 'A - Corpo Todo (Aprendizado)',
+        exercises: [
+            { id: crypto.randomUUID(), name: 'Agachamento (Peso do Corpo)', sets: 3, reps: '12-15', weight: 'Corporal' },
+            { id: crypto.randomUUID(), name: 'Flexão de Braços (Apoio)', sets: 3, reps: '10-12', weight: 'Corporal' },
+            { id: crypto.randomUUID(), name: 'Puxada Frontal', sets: 3, reps: '15', weight: '' },
+            { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 3, reps: '15', weight: '' },
+            { id: crypto.randomUUID(), name: 'Prancha Abdominal', sets: 3, reps: '20-30 seg', weight: '' }
+        ]
+    },
+    'B': {
+        name: 'B - Cardio e Core',
+        exercises: [
+            { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '1 min', weight: '' },
+            { id: crypto.randomUUID(), name: 'Abdominal Supra (Chão)', sets: 3, reps: '15', weight: '' },
+            { id: crypto.randomUUID(), name: 'Agachamento Isométrico (Parede)', sets: 3, reps: '30 seg', weight: '' },
+            { id: crypto.randomUUID(), name: 'Corrida Estacionária', sets: 3, reps: '1 min', weight: '' }
+        ]
+    }
+});
+
+const getAdaptationABCTemplate = (gender) => {
+    const isFemale = gender === 'feminino' || gender === 'female';
+
+    return {
+        'A': {
+            name: 'A - Inferiores e Costas',
+            exercises: [
+                getRandomExercise('agachamento', { name: 'Agachamento Globet', sets: 3, reps: '15' }),
+                getRandomExercise('leg_press', { name: 'Leg Press 45', sets: 3, reps: '15' }),
+                getRandomExercise('puxada', { name: 'Puxada Frontal', sets: 3, reps: '15' }),
+                getRandomExercise('remada', { name: 'Remada Sentada', sets: 3, reps: '15' }),
+                { id: crypto.randomUUID(), name: 'Lombar (Extensão)', sets: 3, reps: '12', weight: '' }
+            ]
+        },
+        'B': {
+            name: 'B - Empurrar e Glúteo',
+            exercises: [
+                getRandomExercise('supino_reto', { name: 'Supino Máquina', sets: 3, reps: '15' }),
+                getRandomExercise('desenvolvimento', { name: 'Desenvolvimento Máquina', sets: 3, reps: '15' }),
+                { id: crypto.randomUUID(), name: 'Tríceps Corda', sets: 3, reps: '15', weight: '' },
+                { id: crypto.randomUUID(), name: 'Elevação Pélvica', sets: 4, reps: '15', weight: '' },
+                isFemale ? { id: crypto.randomUUID(), name: 'Glúteo Caneleira', sets: 3, reps: '15', weight: '' } : { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 3, reps: '15', weight: '' }
+            ]
+        },
+        'C': {
+            name: 'C - Cardio, Core e Funcional',
+            exercises: [
+                { id: crypto.randomUUID(), name: 'Caminhada Rápida', sets: 1, reps: '10 min', weight: '' },
+                { id: crypto.randomUUID(), name: 'Prancha Frontal', sets: 3, reps: '30 seg', weight: '' },
+                { id: crypto.randomUUID(), name: 'Abdominal Supra', sets: 3, reps: '20', weight: '' },
+                { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '40 seg', weight: '' },
+                { id: crypto.randomUUID(), name: 'Alongamento Geral', sets: 1, reps: '5 min', weight: '' }
+            ]
+        }
+    };
+};
+
+const getAdaptationTemplate = (frequency, gender) => {
+    const isFemale = gender === 'feminino' || gender === 'female';
+
+    if (isFemale) {
+        return {
+            'A': {
+                name: 'Adaptação A (Foco Inferiores/Costas)',
+                exercises: [
+                    getRandomExercise('agachamento', { name: 'Agachamento Globet (Halter)', sets: 3, reps: '15' }),
+                    getRandomExercise('leg_press', { name: 'Leg Press 45º', sets: 3, reps: '15' }),
+                    getRandomExercise('puxada', { name: 'Puxada Frontal', sets: 3, reps: '15' }),
+                    { id: crypto.randomUUID(), name: 'Glúteo na Polia (ou Caneleira)', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Abdominal Supra', sets: 3, reps: '20', weight: '' }
+                ]
+            },
+            'B': {
+                name: 'Adaptação B (Foco Post/Ombros)',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Stiff (Halteres)', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Elevação Pélvica (Chão ou Banco)', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Mesa Flexora', sets: 3, reps: '15', weight: '' },
+                    getRandomExercise('desenvolvimento', { name: 'Desenvolvimento Máquina', sets: 3, reps: '15' }),
+                    getRandomExercise('lateral', { name: 'Elevação Lateral', sets: 3, reps: '15' }),
+                    { id: crypto.randomUUID(), name: 'Tríceps Corda', sets: 3, reps: '15', weight: '' }
+                ]
+            }
+        };
+    }
+
+    // Male / Generic Adaptation
     return {
         'A': {
             name: 'Adaptação A',
@@ -313,21 +527,100 @@ const getElderlyTemplate = () => ({
 });
 
 const getWeightLossTemplate = (level, frequency) => {
+    const lvl = (level || '').toLowerCase();
+
+    // ADVANCED: High Volume (4 sets), Bi-sets, High Intensity
+    if (lvl === 'avançado' || lvl === 'avancado' || lvl === 'advanced') {
+        return {
+            'A': {
+                name: 'A - Inferiores High Intensity',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Agachamento Livre', sets: 4, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Leg Press 45', sets: 4, reps: '15+15 (Drop)', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Afundo (Halteres)', sets: 3, reps: '12 cada', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Cadeira Extensora', sets: 4, reps: 'Falha', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Panturrilha em Pé', sets: 4, reps: '20', weight: '' },
+                    { id: crypto.randomUUID(), name: 'HIIT (Esteira)', sets: 1, reps: '20 min', weight: '' }
+                ]
+            },
+            'B': {
+                name: 'B - Superiores e Core',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Supino Reto + Flexão (Bi-set)', sets: 4, reps: '12+Falha', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Remada Curvada', sets: 4, reps: '12', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Desenvolvimento Arnold', sets: 4, reps: '12', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Puxada Frontal', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 4, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Abdominal Supra + Infra', sets: 4, reps: '20+20', weight: '' }
+                ]
+            },
+            'C': {
+                name: 'C - Fullbody Metabólico',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Burpee', sets: 4, reps: '12', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Kettlebell Swing', sets: 4, reps: '20', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Man Maker (Completo)', sets: 3, reps: '10', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Thruster', sets: 3, reps: '12', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Prancha Dinâmica', sets: 3, reps: '1 min', weight: '' }
+                ]
+            }
+        };
+    }
+
+    // INTERMEDIATE: Standard Volume (3 sets), ABC Split
+    if (lvl === 'intermediário' || lvl === 'intermediario' || lvl === 'intermediate') {
+        return {
+            'A': {
+                name: 'A - Inferiores e Cardio',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Agachamento Globet', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Leg Press Horizontal', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Afundo Estático', sets: 3, reps: '12 cada', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Mesa Flexora', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Panturrilha Sentado', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Corrida Moderada', sets: 1, reps: '15 min', weight: '' }
+                ]
+            },
+            'B': {
+                name: 'B - Superiores',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Supino Máquina', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Puxada Frontal', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Desenvolvimento Halteres', sets: 3, reps: '12', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Remada Baixa', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Rosca Direta', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Tríceps Polia', sets: 3, reps: '15', weight: '' }
+                ]
+            },
+            'C': {
+                name: 'C - Cardio e Funcional',
+                exercises: [
+                    { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '1 min', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Agachamento com Salto (ou Peso)', sets: 3, reps: '15', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Flexão de Braços (Joelhos)', sets: 3, reps: '12', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Abdominal Remador', sets: 3, reps: '20', weight: '' },
+                    { id: crypto.randomUUID(), name: 'Prancha', sets: 3, reps: '45 seg', weight: '' }
+                ]
+            }
+        };
+    }
+
+    // BEGINNER: AB Standard
     return {
         'A': {
             name: 'Circuito A - Inferiores/Cardio',
             exercises: [
-                getRandomExercise('agachamento', { name: 'Agachamento Livre/Halter', sets: 4, reps: '15' }),
-                { id: crypto.randomUUID(), name: 'Polichinelo', sets: 4, reps: '1 min', weight: '' },
-                getRandomExercise('leg_press', { name: 'Leg Press', sets: 4, reps: '15' }),
-                { id: crypto.randomUUID(), name: 'Corrida Estacionária', sets: 4, reps: '1 min', weight: '' },
+                getRandomExercise('agachamento', { name: 'Agachamento Livre/Halter', sets: 3, reps: '15' }),
+                { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '1 min', weight: '' },
+                getRandomExercise('leg_press', { name: 'Leg Press', sets: 3, reps: '15' }),
+                { id: crypto.randomUUID(), name: 'Corrida Estacionária', sets: 3, reps: '1 min', weight: '' },
                 { id: crypto.randomUUID(), name: 'Cadeira Extensora', sets: 3, reps: '15', weight: '' }
             ]
         },
         'B': {
             name: 'Circuito B - Superiores/Core',
             exercises: [
-                { id: crypto.randomUUID(), name: 'Flexão de Braços', sets: 3, reps: 'MAX', weight: '' },
+                { id: crypto.randomUUID(), name: 'Flexão de Braços (Apoio)', sets: 3, reps: '12-15', weight: '' },
                 getRandomExercise('puxada', { name: 'Puxada Alta', sets: 3, reps: '15' }),
                 getRandomExercise('desenvolvimento', { name: 'Desenvolvimento Máquina', sets: 3, reps: '15' }),
                 { id: crypto.randomUUID(), name: 'Mountain Climbers', sets: 3, reps: '40 seg', weight: '' },

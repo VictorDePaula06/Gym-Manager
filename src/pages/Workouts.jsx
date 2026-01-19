@@ -14,12 +14,11 @@ export default function Workouts() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 {students.map(student => (
-                    <Link key={student.id} to={`/app/workouts/${student.id}`} style={{ textDecoration: 'none' }}>
+                    <Link key={student.id} to={`/app/students/${student.id}`} state={{ activeTab: 'workouts' }} style={{ textDecoration: 'none' }}>
                         <div className="glass-panel" style={{
                             padding: '1.5rem',
                             transition: 'transform 0.2s',
                             cursor: 'pointer',
-                            ':hover': { transform: 'translateY(-4px)' } // Inline hover pseudo-class doesn't work in React style, handled by CSS usually
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -34,9 +33,15 @@ export default function Workouts() {
                                     <div>
                                         <h3 style={{ color: 'var(--text-main)', fontSize: '1.1rem' }}>{student.name}</h3>
                                         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                                            {student.workouts ?
-                                                `Treinos: ${Object.keys(student.workouts).sort().join(', ')}`
-                                                : 'Sem plano de treino'}
+                                            {student.workoutSheets && Object.keys(student.workoutSheets).length > 0 ? (
+                                                <span style={{ color: 'var(--primary)' }}>
+                                                    {Object.keys(student.workoutSheets).length} Ficha(s) - {Object.values(student.workoutSheets).pop().name}
+                                                </span>
+                                            ) : student.workouts && Object.keys(student.workouts).length > 0 ? (
+                                                `Legacy: ${Object.keys(student.workouts).sort().join(', ')}`
+                                            ) : (
+                                                'Sem plano de treino'
+                                            )}
                                         </p>
                                     </div>
                                 </div>

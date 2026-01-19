@@ -279,7 +279,7 @@ export default function TeacherDetails() {
                                     <input
                                         type="number" step="0.01" required
                                         value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
-                                        style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'white' }}
+                                        style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
                                     />
                                 </div>
                                 <div>
@@ -287,7 +287,7 @@ export default function TeacherDetails() {
                                     <input
                                         type="date" required
                                         value={paymentDate} onChange={e => setPaymentDate(e.target.value)}
-                                        style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'white' }}
+                                        style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
                                     />
                                 </div>
                                 <div>
@@ -295,7 +295,7 @@ export default function TeacherDetails() {
                                     <input
                                         type="text" placeholder="ex: Comissão Janeiro"
                                         value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
-                                        style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'white' }}
+                                        style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>

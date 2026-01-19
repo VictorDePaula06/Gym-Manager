@@ -42,10 +42,10 @@ export const ToastProvider = ({ children }) => {
                         className="fade-in"
                         style={{
                             minWidth: '300px',
-                            background: 'var(--card-bg, #1a1b23)',
+                            background: '#1f2937', // Solid dark gray/blue to prevent transparency overlap
                             border: `1px solid ${toast.type === 'success' ? '#10b981' :
-                                    toast.type === 'error' ? '#ef4444' :
-                                        '#3b82f6'
+                                toast.type === 'error' ? '#ef4444' :
+                                    '#3b82f6'
                                 }`,
                             padding: '1rem',
                             borderRadius: '12px',
