@@ -194,6 +194,9 @@ export default function Layout() {
                         <LogOut size={20} />
                         <span>Sair</span>
                     </button>
+                    <div style={{ textAlign: 'center', marginTop: '1rem', opacity: 0.4 }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>v0.0.2</span>
+                    </div>
                 </div>
             </aside>
 

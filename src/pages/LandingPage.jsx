@@ -802,7 +802,7 @@ export default function LandingPage() {
                 borderTop: '1px solid rgba(255,255,255,0.05)'
             }}>
                 <p>&copy; {new Date().getFullYear()} GymManager. Todos os direitos reservados.</p>
-                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.5 }}>v0.0.1</p>
+                <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.5 }}>v0.0.2</p>
             </footer>
 
             {/* Global Responsive Styles */}
