@@ -2156,6 +2156,9 @@ export default function StudentDetails() {
                                     </p>
                                 </div>
 
+                            )
+                            }
+                        </div>
                     )
                 }
 
@@ -2946,8 +2949,8 @@ export default function StudentDetails() {
                         </div>
                     )
                 }
-            </div >
-        </div >
+            </div>
+        </div>
     );
 }
 
