@@ -21,6 +21,7 @@ import TeacherDetails from './pages/TeacherDetails';
 import PaymentRequired from './pages/PaymentRequired';
 import TrialExpired from './pages/TrialExpired';
 import ChangePassword from './pages/ChangePassword';
+import AccessDenied from './pages/AccessDenied';
 import PrivateRoute from './components/PrivateRoute';
 import LandingPage from './pages/LandingPage';
 import InstallPrompt from './components/InstallPrompt';
@@ -39,6 +40,7 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/trial-expired" element={<TrialExpired />} />
+                <Route path="/access-denied" element={<AccessDenied />} />
                 <Route path="/change-password" element={
                   <PrivateRoute>
                     <ChangePassword />

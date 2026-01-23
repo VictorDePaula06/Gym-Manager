@@ -37,6 +37,14 @@ export const AuthProvider = ({ children }) => {
 
                     if (staffSnap.exists()) {
                         const staffData = staffSnap.data();
+
+                        // Access Control Check
+                        if (staffData.blocked) {
+                            setAccessDenied(true);
+                            setLoading(false);
+                            return; // Stop execution
+                        }
+
                         if (staffData.gymOwnerId) {
                             tenantId = staffData.gymOwnerId;
                             role = staffData.role || 'staff';

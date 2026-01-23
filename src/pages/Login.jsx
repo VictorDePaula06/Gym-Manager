@@ -13,13 +13,15 @@ const Login = () => {
     const [loadingLocal, setLoadingLocal] = useState(false); // Renamed to avoid conflict with auth loading
     const navigate = useNavigate();
     const { addToast } = useToast();
-    const { user, loading: authLoading } = useAuth(); // Get user and loading from context
+    const { user, loading: authLoading, accessDenied } = useAuth(); // Get accessDenied
 
     useEffect(() => {
         if (user) {
             navigate('/app');
+        } else if (accessDenied) {
+            navigate('/access-denied');
         }
-    }, [user, navigate]);
+    }, [user, accessDenied, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();

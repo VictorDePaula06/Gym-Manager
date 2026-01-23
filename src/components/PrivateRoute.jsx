@@ -18,7 +18,7 @@ export default function PrivateRoute({ children, roleRequired }) {
     }
 
     if (accessDenied) {
-        return <Navigate to="/payment-required" />;
+        return <Navigate to="/access-denied" />;
     }
 
     // Check if password change is required

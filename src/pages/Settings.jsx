@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useGym } from '../context/GymContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle, User } from 'lucide-react';
+import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle, User, Plus } from 'lucide-react';
 import { storage, db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, getDocs, getDoc, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, setDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 
 export default function Settings() {
     const { settings, updateSettings } = useGym();
@@ -463,6 +463,52 @@ function TeamSettings() {
     const [inviteRole, setInviteRole] = useState('staff'); // 'staff' or 'admin'
     const [inviting, setInviting] = useState(false);
 
+    // Team List State
+    const [teamMembers, setTeamMembers] = useState([]);
+    const [loadingTeam, setLoadingTeam] = useState(false);
+
+    // Fetch Team
+    const fetchTeam = async () => {
+        setLoadingTeam(true);
+        try {
+            const q = query(
+                collection(db, 'staff_access'),
+                where('gymOwnerId', '==', user.uid)
+            );
+            const snapshot = await getDocs(q);
+            const members = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setTeamMembers(members);
+        } catch (error) {
+            console.error("Erro ao buscar equipe:", error);
+            addToast("Erro ao carregar equipe.", 'error');
+        } finally {
+            setLoadingTeam(false);
+        }
+    };
+
+    useEffect(() => {
+        if (user?.uid) {
+            fetchTeam();
+        }
+    }, [user]);
+
+    const [deleteMemberId, setDeleteMemberId] = useState(null);
+
+    const confirmDelete = async () => {
+        if (!deleteMemberId) return;
+
+        try {
+            await deleteDoc(doc(db, 'staff_access', deleteMemberId));
+            setTeamMembers(prev => prev.filter(m => m.id !== deleteMemberId));
+            addToast("Membro removido com sucesso!", 'success');
+        } catch (error) {
+            console.error("Erro ao remover membro:", error);
+            addToast("Erro ao remover membro.", 'error');
+        } finally {
+            setDeleteMemberId(null);
+        }
+    };
+
     const handleInvite = async (e) => {
         e.preventDefault();
         if (!inviteEmail) return;
@@ -489,18 +535,41 @@ function TeamSettings() {
                 role: inviteRole, // Use selected role
                 invitedAt: new Date().toISOString(),
                 inviterEmail: user.email,
-                targetEmail: inviteEmail
+                targetEmail: inviteEmail,
+                blocked: false
             });
 
             addToast(`Convite enviado para ${inviteEmail} como ${inviteRole === 'admin' ? 'Administrador' : 'Equipe'}`, 'success');
             setInviteEmail('');
             setInviteRole('staff'); // Reset to default
+            fetchTeam(); // Refresh list
         } catch (error) {
             console.error("Erro ao convidar:", error);
             addToast("Erro ao convidar. Verifique permissões.", 'error');
         } finally {
             setInviting(false);
         }
+    };
+
+    const handleBlockToggle = async (member) => {
+        try {
+            const memberRef = doc(db, 'staff_access', member.id);
+            const newStatus = !member.blocked;
+            await updateDoc(memberRef, { blocked: newStatus });
+
+            setTeamMembers(prev => prev.map(m =>
+                m.id === member.id ? { ...m, blocked: newStatus } : m
+            ));
+
+            addToast(`Usuário ${newStatus ? 'bloqueado' : 'desbloqueado'}!`, 'success');
+        } catch (error) {
+            console.error("Erro ao alterar bloqueio:", error);
+            addToast("Erro ao atualizar status.", 'error');
+        }
+    };
+
+    const handleDeleteMember = (memberId) => {
+        setDeleteMemberId(memberId);
     };
 
     return (
@@ -605,13 +674,168 @@ function TeamSettings() {
                 </div>
             </form>
 
+            <style>{`
+                .member-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 1rem;
+                    width: 100%;
+                }
+                .member-row:last-child {
+                    border-bottom: none;
+                }
+                .member-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    flex: 1;
+                    min-width: 0;
+                }
+                .member-actions {
+                    display: flex;
+                    gap: 0.5rem;
+                    flex-shrink: 0;
+                }
+                @media (max-width: 640px) {
+                    .member-row {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 1rem;
+                    }
+                    .member-actions {
+                        width: 100%;
+                        justify-content: flex-end;
+                        margin-top: 0.25rem;
+                    }
+                }
+            `}</style>
+
             <div style={{ paddingTop: '2rem', borderTop: '1px solid var(--border-glass)' }}>
-                {/* ... list ... */}
-                <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Convites Enviados</h4>
-                <div style={{ padding: '1.5rem', textAlign: 'center', background: 'var(--card-bg)', borderRadius: '12px', border: '1px dashed var(--border-glass)', color: 'var(--text-muted)' }}>
-                    A lista de membros aparecerá aqui futuramente.
-                </div>
+                <h4 style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Membros da Equipe ({teamMembers.length})</h4>
+
+                {loadingTeam ? (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                        <Loader2 className="animate-spin" style={{ margin: '0 auto', color: 'var(--primary)' }} />
+                    </div>
+                ) : teamMembers.length === 0 ? (
+                    <div style={{ padding: '1.5rem', textAlign: 'center', background: 'var(--card-bg)', borderRadius: '12px', border: '1px dashed var(--border-glass)', color: 'var(--text-muted)' }}>
+                        Nenhum membro na equipe ainda.
+                    </div>
+                ) : (
+                    <div style={{
+                        border: '1px solid var(--border-glass)',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        background: 'var(--card-bg)'
+                    }}>
+                        {teamMembers.map((member, index) => (
+                            <div key={member.id} className="member-row" style={{
+                                opacity: member.blocked ? 0.6 : 1,
+                                borderBottom: index === teamMembers.length - 1 ? 'none' : '1px solid var(--border-glass)'
+                            }}>
+                                <div className="member-info">
+                                    <div style={{
+                                        width: '40px', height: '40px', borderRadius: '50%',
+                                        background: member.blocked ? '#ef4444' : 'var(--primary)',
+                                        color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontWeight: 'bold'
+                                    }}>
+                                        {member.targetEmail?.substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center' }}>
+                                        <div style={{ fontWeight: '500', color: 'var(--text-main)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <span style={{ wordBreak: 'break-all' }}>{member.targetEmail}</span>
+                                            {member.blocked && <span style={{ fontSize: '0.7rem', background: '#ef4444', color: 'white', padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap' }}>BLOQUEADO</span>}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                            {member.role === 'admin' ? 'Administrador' : 'Equipe'} • Desde {new Date(member.invitedAt).toLocaleDateString()}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="member-actions">
+                                    <button
+                                        onClick={() => handleBlockToggle(member)}
+                                        title={member.blocked ? "Desbloquear" : "Bloquear"}
+                                        style={{
+                                            padding: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                            background: member.blocked ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            color: member.blocked ? '#10b981' : '#ef4444'
+                                        }}
+                                    >
+                                        {member.blocked ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteMember(member.id)}
+                                        title="Remover da equipe"
+                                        style={{
+                                            padding: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            color: '#ef4444'
+                                        }}
+                                    >
+                                        <div style={{ transform: 'rotate(45deg)' }}><Plus size={18} /></div>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
+
+            {/* Custom Delete Confirmation Modal */}
+            {deleteMemberId && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                    zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '1rem'
+                }} onClick={() => setDeleteMemberId(null)}>
+                    <div style={{
+                        background: 'var(--card-bg)', border: '1px solid var(--border-glass)',
+                        borderRadius: '16px', padding: '2rem', maxWidth: '400px', width: '100%',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+                        animation: 'fadeIn 0.2s ease-out'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                            <div style={{
+                                width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                margin: '0 auto 1rem auto'
+                            }}>
+                                <AlertCircle size={32} />
+                            </div>
+                            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.25rem' }}>Remover Membro</h3>
+                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                                Tem certeza que deseja remover este membro da equipe? O acesso será revogado imediatamente.
+                            </p>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <button
+                                onClick={() => setDeleteMemberId(null)}
+                                style={{
+                                    padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-glass)',
+                                    background: 'transparent', color: 'var(--text-main)', cursor: 'pointer',
+                                    fontWeight: '500'
+                                }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                style={{
+                                    padding: '0.75rem', borderRadius: '8px', border: 'none',
+                                    background: '#ef4444', color: 'white', cursor: 'pointer',
+                                    fontWeight: '500'
+                                }}
+                            >
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -2087,8 +2087,7 @@ export default function StudentDetails() {
                                                         boxShadow: 'var(--shadow-glass)',
                                                         transition: 'all 0.2s',
                                                         background: 'var(--card-bg)',
-                                                        minWidth: '320px',
-                                                        maxWidth: '350px',
+                                                        width: '340px',
                                                         flex: '0 0 auto',
                                                         scrollSnapAlign: 'start',
                                                         display: 'flex',
@@ -2125,15 +2124,16 @@ export default function StudentDetails() {
                                                     </div>
 
                                                     {/* Main Stats */}
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', marginTop: '1.5rem' }}>
-                                                        {item.weight && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>PESO</span><strong>{item.weight}kg</strong>{getDelta('weight', true)}</div>}
-                                                        {item.bodyFat && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>GC</span><strong>{item.bodyFat}%</strong>{getDelta('bodyFat', true)}</div>}
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem', marginTop: '1.5rem' }}>
+                                                        {item.weight && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}><span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>PESO</span><div style={{ display: 'flex', alignItems: 'flex-end' }}><strong>{item.weight}kg</strong>{getDelta('weight', true)}</div></div>}
+                                                        {item.height && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}><span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>ALTURA</span><strong>{item.height}m</strong></div>}
+                                                        {item.bodyFat && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 0.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}><span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>GC</span><div style={{ display: 'flex', alignItems: 'flex-end' }}><strong>{item.bodyFat}%</strong>{getDelta('bodyFat', true)}</div></div>}
                                                     </div>
 
                                                     {/* Details */}
                                                     <div style={{ display: 'grid', gap: '1rem' }}>
                                                         {[
-                                                            { title: 'Superiores', items: [{ l: 'Bíceps', v: `${item.bicepsRight || '-'} / ${item.bicepsLeft || '-'}` }, { l: 'Peitoral', v: item.chest }] },
+                                                            { title: 'Superiores', items: [{ l: 'Bíceps', v: `${item.bicepsRight || '-'} / ${item.bicepsLeft || '-'}` }, { l: 'Tríceps', v: `${item.tricepsRight || '-'} / ${item.tricepsLeft || '-'}` }, { l: 'Peitoral', v: item.chest }] },
                                                             { title: 'Tronco', items: [{ l: 'Cintura', v: item.waist }, { l: 'Abdômen', v: item.abdomen }, { l: 'Quadril', v: item.hips }] },
                                                             { title: 'Inferiores', items: [{ l: 'Coxas', v: `${item.thighRight || '-'} / ${item.thighLeft || '-'}` }, { l: 'Panturrilhas', v: `${item.calfRight || '-'} / ${item.calfLeft || '-'}` }] }
                                                         ].map((s, i) => (
