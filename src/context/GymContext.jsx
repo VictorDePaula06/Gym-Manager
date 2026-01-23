@@ -42,8 +42,11 @@ export const GymProvider = ({ children }) => {
         setLoadingStudents(true);
         setLoadingSettings(true);
 
-        // Define Base Path for current user
-        const userBasePath = `users/${user.uid}`;
+        // Define Base Path using TENANT ID (Owner ID)
+        const tenantId = user.tenantId || user.uid; // Fallback to uid if tenantId missing (safety)
+        const userBasePath = `users/${tenantId}`;
+
+        console.log(`[GymContext] Initializing for Tenant: ${tenantId} (Role: ${user.role})`);
 
         // Listener for students collection
         const unsubscribeStudents = onSnapshot(collection(db, `${userBasePath}/students`), (snapshot) => {
@@ -122,7 +125,8 @@ export const GymProvider = ({ children }) => {
 
     const getUserBasePath = () => {
         if (!user) throw new Error("User not authenticated");
-        return `users/${user.uid}`;
+        // Use tenantId if available (it should be attached by AuthContext)
+        return `users/${user.tenantId || user.uid}`;
     };
 
     const updateSettings = async (newSettings) => {

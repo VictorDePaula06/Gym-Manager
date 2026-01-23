@@ -346,13 +346,27 @@ export default function Dashboard() {
                     trend="Cadastrados"
                     color="#3b82f6"
                 />
-                <StatsCard
-                    title="Receita (Mês Atual)"
-                    value={monthlyRevenueFormatted}
-                    icon={DollarSign}
-                    trend="Faturamento"
-                    color="#10b981"
-                />
+                {/* Only show Financial Card if Owner OR Admnin */}
+                {(user?.role === 'owner' || user?.role === 'admin') ? (
+                    <StatsCard
+                        title="Receita (Mês Atual)"
+                        value={monthlyRevenueFormatted}
+                        icon={DollarSign}
+                        trend="Faturamento"
+                        color="#10b981"
+                    />
+                ) : (
+                    <StatsCard
+                        title="Treinos Concluídos"
+                        value="12" // Placeholder
+                        icon={Activity}
+                        trend="Nesta semana"
+                        color="#10b981"
+                    />
+                )}
+
+                {/* ... (Active Workouts Card) ... */}
+
                 <StatsCard
                     title="Treinos Ativos"
                     value={activeWorkouts}
@@ -372,35 +386,37 @@ export default function Dashboard() {
             {/* Charts Section */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
 
-                {/* Financial Chart */}
-                <div className="glass-panel" style={{ padding: "2rem", height: "400px" }}>
-                    <h3 style={{ marginBottom: "1.5rem" }}>Faturamento (Últimos 6 Meses)</h3>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={financialData.chartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
-                            <XAxis
-                                dataKey="name"
-                                stroke="var(--text-muted)"
-                                tick={{ fill: 'var(--text-muted)' }}
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <YAxis
-                                stroke="var(--text-muted)"
-                                tick={{ fill: 'var(--text-muted)' }}
-                                tickFormatter={(val) => `R$ ${val}`}
-                                tickLine={false}
-                                axisLine={false}
-                            />
-                            <Tooltip
-                                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
-                                formatter={(val) => formatCurrency(val)}
-                            />
-                            <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} name="Receita" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                {/* Financial Chart - FOR OWNERS AND ADMINS */}
+                {(user?.role === 'owner' || user?.role === 'admin') && (
+                    <div className="glass-panel" style={{ padding: "2rem", height: "400px" }}>
+                        <h3 style={{ marginBottom: "1.5rem" }}>Faturamento (Últimos 6 Meses)</h3>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={financialData.chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="var(--text-muted)"
+                                    tick={{ fill: 'var(--text-muted)' }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <YAxis
+                                    stroke="var(--text-muted)"
+                                    tick={{ fill: 'var(--text-muted)' }}
+                                    tickFormatter={(val) => `R$ ${val}`}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                    contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
+                                    formatter={(val) => formatCurrency(val)}
+                                />
+                                <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} name="Receita" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
 
                 {/* Gender Distribution */}
                 <div className="glass-panel" style={{ padding: '2rem', height: '400px' }}>

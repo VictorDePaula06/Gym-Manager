@@ -12,6 +12,7 @@ import Financial from './pages/Financial';
 import Workouts from './pages/Workouts';
 import WorkoutBuilder from './pages/WorkoutBuilder';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Settings from './pages/Settings';
 import StudentDetails from './pages/StudentDetails';
 import Reports from './pages/Reports';
@@ -35,6 +36,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/trial-expired" element={<TrialExpired />} />
                 <Route path="/change-password" element={
@@ -56,7 +58,11 @@ function App() {
                   <Route path="teachers/new" element={<TeacherForm />} />
                   <Route path="teachers/edit/:id" element={<TeacherForm />} />
                   <Route path="teachers/:id" element={<TeacherDetails />} />
-                  <Route path="financial" element={<Financial />} />
+                  <Route path="financial" element={
+                    <PrivateRoute roleRequired="owner">
+                      <Financial />
+                    </PrivateRoute>
+                  } />
                   <Route path="workouts" element={<Workouts />} />
                   <Route path="workouts/:id" element={<WorkoutBuilder />} />
                   <Route path="reports" element={<Reports />} />

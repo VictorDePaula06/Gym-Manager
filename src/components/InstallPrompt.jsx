@@ -9,13 +9,18 @@ const InstallPrompt = () => {
     const location = useLocation();
 
     useEffect(() => {
-        // Check if already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
+        // Check for debug mode
+        const searchParams = new URLSearchParams(location.search);
+        const isDebug = searchParams.get('pwa-debug') === 'true';
+
+        // Check if already installed (ignorar se estiver em debug)
+        if (!isDebug && window.matchMedia('(display-mode: standalone)').matches) {
             return;
         }
 
         // Android / Desktop (Chromium) - Standard Logic
         const handler = (e) => {
+            console.log('PWA: Evento beforeinstallprompt capturado', e);
             // Prevent the mini-infobar from appearing on mobile
             e.preventDefault();
             // Stash the event so it can be triggered later.
@@ -35,23 +40,50 @@ const InstallPrompt = () => {
             setIsVisible(true);
         }
 
+        // Force Debug Mode
+        if (isDebug) {
+            console.log('PWA: Modo Debug Ativado');
+            setIsVisible(true);
+        }
+
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);
         };
-    }, []);
+    }, [location.search]);
 
     const handleInstallClick = async () => {
+        console.log('PWA: Tentando instalar...');
+
+        if (!deferredPrompt && !new URLSearchParams(location.search).get('pwa-debug')) {
+            alert('Erro: Instalação indisponível (deferredPrompt nulo).');
+            return;
+        }
+
         if (deferredPrompt) {
-            // Show the install prompt
-            deferredPrompt.prompt();
+            try {
+                // Show the install prompt
+                await deferredPrompt.prompt();
 
-            // Wait for the user to respond to the prompt
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
 
-            // We've used the prompt, and can't use it again, throw it away
-            setDeferredPrompt(null);
-            setIsVisible(false);
+                // Em debug, confirmar o resultado
+                const isDebug = new URLSearchParams(location.search).get('pwa-debug') === 'true';
+                if (isDebug) {
+                    alert(`Resultado da instalação: ${outcome}`);
+                }
+
+                // We've used the prompt, and can't use it again, throw it away
+                setDeferredPrompt(null);
+                setIsVisible(false);
+            } catch (error) {
+                console.error('PWA: Erro na instalação', error);
+                alert(`Erro ao tentar instalar: ${error.message}`);
+            }
+        } else {
+            // Debug mode fallback forced
+            alert('Modo Debug: O botão foi clicado, mas o navegador não forneceu o evento de instalação real (deferredPrompt é nulo). Provavelmente falta HTTPS ou suporte do navegador.');
         }
     };
 
@@ -95,9 +127,22 @@ const InstallPrompt = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: 'var(--primary)',
-                    marginTop: '2px'
+                    marginTop: '2px',
+                    position: 'relative'
                 }}>
                     <Download size={24} />
+                    {new URLSearchParams(location.search).get('pwa-debug') === 'true' && (
+                        <span style={{
+                            position: 'absolute',
+                            top: -5,
+                            right: -5,
+                            background: 'red',
+                            color: 'white',
+                            fontSize: '0.5rem',
+                            padding: '2px 4px',
+                            borderRadius: '4px'
+                        }}>DEBUG</span>
+                    )}
                 </div>
 
                 <div style={{ flex: 1 }}>

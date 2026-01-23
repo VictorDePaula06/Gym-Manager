@@ -2002,6 +2002,7 @@ export default function StudentDetails() {
                                 <div style={{ position: 'relative' }}>
                                     {/* Navigation Arrows */}
                                     <button
+                                        type="button"
                                         onClick={() => scroll(-300)}
                                         style={{
                                             position: 'absolute', left: '-1rem', top: '50%', transform: 'translateY(-50%)',
@@ -2013,6 +2014,7 @@ export default function StudentDetails() {
                                         <ChevronLeft size={24} />
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => scroll(300)}
                                         style={{
                                             position: 'absolute', right: '-1rem', top: '50%', transform: 'translateY(-50%)',
@@ -2048,8 +2050,6 @@ export default function StudentDetails() {
                                         {assessments.map((item, index) => {
                                             const previous = assessments[index + 1];
 
-
-
                                             const getDelta = (field, reverseColor = false, neutral = false) => {
                                                 if (!previous || !item[field] || !previous[field]) return null;
                                                 const currentVal = parseFloat(item[field]);
@@ -2062,8 +2062,6 @@ export default function StudentDetails() {
                                                 let color = 'var(--text-muted)';
 
                                                 if (!neutral) {
-                                                    // Normal: Up is Green (Good), Down is Red (Bad) e.g. Muscle
-                                                    // Reverse: Up is Red (Bad), Down is Green (Good) e.g. Fat
                                                     if (reverseColor) {
                                                         color = isPositive ? '#ef4444' : '#10b981';
                                                     } else {
@@ -2098,7 +2096,7 @@ export default function StudentDetails() {
                                                     }}
                                                     onClick={() => toggleAssessmentSelection(item)}
                                                 >
-                                                    {/* Selection Checkbox (Visual) */}
+                                                    {/* Selection Checkbox */}
                                                     <div style={{ position: 'absolute', top: '1rem', right: '1rem' }}>
                                                         <div style={{
                                                             width: '20px', height: '20px',
@@ -2112,143 +2110,52 @@ export default function StudentDetails() {
                                                         </div>
                                                     </div>
 
-                                                    {/* Centered Header */}
+                                                    {/* Header */}
                                                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
                                                         <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 'bold' }}>{item.dateString}</h3>
-
-                                                        {/* Action Buttons Row */}
-                                                        <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem' }}>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setNewAssessment(item);
-                                                                    setEditingAssessmentId(item.id);
-                                                                    setShowAssessmentForm(true);
-                                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                                                }}
-                                                                title="Editar"
-                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa', cursor: 'pointer' }}
-                                                            >
-                                                                <Edit2 size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    handleDeleteAssessment(item.id);
-                                                                }}
-                                                                title="Excluir"
-                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', cursor: 'pointer' }}
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); shareAssessmentPDF(item); }}
-                                                                title="Compartilhar WhatsApp"
-                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25D366', cursor: 'pointer' }}
-                                                            >
-                                                                <MessageCircle size={16} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); downloadAssessmentPDF(item); }}
-                                                                title="Baixar PDF"
-                                                                style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', cursor: 'pointer' }}
-                                                            >
-                                                                <Download size={16} />
-                                                            </button>
-                                                        </div>
+                                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Toque para selecionar</span>
                                                     </div>
 
-                                                    {/* Main Stats Row (Pills) */}
-                                                    <div style={{
-                                                        display: 'grid',
-                                                        gridTemplateColumns: '1fr 1fr',
-                                                        gap: '1rem',
-                                                        marginBottom: '1.5rem',
-                                                        width: '100%'
-                                                    }}>
-                                                        {item.height && (
-                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>ALT</span>
-                                                                <strong>{item.height}m</strong>
-                                                            </div>
-                                                        )}
-                                                        {item.weight && (
-                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>PESO</span>
-                                                                <strong>{item.weight}kg</strong>
-                                                                {getDelta('weight', true)}
-                                                            </div>
-                                                        )}
-                                                        {item.bodyFat && (
-                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>GC</span>
-                                                                <strong>{item.bodyFat}%</strong>
-                                                                {getDelta('bodyFat', true)}
-                                                            </div>
-                                                        )}
-                                                        {item.muscleMass && (
-                                                            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>MASSA M.</span>
-                                                                <strong>{item.muscleMass}kg</strong>
-                                                                {getDelta('muscleMass', false)}
-                                                            </div>
-                                                        )}
+                                                    {/* Actions */}
+                                                    <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem', justifyContent: 'center' }}>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); setNewAssessment(item); setEditingAssessmentId(item.id); setShowAssessmentForm(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#60a5fa', cursor: 'pointer' }}><Edit2 size={16} /></button>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); handleDeleteAssessment(item.id); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f87171', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); shareAssessmentPDF(item); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25D366', cursor: 'pointer' }}><MessageCircle size={16} /></button>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); downloadAssessmentPDF(item); }} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', cursor: 'pointer' }}><Download size={16} /></button>
                                                     </div>
 
-                                                    {/* Detailed Sections (Clean Grid) */}
+                                                    {/* Main Stats */}
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', marginTop: '1.5rem' }}>
+                                                        {item.weight && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>PESO</span><strong>{item.weight}kg</strong>{getDelta('weight', true)}</div>}
+                                                        {item.bodyFat && <div style={{ background: 'rgba(255,255,255,0.03)', padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}><span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>GC</span><strong>{item.bodyFat}%</strong>{getDelta('bodyFat', true)}</div>}
+                                                    </div>
+
+                                                    {/* Details */}
                                                     <div style={{ display: 'grid', gap: '1rem' }}>
                                                         {[
-                                                            {
-                                                                title: 'Membros Superiores',
-                                                                items: [
-                                                                    { l: 'Bíceps (D/E)', v: `${item.bicepsRight || '-'} / ${item.bicepsLeft || '-'}` },
-                                                                    { l: 'Tríceps (D/E)', v: `${item.tricepsRight || '-'} / ${item.tricepsLeft || '-'}` },
-                                                                    { l: 'Peitoral', v: item.chest }
-                                                                ]
-                                                            },
-                                                            {
-                                                                title: 'Tronco',
-                                                                items: [
-                                                                    { l: 'Cintura', v: item.waist },
-                                                                    { l: 'Abdômen', v: item.abdomen },
-                                                                    { l: 'Quadril', v: item.hips }
-                                                                ]
-                                                            },
-                                                            {
-                                                                title: 'Membros Inferiores',
-                                                                items: [
-                                                                    { l: 'Coxa (D/E)', v: `${item.thighRight || '-'} / ${item.thighLeft || '-'}` },
-                                                                    { l: 'Panturrilha (D/E)', v: `${item.calfRight || '-'} / ${item.calfLeft || '-'}` }
-                                                                ]
-                                                            }
-                                                        ].map((group, gIdx) => (
-                                                            <div key={gIdx} style={{ borderTop: '1px solid var(--border-glass)', paddingTop: '1rem' }}>
-                                                                <h6 style={{ textAlign: 'center', margin: '0 0 0.8rem 0', color: 'var(--primary)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{group.title}</h6>
-                                                                <div style={{ display: 'flex', justifyContent: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-                                                                    {group.items.map((m, mIdx) => (m.v && m.v !== '-') && (
-                                                                        <div key={mIdx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{m.l}</span>
-                                                                            <span style={{ fontWeight: 'bold' }}>{m.v} <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>cm</span></span>
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
+                                                            { title: 'Superiores', items: [{ l: 'Bíceps', v: `${item.bicepsRight || '-'} / ${item.bicepsLeft || '-'}` }, { l: 'Peitoral', v: item.chest }] },
+                                                            { title: 'Tronco', items: [{ l: 'Cintura', v: item.waist }, { l: 'Abdômen', v: item.abdomen }, { l: 'Quadril', v: item.hips }] },
+                                                            { title: 'Inferiores', items: [{ l: 'Coxas', v: `${item.thighRight || '-'} / ${item.thighLeft || '-'}` }, { l: 'Panturrilhas', v: `${item.calfRight || '-'} / ${item.calfLeft || '-'}` }] }
+                                                        ].map((s, i) => (
+                                                            <div key={i} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '12px', padding: '0.8rem' }}>
+                                                                <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s.title}</h5>
+                                                                {s.items.map((it, ii) => (
+                                                                    <div key={ii} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.2rem' }}>
+                                                                        <span style={{ color: 'var(--text-muted)' }}>{it.l}</span><span>{it.v || '-'}</span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         ))}
                                                     </div>
-
-                                                    {item.notes && (
-                                                        <div style={{ marginTop: '1.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.8rem', borderRadius: '6px', fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
-                                                            "{item.notes}"
-                                                        </div>
-                                                    )}
                                                 </div>
                                             );
                                         })}
                                     </div>
+                                    <p style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                                        Selecione 2 avaliações para comparar.
+                                    </p>
                                 </div>
-                            )
-                            }
-                        </div>
+
                     )
                 }
 

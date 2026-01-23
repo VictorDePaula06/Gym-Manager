@@ -19,30 +19,53 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
-                // Check Firestore for tenant status
                 try {
-                    const tenantRef = doc(db, 'tenants', currentUser.uid);
+                    // 1. Determine Role & Tenant
+                    let tenantId = currentUser.uid;
+                    let role = 'owner';
+
+                    // Check if this user is a STAFF member of another gym
+                    // We use the email as a key to look up in 'staff_access'
+                    // Note: In a real prod app, use a Firebase Function or strict rules. 
+                    // Here we assume standard read access or we use a hashed email path if privacy matters.
+                    // For MVP simplicity: users/{currentUser.uid}/metadata/access_info OR global lookup.
+                    // Let's try global lookup by email.
+
+                    const emailKey = currentUser.email.replace(/\./g, '_'); // sanitize for doc ID
+                    const staffRef = doc(db, 'staff_access', emailKey);
+                    const staffSnap = await getDoc(staffRef);
+
+                    if (staffSnap.exists()) {
+                        const staffData = staffSnap.data();
+                        if (staffData.gymOwnerId) {
+                            tenantId = staffData.gymOwnerId;
+                            role = staffData.role || 'staff';
+                        }
+                    }
+
+                    // 2. Load Tenant Data (using tenantId)
+                    const tenantRef = doc(db, 'tenants', tenantId);
                     const tenantSnap = await getDoc(tenantRef);
+
+                    // If I am staff, I need to check if the OWNER's account is active
+                    // But I also might have my own user status? 
+                    // For simplicity: If owner is inactive, staff is locked out too.
 
                     if (tenantSnap.exists()) {
                         const data = tenantSnap.data();
 
-                        // Check Access (Banned/Inactive)
+                        // Check Access (Banned/Inactive) for the GYM
                         if (data.active === false) {
                             setAccessDenied(true);
                         } else {
-                            // Check Trial Status
-                            // Legacy users (undefined status) or Active status -> ALLOW
+                            // Check Trial Status of the GYM
                             const subscriptionStatus = data.subscriptionStatus;
                             const isSubscriber = subscriptionStatus === 'active' || subscriptionStatus === undefined;
 
                             if (!isSubscriber) {
-                                // Must be in trial or explicitly expired
-                                // Calculate days since creation
+                                // Calculate days since creation of the GYM
                                 const createdDate = new Date(data.createdAt);
                                 const now = new Date();
-
-                                // TRIAL LIMIT SET TO 7 DAYS
                                 const TRIAL_DAYS = 7;
 
                                 const trialEndDate = new Date(createdDate);
@@ -70,44 +93,33 @@ export const AuthProvider = ({ children }) => {
                                 setAccessDenied(false);
                             }
                         }
-
-                        // Check Password Change Requirement
-                        if (data.requiresPasswordChange === true) {
-                            setRequiresPasswordChange(true);
-                        } else {
-                            setRequiresPasswordChange(false);
-                        }
-
                     } else {
-                        // Initialize new tenant
-                        await setDoc(tenantRef, {
-                            active: true,
-                            requiresPasswordChange: true, // Force change on first login
-                            email: currentUser.email,
-                            createdAt: new Date().toISOString(),
-                            subscriptionStatus: 'trial' // Default new users to trial
-                        });
-
-                        setTrialInfo({
-                            isTrial: true,
-                            daysRemaining: 1, // Default 1 day for testing
-                            totalDays: 1
-                        });
-                        setAccessDenied(false);
-                        setTrialExpired(false);
-                        setRequiresPasswordChange(true);
+                        // If tenant doc doesn't exist AND I am the owner, create it.
+                        // If I am staff and owner doc missing, something is wrong, but default to safe.
+                        if (role === 'owner') {
+                            await setDoc(tenantRef, {
+                                active: true,
+                                email: currentUser.email,
+                                createdAt: new Date().toISOString(),
+                                subscriptionStatus: 'trial'
+                            });
+                            setTrialInfo({ isTrial: true, daysRemaining: 7, totalDays: 7 }); // Corrected initial trial
+                            setAccessDenied(false);
+                            setTrialExpired(false);
+                        }
                     }
+
+                    // Attach role and tenantId to user object for easy access
+                    currentUser.role = role;
+                    currentUser.tenantId = tenantId;
+
                 } catch (error) {
                     console.error("Error checking tenant status:", error);
-                    // Default allow to prevent lockout during bugs, but maybe log this
                     setAccessDenied(false);
-                    setTrialExpired(false);
-                    setRequiresPasswordChange(false);
                 }
             } else {
                 setAccessDenied(false);
                 setTrialExpired(false);
-                setRequiresPasswordChange(false);
             }
 
             setUser(currentUser);

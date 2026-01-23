@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, Loader2, Dumbbell } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext'; // Assuming AuthContext provides useAuth
@@ -303,6 +303,14 @@ const Login = () => {
                     >
                         {loadingLocal ? <Loader2 size={20} className="animate-spin" /> : 'Acessar Plataforma'}
                     </button>
+
+                    <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+                        <Link to="/register" style={{ color: '#94a3b8', fontSize: '0.9rem', textDecoration: 'none' }}>
+                            Novo funcionário? <span style={{ color: '#10b981' }}>Cadastre-se aqui</span>
+                        </Link>
+                    </div>
+
+
                 </form>
             </div>
 

@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
-export default function PrivateRoute({ children }) {
+export default function PrivateRoute({ children, roleRequired }) {
     const { user, loading, accessDenied, trialExpired, requiresPasswordChange } = useAuth();
 
     if (loading) {
@@ -29,6 +29,12 @@ export default function PrivateRoute({ children }) {
 
     if (!user) {
         return <Navigate to="/login" />;
+    }
+
+    // Role Based Access Control
+    if (roleRequired && user.role && user.role !== roleRequired) {
+        // Redirect to dashboard if trying to access restricted area
+        return <Navigate to="/app" />;
     }
 
     return children;

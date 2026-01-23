@@ -6,7 +6,7 @@ import { useGym } from '../context/GymContext';
 
 export default function Layout() {
     const location = useLocation();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = async () => {
@@ -164,10 +164,15 @@ export default function Layout() {
                         <Briefcase size={20} />
                         <span>Professores</span>
                     </Link>
-                    <Link to="/app/financial" style={linkStyle('/app/financial')} onClick={() => setSidebarOpen(false)}>
-                        <CreditCard size={20} />
-                        <span>Financeiro</span>
-                    </Link>
+
+                    {/* Only Owner or Admin sees Financials */}
+                    {(!user?.role || user.role === 'owner' || user.role === 'admin') && (
+                        <Link to="/app/financial" style={linkStyle('/app/financial')} onClick={() => setSidebarOpen(false)}>
+                            <CreditCard size={20} />
+                            <span>Financeiro</span>
+                        </Link>
+                    )}
+
                     <Link to="/app/workouts" style={linkStyle('/app/workouts')} onClick={() => setSidebarOpen(false)}>
                         <Dumbbell size={20} />
                         <span>Treinos</span>
@@ -178,7 +183,38 @@ export default function Layout() {
                     </Link>
                 </nav>
 
-                <div style={{ padding: '1rem' }}>
+                <div style={{ padding: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+                    {/* User Profile Info */}
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: '0.75rem', marginBottom: '1rem',
+                        background: 'rgba(255,255,255,0.03)', borderRadius: '12px'
+                    }}>
+                        <div style={{
+                            width: '36px', height: '36px', borderRadius: '50%',
+                            background: 'var(--primary)', color: 'white',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontWeight: 'bold', fontSize: '0.9rem'
+                        }}>
+                            {(user?.email || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {user?.displayName || user?.email?.split('@')[0] || 'Usuário'}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <span style={{
+                                    textTransform: 'capitalize',
+                                    background: user?.role === 'owner' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                                    color: user?.role === 'owner' ? '#10b981' : '#60a5fa',
+                                    padding: '1px 6px', borderRadius: '4px', fontSize: '0.65rem'
+                                }}>
+                                    {user?.role === 'owner' ? 'Master' : (user?.role === 'admin' ? 'Admin' : 'Equipe')}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <Link to="/app/settings" style={linkStyle('/app/settings')} onClick={() => setSidebarOpen(false)}>
                         <Settings size={20} />
                         <span>Configurações</span>

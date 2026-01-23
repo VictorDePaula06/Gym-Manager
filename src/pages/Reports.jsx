@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { useGym } from "../context/GymContext";
+import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { Calendar, Users, DollarSign, TrendingUp, TrendingDown, Filter, FileText, Download, AlertCircle } from "lucide-react";
 import jsPDF from "jspdf";
@@ -27,9 +28,12 @@ const getBase64FromUrl = async (url) => {
 }
 
 const Reports = () => {
-    const { students, expenses, settings } = useGym(); // Added expenses
+    const { user } = useAuth(); // Get user
+    const { students, expenses, settings } = useGym();
     const { addToast } = useToast();
-    const [activeTab, setActiveTab] = useState("financial"); // 'financial' | 'students'
+
+    // Default to 'students' if not owner or admin
+    const [activeTab, setActiveTab] = useState((user?.role === 'owner' || user?.role === 'admin') ? "financial" : "students");
     const [dateRange, setDateRange] = useState({
         start: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
             .toISOString()
@@ -390,19 +394,21 @@ const Reports = () => {
             `}</style>
 
             <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
-                <button
-                    onClick={() => setActiveTab("financial")}
-                    style={{
-                        display: "flex", alignItems: "center", gap: "0.5rem",
-                        padding: '0.75rem 1.5rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600',
-                        background: activeTab === "financial" ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                        color: activeTab === "financial" ? 'white' : 'var(--text-muted)',
-                        border: activeTab === "financial" ? 'none' : '1px solid var(--border-glass)',
-                        outline: 'none'
-                    }}
-                >
-                    <DollarSign size={18} /> Financeiro
-                </button>
+                {(user?.role === 'owner' || user?.role === 'admin') && (
+                    <button
+                        onClick={() => setActiveTab("financial")}
+                        style={{
+                            display: "flex", alignItems: "center", gap: "0.5rem",
+                            padding: '0.75rem 1.5rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600',
+                            background: activeTab === "financial" ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                            color: activeTab === "financial" ? 'white' : 'var(--text-muted)',
+                            border: activeTab === "financial" ? 'none' : '1px solid var(--border-glass)',
+                            outline: 'none'
+                        }}
+                    >
+                        <DollarSign size={18} /> Financeiro
+                    </button>
+                )}
                 <button
                     onClick={() => setActiveTab("students")}
                     style={{
