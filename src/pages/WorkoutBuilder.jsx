@@ -43,6 +43,7 @@ export default function WorkoutBuilder() {
     const [currentVariation, setCurrentVariation] = useState(initialVariation);
     const [exercises, setExercises] = useState([]);
     const [workoutName, setWorkoutName] = useState(`Treino ${initialVariation}`);
+    const [observations, setObservations] = useState('');
     // Initialize sheet name, handle potentially undefined sheet safely
     const [sheetName, setSheetName] = useState(() => {
         if (sheetId === 'legacy') return 'Ficha Principal';
@@ -63,9 +64,11 @@ export default function WorkoutBuilder() {
             if (variationData) {
                 setExercises(variationData.exercises || []);
                 setWorkoutName(variationData.name || `Treino ${currentVariation}`);
+                setObservations(variationData.observations || '');
             } else {
                 setExercises([]);
                 setWorkoutName(`Treino ${currentVariation}`);
+                setObservations('');
             }
         }
     }, [student, currentVariation, sheetId]);
@@ -97,6 +100,7 @@ export default function WorkoutBuilder() {
                     ...existingWorkouts,
                     [currentVariation]: {
                         name: workoutName,
+                        observations,
                         lastUpdated: new Date().toISOString(),
                         exercises
                     }
@@ -115,6 +119,7 @@ export default function WorkoutBuilder() {
                         ...(sheet.workouts || {}),
                         [currentVariation]: {
                             name: workoutName,
+                            observations,
                             lastUpdated: new Date().toISOString(),
                             exercises
                         }
@@ -180,7 +185,7 @@ export default function WorkoutBuilder() {
         // Header Text
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(22);
-        const gymName = settings?.gymName || "GymManager";
+        const gymName = settings?.gymName || "Vector GymHub";
         doc.text(gymName, 105, 18, { align: "center" });
 
         doc.setFontSize(14);
@@ -214,6 +219,16 @@ export default function WorkoutBuilder() {
             doc.setTextColor(59, 130, 246); // Primary Blue
             doc.text(`Treino ${variation} - ${data.name || ''}`, 14, currentY);
 
+            // Add Observations if present
+            if (data.observations) {
+                currentY += 7;
+                doc.setFontSize(10);
+                doc.setTextColor(100);
+                const splitObs = doc.splitTextToSize(`Obs: ${data.observations}`, 180);
+                doc.text(splitObs, 14, currentY);
+                currentY += (splitObs.length * 4);
+            }
+
             const tableColumn = ["Exercício", "Séries", "Repetições", "Carga (kg)"];
             const tableRows = exercisesList.map(exercise => [
                 exercise.name,
@@ -240,7 +255,7 @@ export default function WorkoutBuilder() {
             const pageHeight = doc.internal.pageSize.height;
             doc.setFontSize(10);
             doc.setTextColor(150);
-            doc.text("Gym Manager - Seu parceiro de treinos", 105, pageHeight - 10, { align: "center" });
+            doc.text("Vector GymHub - Seu parceiro de treinos", 105, pageHeight - 10, { align: "center" });
             doc.text(`Página ${i} de ${pageCount}`, 190, pageHeight - 10, { align: "right" });
         }
 
@@ -410,6 +425,27 @@ export default function WorkoutBuilder() {
                                 borderRadius: '8px',
                                 color: 'var(--text-main)',
                                 fontSize: '1.1rem'
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ width: '100%', marginBottom: '2rem' }}>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Observações</label>
+                        <textarea
+                            value={observations}
+                            onChange={(e) => setObservations(e.target.value)}
+                            placeholder="Ex: Focar na execução lenta, descansar 2min entre séries..."
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                background: 'var(--card-bg)',
+                                border: '1px solid var(--border-glass)',
+                                borderRadius: '8px',
+                                color: 'var(--text-main)',
+                                fontSize: '0.95rem',
+                                minHeight: '80px',
+                                resize: 'vertical',
+                                fontFamily: 'inherit'
                             }}
                         />
                     </div>

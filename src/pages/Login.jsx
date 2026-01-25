@@ -131,17 +131,18 @@ const Login = () => {
             }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <div style={{
-                        width: '4rem',
-                        height: '4rem',
+                        width: '6rem',
+                        height: '6rem',
                         borderRadius: '1rem',
                         background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 1.5rem auto',
-                        boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.4)'
+                        boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.4)',
+                        overflow: 'hidden'
                     }}>
-                        <Dumbbell color="white" size={32} />
+                        <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <h1 style={{
                         fontSize: '1.875rem',
@@ -151,7 +152,7 @@ const Login = () => {
                         letterSpacing: '-0.025em',
                         textShadow: '0 2px 10px rgba(0,0,0,0.3)'
                     }}>
-                        Gym Manager
+                        Vector GymHub
                     </h1>
                     <p style={{ color: '#cbd5e1', fontSize: '0.95rem', fontWeight: '300' }}>Gerencie sua academia com excelência</p>
                 </div>

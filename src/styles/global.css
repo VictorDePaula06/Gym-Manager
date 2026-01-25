@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
     /* Colors - Modern Dark Glass Theme (Default) */
     --bg-app: #0f172a;

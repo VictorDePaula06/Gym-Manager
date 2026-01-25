@@ -16,7 +16,7 @@ export const GymProvider = ({ children }) => {
     const loading = loadingStudents || loadingSettings;
 
     const [settings, setSettings] = useState({
-        gymName: 'GymManager',
+        gymName: 'Vector GymHub',
         logoUrl: null,
         theme: 'dark'
     });
@@ -31,7 +31,7 @@ export const GymProvider = ({ children }) => {
             setExpenses([]);
             setTeachers([]);
             setTeacherPayments([]);
-            setSettings({ gymName: 'GymManager', logoUrl: null, theme: 'dark' });
+            setSettings({ gymName: 'Vector GymHub', logoUrl: null, theme: 'dark' });
 
             // RESET LOADING STATES to prevent flash on next login
             setLoadingStudents(true);
@@ -99,9 +99,9 @@ export const GymProvider = ({ children }) => {
             const data = docSnap.exists() ? docSnap.data() : {};
 
             setSettings({
-                gymName: data.gymName || 'GymManager',
+                gymName: data.gymName || 'Vector GymHub',
                 // Use local default logo if DB has none
-                logoUrl: data.logoUrl || '/logo.png',
+                logoUrl: '/logo.png', // Force new brand logo
                 whatsapp: data.whatsapp || '',
                 theme: data.theme || 'dark'
             });

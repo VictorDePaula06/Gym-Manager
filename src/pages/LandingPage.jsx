@@ -1,11 +1,64 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, TrendingUp, Users, Check, ArrowRight, FileText, DollarSign, GraduationCap, X, Plus } from 'lucide-react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function LandingPage() {
     const navigate = useNavigate();
     const [activeFeature, setActiveFeature] = useState(null);
+    const containerRef = useRef(null);
+
+    // GSAP Animations
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            // Hero Animation
+            gsap.from('.hero-content > *', {
+                y: 30,
+                duration: 1,
+                stagger: 0.1,
+                ease: "power3.out",
+                delay: 0.2
+            });
+
+            // 3D Image Animation
+            gsap.from('.hero-image-container', {
+                y: 50,
+                duration: 1.2,
+                ease: "power3.out",
+                delay: 0.5
+            });
+
+            // Features Animation
+            gsap.from('.feature-card', {
+                y: 50,
+                duration: 0.8,
+                stagger: 0.1,
+                ease: "power3.out",
+                scrollTrigger: {
+                    trigger: '#features',
+                    start: "top 95%", // Trigger very early
+                }
+            });
+
+            // Pricing Animation
+            gsap.from('.pricing-card', {
+                scale: 0.95,
+                duration: 0.8,
+                ease: "back.out(1.7)",
+                scrollTrigger: {
+                    trigger: '.pricing-section',
+                    start: "top 90%",
+                }
+            });
+
+        }, containerRef);
+
+        return () => ctx.revert();
+    }, []);
 
     // Lock body scroll when modal is open
     useEffect(() => {
@@ -187,7 +240,7 @@ export default function LandingPage() {
     };
 
     return (
-        <div style={containerStyle}>
+        <div ref={containerRef} style={containerStyle}>
             {/* Header */}
             <header style={headerStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -395,6 +448,7 @@ export default function LandingPage() {
                 {features.map((feature) => (
                     <div
                         key={feature.id}
+                        className="feature-card"
                         style={cardStyle}
                         onClick={() => setActiveFeature(feature)}
                         onMouseEnter={(e) => {
@@ -561,7 +615,7 @@ export default function LandingPage() {
             )}
 
             {/* Pricing Section */}
-            <section style={{
+            <section className="pricing-section" style={{
                 padding: '6rem 2rem',
                 background: 'linear-gradient(to bottom, #0f172a, #1e293b)',
                 textAlign: 'center'
@@ -579,7 +633,7 @@ export default function LandingPage() {
                         Tudo o que você precisa para gerenciar sua academia em um único lugar.
                     </p>
 
-                    <div style={{
+                    <div className="pricing-card" style={{
                         background: 'rgba(30, 41, 59, 0.6)',
                         border: '1px solid rgba(6, 182, 212, 0.3)',
                         borderRadius: '24px',
@@ -861,6 +915,6 @@ export default function LandingPage() {
                     }
                 }
             `}</style>
-        </div >
+        </div>
     );
 }

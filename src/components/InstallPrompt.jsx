@@ -15,17 +15,23 @@ const InstallPrompt = () => {
 
         // Check if already installed (ignorar se estiver em debug)
         if (!isDebug && window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('PWA: App já está rodando em modo standalone');
             return;
         }
 
-        // Android / Desktop (Chromium) - Standard Logic
+        // 1. Verificar se já capturamos o evento globalmente (no index.html)
+        if (window.deferredPrompt) {
+            console.log('PWA: Usando evento capturado globalmente');
+            setDeferredPrompt(window.deferredPrompt);
+            setIsVisible(true);
+        }
+
+        // 2. Ouvinte padrão para eventos futuros (caso o componente monte antes do evento)
         const handler = (e) => {
-            console.log('PWA: Evento beforeinstallprompt capturado', e);
-            // Prevent the mini-infobar from appearing on mobile
+            console.log('PWA: Evento beforeinstallprompt capturado no componente', e);
             e.preventDefault();
-            // Stash the event so it can be triggered later.
             setDeferredPrompt(e);
-            // Update UI notify the user they can install the PWA
+            window.deferredPrompt = e; // Sincronizar com global
             setIsVisible(true);
         };
         window.addEventListener('beforeinstallprompt', handler);
@@ -33,11 +39,16 @@ const InstallPrompt = () => {
         // iOS Logic
         const userAgent = window.navigator.userAgent.toLowerCase();
         const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-        const isStandalone = window.navigator.standalone === true; // iOS Safari specific
+        const isStandalone = window.navigator.standalone === true;
 
         if (isIosDevice && !isStandalone) {
             setIsIOS(true);
             setIsVisible(true);
+        }
+
+        // Log para debug se estiver na página inicial
+        if (location.pathname === '/') {
+            console.log('PWA: Ocultando prompt na Landing Page por design.');
         }
 
         // Force Debug Mode
@@ -49,7 +60,7 @@ const InstallPrompt = () => {
         return () => {
             window.removeEventListener('beforeinstallprompt', handler);
         };
-    }, [location.search]);
+    }, [location.search, location.pathname]);
 
     const handleInstallClick = async () => {
         console.log('PWA: Tentando instalar...');
@@ -128,9 +139,11 @@ const InstallPrompt = () => {
                     justifyContent: 'center',
                     color: 'var(--primary)',
                     marginTop: '2px',
-                    position: 'relative'
+                    position: 'relative',
+                    overflow: 'hidden',
+                    padding: '8px'
                 }}>
-                    <Download size={24} />
+                    <img src="/logo.png" alt="Instalar" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     {new URLSearchParams(location.search).get('pwa-debug') === 'true' && (
                         <span style={{
                             position: 'absolute',

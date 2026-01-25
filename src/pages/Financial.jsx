@@ -506,7 +506,6 @@ export default function Financial() {
                                     alignItems: 'center',
                                     padding: '0.75rem 1.5rem',
                                     borderRadius: '12px',
-                                    borderRadius: '12px',
                                     // background: handled by btn-primary class
                                     boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                                     fontWeight: '600',

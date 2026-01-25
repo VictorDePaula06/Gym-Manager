@@ -1,13 +1,57 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase } from 'lucide-react';
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
+import { useToast } from '../context/ToastContext';
 
 export default function Layout() {
     const location = useLocation();
     const { logout, user } = useAuth();
     const navigate = useNavigate();
+    const { addToast } = useToast(); // Added useToast initialization
+
+    // --- TEMPORARY FIX: UPDATE JOAO GALLERY ---
+    useEffect(() => {
+        const applyGallery = async () => {
+            if (!user) return;
+            try {
+                const q = query(collection(db, `users/${user.uid}/students`), where('name', '>=', 'Joao'), where('name', '<=', 'João\uf8ff'));
+                const snapshot = await getDocs(q);
+
+                snapshot.forEach(async (docSnap) => {
+                    const data = docSnap.data();
+                    if (data.name.toLowerCase().includes('joao') || data.name.toLowerCase().includes('joão')) {
+                        // Check if gallery is already set to avoid loop
+                        const newGallery = Array(10).fill(null).map((_, i) => ({
+                            url: '/joao_legs.png',
+                            date: new Date(2025, 0, i * 15 + 1).toISOString()
+                        }));
+
+                        const newProfilePic = '/joao_legs.png';
+
+                        // Simple check: update if length differs or first URL differs or profile differs
+                        // FORCE UPDATE for visualization
+                        // if (!data.photoGallery || ...)
+
+                        await updateDoc(doc(db, `users/${user.uid}/students`, docSnap.id), {
+                            photoGallery: newGallery,
+                            profilePictureUrl: newProfilePic
+                        });
+                        console.log(`Updated gallery and profile for ${data.name}`);
+                        addToast(`Galeria ATUALIZADA (10 fotos iguais) para ${data.name}`, 'success');
+                    }
+                });
+            } catch (e) {
+                console.error("Gallery fix error", e);
+            }
+        };
+
+        applyGallery();
+    }, [user, addToast]);
+    // ----------------------------------------
 
     const handleLogout = async () => {
         await logout();
@@ -73,7 +117,7 @@ export default function Layout() {
                         </svg>
                     </button>
                     <span style={{ marginLeft: '1rem', fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>
-                        {settings?.gymName || 'GymManager'}
+                        {settings?.gymName || 'Vector GymHub'}
                     </span>
                 </div>
             )}
@@ -131,8 +175,8 @@ export default function Layout() {
                             src={settings.logoUrl}
                             alt="Logo"
                             style={{
-                                width: '60px',
-                                height: '60px',
+                                width: '90px',
+                                height: '90px',
                                 borderRadius: '12px',
                                 objectFit: 'cover',
                                 marginBottom: '1rem',
@@ -147,7 +191,7 @@ export default function Layout() {
                         WebkitTextFillColor: 'transparent',
                         margin: 0
                     }}>
-                        {settings?.gymName || 'GymManager'}
+                        {settings?.gymName || 'Vector GymHub'}
                     </h1>
                 </div>
 

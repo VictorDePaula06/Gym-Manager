@@ -1,13 +1,29 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>gym-manager</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/png" href="/favicon.png?v=5" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5">
+  <link rel="icon" type="image/png" sizes="192x192" href="/app-icon-192-v2.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/app-icon-512-v2.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vector GymHub</title>
+  <script>
+    window.deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      window.deferredPrompt = e;
+      console.log('PWA: beforeinstallprompt captured globally');
+    });
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>

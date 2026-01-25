@@ -10,7 +10,7 @@ const TrialExpired = () => {
 
     const handleContactSupport = () => {
         const phone = settings?.whatsapp?.replace(/\D/g, '') || '5511999999999'; // Fallback if not set
-        const message = `Olá, meu período de teste acabou e gostaria de assinar o Gym Manager PRO. Meu email é: ${user?.email}`;
+        const message = `Olá, meu período de teste acabou e gostaria de assinar o Vector GymHub PRO. Meu email é: ${user?.email}`;
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     };
 

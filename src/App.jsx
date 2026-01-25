@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'; // Import Firebase
+import { db } from './firebase'; // Import db instance
 import { AuthProvider } from './context/AuthContext';
 import { GymProvider } from './context/GymContext';
 import { ToastProvider } from './context/ToastContext';
@@ -24,9 +27,28 @@ import ChangePassword from './pages/ChangePassword';
 import AccessDenied from './pages/AccessDenied';
 import PrivateRoute from './components/PrivateRoute';
 import LandingPage from './pages/LandingPage';
+import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
 
 function App() {
+  // --- TEMPORARY: FORCE UPDATE PHOTO FOR JOAO ---
+  useEffect(() => {
+    const applyPhoto = async () => {
+      try {
+        console.log("Running temporary photo fix...");
+        // Search for Joao or João
+        const studentsRef = collection(db, `users/r92j5283hSNTk92t9403/students`); // Hardcoded UID for now based on previous context or search generic if possible
+        // Actually, we need the AUTH UID. Let's do this inside a component that has Auth context, or just search all if possible (requires rules).
+        // Better strategy: Do this in Layout or Dashboard which is authenticated.
+        // But the user wants it now. I'll move this logic to Dashboard.jsx to ensure we have auth context.
+      } catch (e) {
+        console.error("Fix failed", e);
+      }
+    };
+    // applyPhoto(); 
+  }, []);
+  // ----------------------------------------------
+
   return (
     <AuthProvider>
       <GymProvider>
@@ -36,6 +58,7 @@ function App() {
               <InstallPrompt />
               <Routes>
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/vector" element={<VectorGymHub />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />

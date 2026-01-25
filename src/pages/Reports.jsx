@@ -316,7 +316,7 @@ const Reports = () => {
             autoTable(doc, {
                 head: [tableColumn],
                 body: tableRows,
-                startY: 50,
+                startY: 70,
                 theme: 'grid',
                 headStyles: { fillColor: [59, 130, 246] },
             });
