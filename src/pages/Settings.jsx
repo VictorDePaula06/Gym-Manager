@@ -437,6 +437,7 @@ export default function Settings() {
                                 {isDeletingInactive ? 'Limpando...' : 'Excluir Inativos'}
                             </button>
                         </div>
+
                     </div>
                 </>
             )}

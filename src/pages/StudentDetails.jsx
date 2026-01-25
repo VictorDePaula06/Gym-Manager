@@ -66,7 +66,7 @@ export default function StudentDetails() {
     const [expandedPhoto, setExpandedPhoto] = useState(null);
     const [galleryItems, setGalleryItems] = useState([]); // Local state for interaction
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const simulatedForId = useRef(null);
+
     const scrollRef = useRef(null);
 
     const scroll = (scrollOffset) => {
@@ -80,25 +80,8 @@ export default function StudentDetails() {
         if (found) {
             setStudent(found);
 
-            // Logic to simulate gallery for Joao (since adding photos is blocked by Firebase payment)
-            // This ensures deletion works on the UI without needing DB to be perfect
-            const isJoao = found.name.toLowerCase().includes('joao') || found.name.toLowerCase().includes('joão');
+            setGalleryItems(found.photoGallery || []);
 
-            if (isJoao && (!found.photoGallery || found.photoGallery.length === 0)) {
-                if (simulatedForId.current !== id) {
-                    const simulated = [
-                        { url: '/joao_legs.png', date: new Date(2025, 0, 15).toISOString(), path: null },
-                        { url: '/joao_pose_1.png', date: new Date(2025, 0, 16).toISOString(), path: null },
-                        { url: '/joao_pose_2.png', date: new Date(2025, 0, 17).toISOString(), path: null },
-                        { url: '/joao_pose_3.png', date: new Date(2025, 0, 18).toISOString(), path: null }
-                    ];
-                    setGalleryItems(simulated);
-                    simulatedForId.current = id;
-                }
-            } else {
-                setGalleryItems(found.photoGallery || []);
-                simulatedForId.current = null;
-            }
 
             if (found.workoutSheets && Object.keys(found.workoutSheets).length > 0 && selectedSheetId === 'default') {
                 const sheetIds = Object.keys(found.workoutSheets).sort();

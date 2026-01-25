@@ -14,43 +14,7 @@ export default function Layout() {
     const { addToast } = useToast(); // Added useToast initialization
 
     // --- TEMPORARY FIX: UPDATE JOAO GALLERY ---
-    useEffect(() => {
-        const applyGallery = async () => {
-            if (!user) return;
-            try {
-                const q = query(collection(db, `users/${user.uid}/students`), where('name', '>=', 'Joao'), where('name', '<=', 'João\uf8ff'));
-                const snapshot = await getDocs(q);
 
-                snapshot.forEach(async (docSnap) => {
-                    const data = docSnap.data();
-                    if (data.name.toLowerCase().includes('joao') || data.name.toLowerCase().includes('joão')) {
-                        // Check if gallery is already set to avoid loop
-                        const newGallery = Array(10).fill(null).map((_, i) => ({
-                            url: '/joao_legs.png',
-                            date: new Date(2025, 0, i * 15 + 1).toISOString()
-                        }));
-
-                        const newProfilePic = '/joao_legs.png';
-
-                        // Simple check: update if length differs or first URL differs or profile differs
-                        // FORCE UPDATE for visualization
-                        // if (!data.photoGallery || ...)
-
-                        await updateDoc(doc(db, `users/${user.uid}/students`, docSnap.id), {
-                            photoGallery: newGallery,
-                            profilePictureUrl: newProfilePic
-                        });
-                        console.log(`Updated gallery and profile for ${data.name}`);
-                        addToast(`Galeria ATUALIZADA (10 fotos iguais) para ${data.name}`, 'success');
-                    }
-                });
-            } catch (e) {
-                console.error("Gallery fix error", e);
-            }
-        };
-
-        applyGallery();
-    }, [user, addToast]);
     // ----------------------------------------
 
     const handleLogout = async () => {

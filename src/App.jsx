@@ -31,23 +31,7 @@ import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
 
 function App() {
-  // --- TEMPORARY: FORCE UPDATE PHOTO FOR JOAO ---
-  useEffect(() => {
-    const applyPhoto = async () => {
-      try {
-        console.log("Running temporary photo fix...");
-        // Search for Joao or João
-        const studentsRef = collection(db, `users/r92j5283hSNTk92t9403/students`); // Hardcoded UID for now based on previous context or search generic if possible
-        // Actually, we need the AUTH UID. Let's do this inside a component that has Auth context, or just search all if possible (requires rules).
-        // Better strategy: Do this in Layout or Dashboard which is authenticated.
-        // But the user wants it now. I'll move this logic to Dashboard.jsx to ensure we have auth context.
-      } catch (e) {
-        console.error("Fix failed", e);
-      }
-    };
-    // applyPhoto(); 
-  }, []);
-  // ----------------------------------------------
+
 
   return (
     <AuthProvider>
