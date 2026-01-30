@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle } from 'lucide-react';
 import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +9,7 @@ import { useToast } from '../context/ToastContext';
 
 export default function Layout() {
     const location = useLocation();
-    const { logout, user } = useAuth();
+    const { logout, user, gracePeriodDaysRemaining } = useAuth();
     const navigate = useNavigate();
     const { addToast } = useToast(); // Added useToast initialization
 
@@ -189,6 +189,14 @@ export default function Layout() {
                         <PieChart size={20} />
                         <span>Relatórios</span>
                     </Link>
+
+                    {/* Subscription Link - Only for Owner/Admin? Yes, usually. */}
+                    {(!user?.role || user.role === 'owner' || user.role === 'admin') && (
+                        <Link to="/app/subscription" style={linkStyle('/app/subscription')} onClick={() => setSidebarOpen(false)}>
+                            <CreditCard size={20} />
+                            <span>Assinatura</span>
+                        </Link>
+                    )}
                 </nav>
 
                 <div style={{ padding: '1rem', borderTop: '1px solid var(--border-glass)' }}>
@@ -246,6 +254,48 @@ export default function Layout() {
 
             {/* Main Content */}
             <main className="main-content" style={{ flex: 1, padding: '2vh', overflow: 'auto', width: '100%' }}>
+
+                {/* Grace Period Warning Banner */}
+                {gracePeriodDaysRemaining !== null && (
+                    <div className="fade-in" style={{
+                        marginBottom: '1.5rem',
+                        padding: '1rem',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid #ef4444',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '1rem',
+                        color: '#ef4444'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <AlertTriangle size={24} />
+                            <div>
+                                <h4 style={{ margin: 0, fontWeight: 'bold' }}>Pagamento Pendente</h4>
+                                <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.9 }}>
+                                    Seu acesso será bloqueado em <strong>{gracePeriodDaysRemaining} dias</strong>. Regularize sua assinatura.
+                                </p>
+                            </div>
+                        </div>
+                        <Link
+                            to="/app/settings"
+                            style={{
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '8px',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            Regularizar
+                        </Link>
+                    </div>
+                )}
+
                 <style>{`
                     .mobile-close-btn { display: none; }
                     

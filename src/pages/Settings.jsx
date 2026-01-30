@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle, User, Plus } from 'lucide-react';
+import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle, User, Plus, CreditCard, Calendar, Star, Shield } from 'lucide-react';
 import { storage, db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, getDoc, doc, setDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
@@ -11,6 +12,7 @@ export default function Settings() {
     const { settings, updateSettings } = useGym();
     const { user } = useAuth();
     const { addToast } = useToast();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         gymName: '',
         whatsapp: '',
@@ -21,6 +23,7 @@ export default function Settings() {
     const [isDeletingInactive, setIsDeletingInactive] = useState(false);
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
+    const [subscription, setSubscription] = useState(null); // Subscription state
 
     useEffect(() => {
         if (settings) {
@@ -32,6 +35,23 @@ export default function Settings() {
             }));
         }
     }, [settings]);
+
+    // Fetch Subscription Data
+    useEffect(() => {
+        const fetchSubscription = async () => {
+            if (!user?.tenantId) return;
+            try {
+                const tenantRef = doc(db, 'tenants', user.tenantId);
+                const snap = await getDoc(tenantRef);
+                if (snap.exists()) {
+                    setSubscription(snap.data());
+                }
+            } catch (error) {
+                console.error("Erro ao buscar assinatura:", error);
+            }
+        };
+        fetchSubscription();
+    }, [user]);
 
     // Track latest settings for cleanup
     const settingsRef = useRef(settings);
@@ -95,6 +115,21 @@ export default function Settings() {
     };
 
     // ... (handleMigrateData remains unchanged)
+
+    const handleFixAccount = async () => {
+        if (!confirm("Isso irá corrigir seu tipo de conta, removendo registros de equipe duplicados. Continuar?")) return;
+
+        try {
+            const emailKey = user.email.toLowerCase().replace(/\./g, '_');
+            await deleteDoc(doc(db, 'staff_access', emailKey));
+
+            addToast("Conta corrigida! A página será recarregada.", 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+            console.error("Erro ao corrigir conta:", error);
+            addToast("Erro ao corrigir.", 'error');
+        }
+    };
 
     const handleDeleteInactive = async () => {
         if (!confirm("Tem certeza que deseja EXCLUIR TODOS os alunos marcados como 'Inativo'? Essa ação não pode ser desfeita.")) return;
@@ -245,6 +280,105 @@ export default function Settings() {
             {activeTab === 'general' && (
                 <>
                     {/* General Settings Content (Existing) */}
+                    {/* Subscription Card */}
+                    <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.4))' }}>
+                        <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <CreditCard size={24} color="var(--primary)" />
+                            Assinatura
+                        </h2>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                            {/* Status */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Plano Atual</label>
+                                <div style={{
+                                    fontSize: '1.2rem',
+                                    fontWeight: 'bold',
+                                    color: subscription?.lifetimeAccess ? '#a78bfa' : // Violet for Lifetime
+                                        subscription?.subscriptionStatus === 'active' ? '#10b981' :
+                                            subscription?.subscriptionStatus === 'trial' ? '#fbbf24' : '#ef4444'
+                                }}>
+                                    {subscription?.lifetimeAccess ? (
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Star size={20} fill="#a78bfa" color="#a78bfa" /> VITALÍCIO
+                                        </span>
+                                    ) : (
+                                        subscription?.subscriptionStatus === 'active' ? (
+                                            subscription?.plan === 'annual' ? (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981' }}>
+                                                    <Star size={20} fill="#10b981" /> PRO (Anual)
+                                                </span>
+                                            ) : (
+                                                'PRO (Mensal)'
+                                            )
+                                        ) :
+                                            subscription?.subscriptionStatus === 'trial' ? 'Período de Teste' :
+                                                subscription?.subscriptionStatus === 'past_due' ? 'Pagamento Pendente' : 'Inativo / Gratuito'
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Expiry / Renewal Date */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                    {subscription?.lifetimeAccess ? 'Renovação' :
+                                        subscription?.subscriptionStatus === 'active' ? 'Próxima Cobrança' :
+                                            subscription?.subscriptionStatus === 'past_due' ? 'Venceu em' : 'Expira em'}
+                                </label>
+                                <div style={{ fontSize: '1.1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Calendar size={18} color="var(--text-muted)" />
+                                    {subscription?.lifetimeAccess ? (
+                                        'Acesso Permanente'
+                                    ) : (
+                                        subscription?.current_period_end ? (
+                                            new Date(subscription.current_period_end.seconds * 1000).toLocaleDateString('pt-BR', {
+                                                day: '2-digit', month: '2-digit', year: 'numeric'
+                                            })
+                                        ) : subscription?.subscriptionStatus === 'trial' && subscription?.createdAt ? (
+                                            (() => {
+                                                const created = new Date(subscription.createdAt);
+                                                const expiry = new Date(created);
+                                                expiry.setDate(created.getDate() + 7);
+                                                return expiry.toLocaleDateString('pt-BR', {
+                                                    day: '2-digit', month: '2-digit', year: 'numeric'
+                                                });
+                                            })()
+                                        ) : (
+                                            '---'
+                                        )
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {subscription?.subscriptionStatus === 'past_due' && (
+                            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <AlertCircle size={18} />
+                                    <strong>Atenção:</strong> Seu pagamento está pendente. Regularize para evitar bloqueio.
+                                </div>
+                                <button
+                                    onClick={() => navigate('/app/subscription')}
+                                    style={{
+                                        backgroundColor: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '0.5rem 1rem',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        fontWeight: '600',
+                                        fontSize: '0.9rem',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '0.5rem'
+                                    }}
+                                >
+                                    <CreditCard size={16} /> Regularizar Agora
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="glass-panel" style={{ padding: '2rem' }}>
                         <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem' }}>Personalização</h2>
 
@@ -438,12 +572,40 @@ export default function Settings() {
                             </button>
                         </div>
 
+                        {/* Fix Account Logic */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border-glass)' }}>
+                            <div>
+                                <h4 style={{ margin: 0, marginBottom: '0.5rem' }}>Corrigir Tipo de Conta</h4>
+                                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                    Use se você for o Dono mas estiver aparecendo como "Equipe".
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleFixAccount}
+                                style={{
+                                    background: 'rgba(59, 130, 246, 0.1)',
+                                    color: '#3b82f6',
+                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                    padding: '0.75rem 1.5rem',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontWeight: '600'
+                                }}
+                            >
+                                <Shield size={18} />
+                                Corrigir Conta
+                            </button>
+                        </div>
+
                     </div>
                 </>
             )}
 
             {activeTab === 'team' && (
-                user?.role === 'owner' ? (
+                user?.role === 'owner' || user?.isSuperAdmin ? (
                     <TeamSettings />
                 ) : (
                     <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -517,7 +679,8 @@ function TeamSettings() {
         setInviting(true);
         try {
             // Create entry in global 'staff_access' collection
-            const emailKey = inviteEmail.replace(/\./g, '_');
+            const normalizedEmail = inviteEmail.toLowerCase();
+            const emailKey = normalizedEmail.replace(/\./g, '_');
             const staffRef = doc(db, 'staff_access', emailKey);
 
             // SECURITY CHECK: Prevent Hijacking
@@ -536,7 +699,7 @@ function TeamSettings() {
                 role: inviteRole, // Use selected role
                 invitedAt: new Date().toISOString(),
                 inviterEmail: user.email,
-                targetEmail: inviteEmail,
+                targetEmail: normalizedEmail,
                 blocked: false
             });
 

@@ -23,7 +23,11 @@ const TeacherCard = ({ teacher, onEdit, onDelete }) => {
 
                 <div className="teacher-avatar-container">
                     <div className="teacher-avatar">
-                        {getInitials(teacher.name)}
+                        {teacher.profilePictureUrl ? (
+                            <img src={teacher.profilePictureUrl} alt={teacher.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            getInitials(teacher.name)
+                        )}
                     </div>
                 </div>
 

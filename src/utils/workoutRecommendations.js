@@ -150,6 +150,9 @@ export const generateWorkout = (student, overrideLevel) => {
         ...diseases.map(d => d.charAt(0).toUpperCase() + d.slice(1))
     ].join(', ');
 
+    // --- FINAL CLEANUP (Deduplication) ---
+    recommendation = removeDuplicates(recommendation);
+
     return {
         name: sheetName,
         workouts: recommendation,
@@ -376,26 +379,33 @@ const applyHealthRestrictions = (workouts, limitations, diseases) => {
 
             return newEx;
         });
-
-        // Deduplicate exercises in the division
-        const seenNames = new Set();
-        division.exercises = division.exercises.filter(ex => {
-            if (!ex.name) return false; // Should not happen, but safety check
-            const cleanName = ex.name.trim().toLowerCase();
-
-            // If already seen, skip (return false)
-            if (seenNames.has(cleanName)) {
-                return false;
-            }
-
-            // Otherwise add to set and keep (return true)
-            seenNames.add(cleanName);
-            return true;
-        });
     });
 
     return newWorkouts;
 };
+
+// --- DEDUPLICATION LOGIC ---
+const removeDuplicates = (workouts) => {
+    Object.keys(workouts).forEach(key => {
+        const division = workouts[key];
+        const seenNames = new Set();
+
+        division.exercises = division.exercises.filter(ex => {
+            if (!ex.name) return false;
+            const cleanName = ex.name.trim().toLowerCase();
+
+            // Check for duplicate names (exact match)
+            if (seenNames.has(cleanName)) {
+                return false;
+            }
+
+            seenNames.add(cleanName);
+            return true;
+        });
+    });
+    return workouts;
+};
+
 
 
 // --- TEMPLATES ---

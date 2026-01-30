@@ -1,0 +1,30 @@
+
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, updateDoc, Timestamp, getDoc } from "firebase/firestore";
+
+// Configuração do Firebase (copie do seu firebase.js ou .env se necessário, mas para scripts one-off hardcode é mais rápido se seguro localmente)
+// Vou assumir que o usuário tem o arquivo firebase.js acessível ou usarei process.env se configurado. 
+// Para garantir, vou ler o arquivo firebase.js se precisar, mas aqui vou tentar importar ou pedir para o usuário rodar no contexto do app.
+// Melhor: criar um script que roda com node mas precisa das credenciais.
+// Como não tenho as credenciais aqui, vou criar um script para ser rodado via 'node' assumindo que o ambiente tem acesso ou criando um pequeno app web temporário?
+// Não, o jeito mais fácil é criar um componente temporário no React ou um script node se tivermos as chaves.
+// O User já tem o projeto rodando. Vou criar um arquivo na pasta src que pode ser importado ou executado.
+
+// ESPERA! O jeito mais fácil é criar um script que o usuário executa com `node` SE ele tiver "type": "module" e as chaves.
+// Mas o projeto é Vite.
+// Vou criar um arquivo `simulate_past_due.js` na raiz e usar as credenciais que estão no `.env` (se o usuário tiver) ou hardcoded no `src/firebase.js`.
+// Vou ler `src/firebase.js` para pegar a config.
+
+const firebaseConfig = {
+  // O usuário terá que preencher ou o script tentará ler.
+  // Vou deixar o script ler de um arquivo ou usar placeholders.
+};
+
+// ... 
+
+// ABORDAGEM MELHOR:
+// Criar uma PÁGINA OCULTA ou um BOTÃO no SuperAdmin para "Simular Status".
+// O usuário já está logado no app, então já tem acesso ao Firestore autenticado.
+// Isso é MUITO mais fácil do que configurar um script Node externo com admin SDK ou credenciais de cliente.
+
+// Vou criar um componente `SimulationPanel.jsx` que posso injetar ou apenas adicionar a lógica no SuperAdmin.jsx existente.

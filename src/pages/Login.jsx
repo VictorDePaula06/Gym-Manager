@@ -307,9 +307,13 @@ const Login = () => {
                         {loadingLocal ? <Loader2 size={20} className="animate-spin" /> : 'Acessar Plataforma'}
                     </button>
 
-                    <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                        <Link to="/register" style={{ color: '#94a3b8', fontSize: '0.9rem', textDecoration: 'none' }}>
-                            Novo funcionário? <span style={{ color: '#10b981' }}>Cadastre-se aqui</span>
+                    <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <Link to="/register" style={{ color: '#94a3b8', fontSize: '0.95rem', textDecoration: 'none' }}>
+                            Possui um convite? <span style={{ color: '#10b981', fontWeight: '600' }}>Resgatar acesso</span>
+                        </Link>
+
+                        <Link to="/" style={{ color: '#64748b', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                            <span>←</span> Voltar para o site
                         </Link>
                     </div>
 

@@ -11,14 +11,14 @@ export default defineConfig({
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Gym Manager',
-        short_name: 'GymManager',
+        name: 'Vector GymHub',
+        short_name: 'Vector',
         description: 'Gerenciamento de Academia Completo',
         theme_color: '#0f172a',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: '/app',
         icons: [
           {
             src: 'pwa-192x192.png',

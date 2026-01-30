@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
-import { Save, ChevronLeft, User, Briefcase, Mail, Phone, Calendar, DollarSign } from 'lucide-react';
+import { Save, ChevronLeft, User, Briefcase, Mail, Phone, Calendar, DollarSign, Camera, Trash2 } from 'lucide-react';
+import { storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function TeacherForm() {
     const { id } = useParams();
@@ -19,16 +21,23 @@ export default function TeacherForm() {
         admissionDate: new Date().toISOString().split('T')[0],
         status: 'Active',
         commissionType: 'Percentage', // 'Percentage' or 'Fixed'
-        commissionValue: ''
+        commissionValue: '',
+        paymentDay: ''
     });
 
     const [saving, setSaving] = useState(false);
+    const [itemPhoto, setItemPhoto] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState(null);
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         if (id) {
             const teacher = teachers.find(t => t.id === id);
             if (teacher) {
                 setFormData(teacher);
+                if (teacher.profilePictureUrl) {
+                    setPhotoPreview(teacher.profilePictureUrl);
+                }
             }
         }
     }, [id, teachers]);
@@ -38,15 +47,42 @@ export default function TeacherForm() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setItemPhoto(file);
+            setPhotoPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleRemovePhoto = () => {
+        setItemPhoto(null);
+        setPhotoPreview(null);
+        setFormData(prev => ({ ...prev, profilePictureUrl: null }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
+            let photoUrl = formData.profilePictureUrl;
+
+            if (itemPhoto) {
+                const photoRef = ref(storage, `teachers/${Date.now()}_${itemPhoto.name}`);
+                await uploadBytes(photoRef, itemPhoto);
+                photoUrl = await getDownloadURL(photoRef);
+            }
+
+            const dataToSave = {
+                ...formData,
+                profilePictureUrl: photoUrl || null
+            };
+
             if (id) {
-                await updateTeacher(id, formData);
+                await updateTeacher(id, dataToSave);
                 addToast('Professor atualizado com sucesso!', 'success');
             } else {
-                await addTeacher({ ...formData, createdAt: new Date().toISOString() });
+                await addTeacher({ ...dataToSave, createdAt: new Date().toISOString() });
                 addToast('Professor cadastrado com sucesso!', 'success');
             }
             navigate('/app/teachers');
@@ -110,6 +146,82 @@ export default function TeacherForm() {
                 </div>
 
                 <form onSubmit={handleSubmit}>
+
+                    {/* Photo Upload Area */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
+                        <div style={{
+                            position: 'relative',
+                            width: '120px',
+                            height: '120px',
+                            marginBottom: '1rem'
+                        }}>
+                            <div style={{
+                                width: '100%',
+                                height: '100%',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                border: '3px solid var(--border-glass)',
+                                background: 'var(--input-bg)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                {photoPreview ? (
+                                    <img src={photoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <User size={48} color="var(--text-muted)" />
+                                )}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current.click()}
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '0',
+                                    right: '0',
+                                    background: 'var(--primary)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: '36px',
+                                    height: '36px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                                }}
+                            >
+                                <Camera size={18} />
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handlePhotoChange}
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                            />
+                        </div>
+                        {photoPreview && (
+                            <button
+                                type="button"
+                                onClick={handleRemovePhoto}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.25rem'
+                                }}
+                            >
+                                <Trash2 size={14} /> Remover foto
+                            </button>
+                        )}
+                    </div>
 
                     {/* Personal Information */}
                     <div style={sectionTitleStyle}>
@@ -191,9 +303,22 @@ export default function TeacherForm() {
 
                     {/* Commission Info */}
                     <div style={sectionTitleStyle}>
-                        <DollarSign size={18} /> Comissão
+                        <DollarSign size={18} /> Dados Financeiros
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
+                        <div>
+                            <label style={labelStyle}>Dia de Pagamento</label>
+                            <input
+                                name="paymentDay"
+                                type="number"
+                                min="1"
+                                max="31"
+                                value={formData.paymentDay || ''}
+                                onChange={handleChange}
+                                style={inputStyle}
+                                placeholder="Dia (1-31)"
+                            />
+                        </div>
                         <div>
                             <label style={labelStyle}>Tipo de Comissão</label>
                             <select

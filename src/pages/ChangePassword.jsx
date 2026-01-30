@@ -43,8 +43,8 @@ export default function ChangePassword() {
             addToast('Senha alterada com sucesso! Bem-vindo.', 'success');
 
             // Force reload or navigate
-            navigate('/');
-            window.location.reload(); // Reload to refresh context cleanly
+            // Force navigate to app dashboard
+            window.location.href = '/app';
 
         } catch (error) {
             console.error("Error updating password:", error);

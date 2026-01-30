@@ -357,10 +357,15 @@ export default function Dashboard() {
                     />
                 ) : (
                     <StatsCard
-                        title="Treinos Concluídos"
-                        value="12" // Placeholder
-                        icon={Activity}
-                        trend="Nesta semana"
+                        title="Novos Alunos"
+                        value={students.filter(s => {
+                            if (!s.createdAt) return false;
+                            const d = new Date(s.createdAt);
+                            const now = new Date();
+                            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                        }).length}
+                        icon={Users}
+                        trend="Neste mês"
                         color="#10b981"
                     />
                 )}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Super Admin - Gym Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            background-color: #fff;
+        }
+
+        h1 {
+            color: #10b981;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #059669;
+            margin-top: 30px;
+        }
+
+        h3 {
+            color: #1f2937;
+            margin-top: 20px;
+        }
+
+        ul {
+            margin-bottom: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        strong {
+            color: #000;
+        }
+
+        code {
+            background: #f3f4f6;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .note {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                max-width: 100%;
+            }
+
+            a {
+                text-decoration: none;
+                color: #333;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print"
+        style="margin-bottom: 20px; padding: 15px; background: #fee2e2; border-radius: 8px; text-align: center;">
+        <strong>Para salvar como PDF:</strong> Pressione <code>Ctrl + P</code> e escolha "Salvar como PDF" ou "Microsoft
+        Print to PDF".
+    </div>
+
+    <h1>🛡️ Manual do Super Admin (Gestor do Sistema)</h1>
+
+    <p>Este documento é para VOCÊ, o dono do software (SaaS). Aqui está tudo o que você precisa saber para gerenciar as
+        academias e o sistema.</p>
+
+    <hr>
+
+    <h2>1. Acesso ao Painel Admin</h2>
+    <ul>
+        <li><strong>URL</strong>: <code>/admin</code></li>
+        <li><strong>Login</strong>: Seu e-mail de Super Admin (<code>j.17jvictor@gmail.com</code>).</li>
+        <li><strong>Segurança</strong>: Apenas o seu e-mail tem acesso a essa tela. Outros usuários serão
+            redirecionados.</li>
+    </ul>
+
+    <hr>
+
+    <h2>2. Gerenciando Academias (Clientes)</h2>
+
+    <h3>➕ Criar Nova Academia</h3>
+    <ol>
+        <li>Clique no botão verde <strong>Nova Academia</strong>.</li>
+        <li>Preencha:
+            <ul>
+                <li><strong>Nome da Academia</strong>: O nome que aparecerá no painel deles.</li>
+                <li><strong>E-mail de Login</strong>: O e-mail que o dono da academia usará para entrar.</li>
+                <li><strong>Senha Inicial</strong>: Crie uma senha provisória (ex: <code>mudar123</code>).</li>
+                <li><strong>Plano Inicial</strong>:
+                    <ul>
+                        <li><strong>Trial (7 Dias)</strong>: Para testes. Expira automaticamente.</li>
+                        <li><strong>Já é PRO</strong>: Para quem já pagou adiantado.</li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li><strong>Importante</strong>: O sistema cria automaticamente o acesso. Não precisa configurar nada no
+            Firebase manualmente.</li>
+        <li><strong>Primeiro Acesso</strong>: Quando o cliente entrar pela primeira vez, ele será <strong>obrigado a
+                trocar a senha</strong>.</li>
+    </ol>
+
+    <h3>🔍 Listagem e Status</h3>
+    <p>Na lista de academias, você vê o status de cada uma:</p>
+    <ul>
+        <li><strong style="color: #10b981;">PRO (Ativo)</strong>: Cliente pagante. Acesso total liberado.</li>
+        <li><strong style="color: #f59e0b;">TRIAL</strong>: Cliente em período de teste.</li>
+        <li><strong style="color: #ef4444;">BLOQUEADO</strong>: Cliente inadimplente ou cancelado.</li>
+    </ul>
+
+    <h3>⚙️ Ações Rápidas</h3>
+    <p>Ao lado de cada academia, você tem botões de controle:</p>
+    <ul>
+        <li><strong>Ativar PRO</strong>: Libera o acesso total (use quando confirmar o pagamento).</li>
+        <li><strong>Voltar p/ Trial</strong>: Reverte para o modo de teste (útil se o pagamento falhar ou se quiser dar
+            mais uns dias).</li>
+        <li><strong>Bloquear (X)</strong>: Corta o acesso imediatamente. O cliente não consegue ver nada.</li>
+        <li><strong>Excluir (Lixeira)</strong>: Remove a academia da lista e apaga os dados do banco.
+            <br><em>Nota: Isso é um "Soft Delete". O e-mail continua existindo no Google Auth, mas sem dados. Se
+                precisar recriar com o mesmo e-mail, pode dar conflito de "email in use".</em>
+        </li>
+    </ul>
+
+    <hr>
+
+    <h2>3. Fluxo de Venda Sugerido</h2>
+    <ol>
+        <li><strong>Cliente Interessado</strong>: Você cria uma conta <strong>Trial</strong> e passa o login/senha para
+            ele.</li>
+        <li><strong>Teste</strong>: Ele usa por 7 dias. Ao final, o sistema bloqueia automaticamente (lógica de trial
+            expirado).</li>
+        <li><strong>Pagamento</strong>: O cliente te paga (Pix, Boleto, etc - por fora do sistema por enquanto).</li>
+        <li><strong>Ativação</strong>: Você entra no <code>/admin</code>, busca o cliente e clica em <strong>Ativar
+                PRO</strong>.</li>
+        <li><strong>Recorrência</strong>: Se ele não pagar no mês seguinte, você clica em <strong>Bloquear</strong> ou
+            <strong>Voltar p/ Trial</strong>.</li>
+    </ol>
+
+    <hr>
+
+    <h2>4. Dúvidas Técnicas Comuns</h2>
+    <ul>
+        <li><strong>"O cliente esqueceu a senha"</strong>:
+            <ul>
+                <li>Ele pode clicar em "Esqueci minha senha" na tela de login (o Firebase manda e-mail).</li>
+                <li>Ou você pode deletar a conta dele e criar outra (perde os dados).</li>
+            </ul>
+        </li>
+        <li><strong>"Criei uma conta errada"</strong>:
+            <ul>
+                <li>Use o botão de Lixeira para apagar.</li>
+            </ul>
+        </li>
+        <li><strong>"O cliente disse que pagou mas tá bloqueado"</strong>:
+            <ul>
+                <li>Verifique se você clicou em <strong>Ativar PRO</strong>. O sistema não adivinha pagamento manual.
+                </li>
+            </ul>
+        </li>
+    </ul>
+
+    <hr>
+
+    <h2>5. Manutenção do Sistema</h2>
+    <ul>
+        <li><strong>Firebase</strong>: O banco de dados é o Firestore. Tudo fica salvo em <code>tenants/{id}</code> e
+            <code>users/{id}</code>.</li>
+        <li><strong>Backups</strong>: O Firebase tem backups automáticos, mas evite mexer no console se não tiver
+            certeza. Use sempre o painel <code>/admin</code>.</li>
+    </ul>
+
+</body>
+
+</html>

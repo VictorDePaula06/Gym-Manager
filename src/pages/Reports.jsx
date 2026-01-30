@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useGym } from "../context/GymContext";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { Calendar, Users, DollarSign, TrendingUp, TrendingDown, Filter, FileText, Download, AlertCircle } from "lucide-react";
+import { Calendar, Users, DollarSign, TrendingUp, TrendingDown, Filter, FileText, Download, AlertCircle, Briefcase } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -12,6 +12,23 @@ const formatCurrency = (value) => {
         style: "currency",
         currency: "BRL",
     }).format(value);
+};
+
+const translateStatus = (status) => {
+    if (!status) return 'Ativo';
+    const s = String(status).toLowerCase();
+    return (s === 'active' || s === 'ativo') ? 'Ativo' : 'Inativo';
+};
+
+const translatePlan = (plan) => {
+    if (!plan) return 'Mensal';
+    const map = {
+        'Monthly': 'Mensal', 'monthly': 'Mensal',
+        'Quarterly': 'Trimestral', 'quarterly': 'Trimestral',
+        'Semiannual': 'Semestral', 'semiannual': 'Semestral',
+        'Annual': 'Anual', 'annual': 'Anual'
+    };
+    return map[plan] || plan;
 };
 
 const getBase64FromUrl = async (url) => {
@@ -29,7 +46,7 @@ const getBase64FromUrl = async (url) => {
 
 const Reports = () => {
     const { user } = useAuth(); // Get user
-    const { students, expenses, settings } = useGym();
+    const { students, expenses, settings, teachers } = useGym();
     const { addToast } = useToast();
 
     // Default to 'students' if not owner or admin
@@ -153,6 +170,46 @@ const Reports = () => {
 
         return { list, total, active, inactive };
     }, [students]);
+
+    // --- Teacher Data Construction ---
+    const teacherData = useMemo(() => {
+        if (!teachers) return { list: [], totalRevenue: 0 };
+
+        const list = teachers.map(t => {
+            const assignedStudents = students.filter(s => s.teacherId === t.id);
+            const studentCount = assignedStudents.length;
+            const activeStudents = assignedStudents.filter(s => s.status === 'Active' || s.status === 'active').length;
+
+            // Calculate total value from students
+            const totalValue = assignedStudents.reduce((acc, s) => {
+                const price = parseFloat(s.price || 0);
+                return acc + (isNaN(price) ? 0 : price);
+            }, 0);
+
+            // Calculate commission (Projected)
+            let estimatedCommission = 0;
+            if (t.commissionType === 'Fixed') {
+                estimatedCommission = activeStudents * (parseFloat(t.commissionValue) || 0);
+            } else {
+                // Percentage
+                estimatedCommission = totalValue * ((parseFloat(t.commissionValue) || 0) / 100);
+            }
+
+            return {
+                ...t,
+                studentList: assignedStudents,
+                studentCount,
+                activeCount: activeStudents,
+                totalRevenue: totalValue,
+                estimatedCommission
+            };
+        });
+
+        // Calculate Global Totals for the report
+        const totalRevenue = list.reduce((acc, t) => acc + t.totalRevenue, 0);
+
+        return { list, totalRevenue };
+    }, [teachers, students]);
 
 
     // --- PDF Generators ---
@@ -308,8 +365,8 @@ const Reports = () => {
             const tableColumn = ["Nome", "Status", "Plano", "Próx. Vencimento"];
             const tableRows = studentData.list.map(s => [
                 s.name,
-                s.status,
-                { 'Monthly': 'Mensal', 'monthly': 'Mensal', 'Quarterly': 'Trimestral', 'quarterly': 'Trimestral', 'Semiannual': 'Semestral', 'semiannual': 'Semestral', 'Annual': 'Anual', 'annual': 'Anual' }[s.plan] || s.plan,
+                translateStatus(s.status),
+                translatePlan(s.plan),
                 s.nextPayment
             ]);
 
@@ -325,6 +382,101 @@ const Reports = () => {
             addToast("Lista de alunos baixada com sucesso!", 'success');
         } catch (error) {
             console.error("PDF Error:", error);
+            addToast("Erro ao gerar PDF.", 'error');
+        }
+    };
+
+    const exportTeachersPDF = async () => {
+        try {
+            const doc = new jsPDF();
+            const gymName = settings?.gymName || "GymManager";
+
+            // Header
+            doc.setFillColor(15, 23, 42);
+            doc.rect(0, 0, 210, 40, 'F');
+
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                } catch (e) {
+                    console.error("Failed to load logo", e);
+                }
+            }
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.text(gymName, 105, 18, { align: "center" });
+
+            doc.setFontSize(14);
+            doc.text("Relatório de Professores", 105, 30, { align: "center" });
+
+            // Stats
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 50);
+
+            let currentY = 60;
+
+            teacherData.list.forEach(teacher => {
+                // Check page break
+                if (currentY > 250) {
+                    doc.addPage();
+                    currentY = 20;
+                }
+
+                // Teacher Header
+                doc.setFillColor(240, 240, 240);
+                doc.rect(14, currentY, 182, 10, 'F');
+                doc.setFontSize(11);
+                doc.setTextColor(0);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${teacher.name} - ${teacher.specialty || 'Geral'}`, 20, currentY + 7);
+                doc.setFont("helvetica", "normal");
+
+                // Payment Day Info
+                if (teacher.paymentDay) {
+                    doc.setFontSize(9);
+                    doc.text(`Dia de Pagamento: ${teacher.paymentDay}`, 150, currentY + 7);
+                }
+
+                currentY += 15;
+
+                // Students Table
+                const studentRows = teacher.studentList.map(s => [
+                    s.name,
+                    translatePlan(s.plan),
+                    translateStatus(s.status),
+                    formatCurrency(parseFloat(s.price || 0))
+                ]);
+
+                if (studentRows.length > 0) {
+                    autoTable(doc, {
+                        head: [["Aluno", "Plano", "Status", "Valor"]],
+                        body: studentRows,
+                        startY: currentY,
+                        theme: 'grid',
+                        headStyles: { fillColor: [100, 100, 100] },
+                        margin: { left: 14 }
+                    });
+                    currentY = doc.lastAutoTable.finalY + 10;
+
+                    // Totals for this teacher
+                    doc.setFontSize(10);
+                    doc.text(`Total Alunos: ${teacher.studentCount} (${teacher.activeCount} ativos)`, 14, currentY);
+                    doc.text(`Receita Total: ${formatCurrency(teacher.totalRevenue)}`, 120, currentY);
+                    currentY += 15;
+                } else {
+                    doc.setFontSize(9);
+                    doc.text("Nenhum aluno vinculado.", 14, currentY);
+                    currentY += 15;
+                }
+            });
+
+            doc.save("relatorio_professores.pdf");
+            addToast("Relatório de professores baixado!", 'success');
+        } catch (error) {
+            console.error(error);
             addToast("Erro ao gerar PDF.", 'error');
         }
     };
@@ -421,6 +573,19 @@ const Reports = () => {
                     }}
                 >
                     <Users size={18} /> Lista de Alunos
+                </button>
+                <button
+                    onClick={() => setActiveTab("teachers")}
+                    style={{
+                        display: "flex", alignItems: "center", gap: "0.5rem",
+                        padding: '0.75rem 1.5rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600',
+                        background: activeTab === "teachers" ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                        color: activeTab === "teachers" ? 'white' : 'var(--text-muted)',
+                        border: activeTab === "teachers" ? 'none' : '1px solid var(--border-glass)',
+                        outline: 'none'
+                    }}
+                >
+                    <Briefcase size={18} /> Professores
                 </button>
             </div>
 
@@ -590,26 +755,17 @@ const Reports = () => {
                                         <tr key={idx} style={{ borderBottom: '1px solid var(--border-glass)' }}>
                                             <td data-label="Nome" style={{ padding: '1rem', fontWeight: '500' }}>{s.name}</td>
                                             <td data-label="Plano" style={{ padding: '1rem' }}>
-                                                {{
-                                                    'Monthly': 'Mensal',
-                                                    'monthly': 'Mensal',
-                                                    'Quarterly': 'Trimestral',
-                                                    'quarterly': 'Trimestral',
-                                                    'Semiannual': 'Semestral',
-                                                    'semiannual': 'Semestral',
-                                                    'Annual': 'Anual',
-                                                    'annual': 'Anual'
-                                                }[s.plan] || s.plan}
+                                                {translatePlan(s.plan)}
                                             </td>
                                             <td data-label="Status" style={{ padding: '1rem' }}>
                                                 <span style={{
                                                     padding: '0.25rem 0.75rem',
                                                     borderRadius: '20px',
                                                     fontSize: '0.85rem',
-                                                    background: s.status === 'Ativo' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                    color: s.status === 'Ativo' ? '#10b981' : '#ef4444'
+                                                    background: (translateStatus(s.status) === 'Ativo') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                    color: (translateStatus(s.status) === 'Ativo') ? '#10b981' : '#ef4444'
                                                 }}>
-                                                    {s.status}
+                                                    {translateStatus(s.status)}
                                                 </span>
                                             </td>
                                             <td data-label="Próx. Vencimento" style={{ padding: '1rem', color: 'var(--text-muted)' }}>{s.nextPayment}</td>
@@ -618,6 +774,115 @@ const Reports = () => {
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === "teachers" && (
+                <div className="fade-in">
+                    <div className="glass-panel" style={{ padding: "1.5rem", marginBottom: "2rem", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Relatório de Professores</h3>
+                            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                Alunos por professor e projeção de receita.
+                            </p>
+                        </div>
+                        <button onClick={exportTeachersPDF} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Download size={18} /> Baixar PDF
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '2rem' }}>
+                        {teacherData.list.map(teacher => (
+                            <div key={teacher.id} className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+                                {/* Teacher Header */}
+                                <div style={{
+                                    padding: '1.5rem',
+                                    borderBottom: '1px solid var(--border-glass)',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap',
+                                    gap: '1rem'
+                                }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Briefcase size={18} color="var(--primary)" />
+                                            {teacher.name}
+                                        </h3>
+                                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                                            <span>{teacher.specialty || 'Sem especialidade'}</span>
+                                            {teacher.paymentDay && (
+                                                <span style={{ color: '#fbbf24' }}>• Dia Pagto: {teacher.paymentDay}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Receita Gerada</div>
+                                        <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#10b981' }}>{formatCurrency(teacher.totalRevenue)}</div>
+                                    </div>
+                                </div>
+
+                                {/* Student List for this Teacher */}
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="reports-table-responsive">
+                                        <thead>
+                                            <tr style={{ background: 'var(--bg-glass)', textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                                                <th style={{ padding: '0.75rem 1.5rem' }}>Aluno(a) vinculados</th>
+                                                <th style={{ padding: '0.75rem 1.5rem' }}>Status</th>
+                                                <th style={{ padding: '0.75rem 1.5rem', textAlign: 'right' }}>Mensalidade</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {teacher.studentList.length > 0 ? (
+                                                teacher.studentList.map(s => (
+                                                    <tr key={s.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                                        <td style={{ padding: '0.75rem 1.5rem' }}>{s.name}</td>
+                                                        <td style={{ padding: '0.75rem 1.5rem' }}>
+                                                            <span style={{
+                                                                fontSize: '0.75rem',
+                                                                padding: '0.1rem 0.5rem',
+                                                                borderRadius: '10px',
+                                                                background: (translateStatus(s.status) === 'Ativo') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                                                color: (translateStatus(s.status) === 'Ativo') ? '#10b981' : '#ef4444'
+                                                            }}>
+                                                                {translateStatus(s.status)}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ padding: '0.75rem 1.5rem', textAlign: 'right' }}>{formatCurrency(s.price || 0)}</td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan="3" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                                        Nenhum aluno vinculado a este professor.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                        {teacher.studentList.length > 0 && (
+                                            <tfoot style={{ background: 'rgba(255,255,255,0.02)' }}>
+                                                <tr>
+                                                    <td colSpan="2" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: '600', color: 'var(--text-muted)' }}>
+                                                        Total ({teacher.activeCount} ativos):
+                                                    </td>
+                                                    <td style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: 'bold' }}>
+                                                        {formatCurrency(teacher.totalRevenue)}
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        )}
+                                    </table>
+                                </div>
+                            </div>
+                        ))}
+
+                        {teacherData.list.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
+                                Nenhum professor cadastrado.
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

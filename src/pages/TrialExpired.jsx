@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Lock, CheckCircle, MessageCircle } from 'lucide-react';
+import { LogOut, Lock, CheckCircle, MessageCircle, CreditCard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
 
@@ -150,6 +150,31 @@ const TrialExpired = () => {
                     >
                         <MessageCircle size={20} />
                         Falar com Consultor e Ativar
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/app/subscription')}
+                        style={{
+                            width: '100%',
+                            backgroundColor: '#2563eb', // blue-600
+                            color: 'white',
+                            fontWeight: 'bold',
+                            padding: '1rem 1.5rem',
+                            borderRadius: '0.75rem',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
+                        }}
+                        onMouseOver={(e) => e.target.style.backgroundColor = '#1d4ed8'}
+                        onMouseOut={(e) => e.target.style.backgroundColor = '#2563eb'}
+                    >
+                        <CreditCard size={20} />
+                        Assinar Agora
                     </button>
 
                     <button

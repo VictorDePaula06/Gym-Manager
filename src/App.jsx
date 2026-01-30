@@ -23,12 +23,27 @@ import Teachers from './pages/Teachers';
 import TeacherDetails from './pages/TeacherDetails';
 import PaymentRequired from './pages/PaymentRequired';
 import TrialExpired from './pages/TrialExpired';
+import TermsOfService from './pages/TermsOfService';
+import TermsCertificate from './pages/TermsCertificate'; // New Import
 import ChangePassword from './pages/ChangePassword';
 import AccessDenied from './pages/AccessDenied';
+import SuperAdmin from './pages/SuperAdmin';
 import PrivateRoute from './components/PrivateRoute';
 import LandingPage from './pages/LandingPage';
 import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
+import Subscription from './pages/Subscription';
+
+
+import { useAuth } from './context/AuthContext';
+
+function SuperAdminWrapper() {
+  const { user } = useAuth();
+  if (!user || !user.isSuperAdmin) {
+    return <Navigate to="/app" />;
+  }
+  return <SuperAdmin />;
+}
 
 function App() {
 
@@ -47,7 +62,18 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/trial-expired" element={<TrialExpired />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/access-denied" element={<AccessDenied />} />
+                <Route path="/admin" element={
+                  <PrivateRoute>
+                    <SuperAdminWrapper />
+                  </PrivateRoute>
+                } />
+                <Route path="/admin/certificate/:tenantId" element={
+                  <PrivateRoute>
+                    <TermsCertificate />
+                  </PrivateRoute>
+                } />
                 <Route path="/change-password" element={
                   <PrivateRoute>
                     <ChangePassword />
@@ -75,6 +101,7 @@ function App() {
                   <Route path="workouts" element={<Workouts />} />
                   <Route path="workouts/:id" element={<WorkoutBuilder />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="subscription" element={<Subscription />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" />} />

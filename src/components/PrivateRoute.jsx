@@ -1,9 +1,10 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function PrivateRoute({ children, roleRequired }) {
-    const { user, loading, accessDenied, trialExpired, requiresPasswordChange } = useAuth();
+    const { user, loading, accessDenied, trialExpired, paymentOverdue, requiresPasswordChange, termsAccepted } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return (
@@ -13,12 +14,22 @@ export default function PrivateRoute({ children, roleRequired }) {
         );
     }
 
-    if (trialExpired) {
+    if (paymentOverdue) {
+        return <Navigate to="/payment-required" />;
+    }
+
+    if (trialExpired && location.pathname !== '/app/subscription') {
         return <Navigate to="/trial-expired" />;
     }
 
     if (accessDenied) {
         return <Navigate to="/access-denied" />;
+    }
+
+    // Check for Terms Acceptance (Highest Priority after Payment?)
+    // Actually, usually Legal > Payment. You can't pay if you don't agree.
+    if (!termsAccepted && location.pathname !== '/terms') {
+        return <Navigate to="/terms" />;
     }
 
     // Check if password change is required

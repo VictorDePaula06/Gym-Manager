@@ -167,7 +167,7 @@ export default function StudentForm() {
 
             const dataToSave = {
                 ...formData,
-                profilePictureUrl: photoUrl
+                profilePictureUrl: photoUrl || null
             };
 
             if (id) {
