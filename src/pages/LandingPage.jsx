@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, TrendingUp, Users, Check, ArrowRight, FileText, DollarSign, GraduationCap, X, Plus } from 'lucide-react';
+import { Dumbbell, TrendingUp, Users, Check, ArrowRight, FileText, DollarSign, GraduationCap, X, Plus, ChevronDown } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -10,7 +10,18 @@ gsap.registerPlugin(ScrollTrigger);
 export default function LandingPage() {
     const navigate = useNavigate();
     const [activeFeature, setActiveFeature] = useState(null);
+    const [openFaq, setOpenFaq] = useState(null);
+    const [scrolled, setScrolled] = useState(false);
     const containerRef = useRef(null);
+
+    // Scroll Listener
+    useEffect(() => {
+        const handleScroll = () => {
+            setScrolled(window.scrollY > 50);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // GSAP Animations
     useEffect(() => {
@@ -243,35 +254,56 @@ export default function LandingPage() {
         <div ref={containerRef} style={containerStyle}>
             {/* Header */}
             <header style={headerStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                        width: '32px', height: '32px',
-                        background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-                        borderRadius: '8px'
-                    }}></div>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>GymManager</span>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem',
+                    opacity: scrolled ? 1 : 0, // Hide logo at top to avoid redundancy
+                    transform: scrolled ? 'translateY(0)' : 'translateY(-10px)',
+                    transition: 'all 0.3s ease',
+                    pointerEvents: scrolled ? 'auto' : 'none'
+                }}>
+                    {/* Small Icon + Text (Only visible on scroll) */}
+                    <img src="/logo.png" alt="Vector GymHub" style={{ height: '32px', width: 'auto' }} />
+                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', letterSpacing: '-0.5px', color: 'white' }}>Vector GymHub</span>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <button
                         onClick={() => navigate('/login')}
                         style={{
                             background: 'transparent',
-                            color: '#94a3b8',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            padding: '0.5rem 1rem',
-                            borderRadius: '8px',
-                            cursor: 'pointer'
+                            color: 'white',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            padding: '0.6rem 1.2rem',
+                            borderRadius: '99px',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={(e) => {
+                            e.target.style.background = 'rgba(255,255,255,0.1)';
+                            e.target.style.borderColor = 'white';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.target.style.background = 'transparent';
+                            e.target.style.borderColor = 'rgba(255,255,255,0.2)';
                         }}
                     >
                         Login
                     </button>
                     <a
-                        href="https://wa.me/5521982626387?text=Ol%C3%A1%2C%20gostaria%20de%20uma%20demonstra%C3%A7%C3%A3o%20do%20Gym%20Manager"
+                        href="https://wa.me/5521982626387?text=Ol%C3%A1%21%20Gostaria%20de%20solicitar%20meu%20Teste%20Gr%C3%A1tis%20de%207%20dias%20do%20Vector%20GymHub."
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ ...buttonPrimaryStyle, padding: '0.5rem 1.5rem', fontSize: '0.9rem' }}
+                        style={{
+                            ...buttonPrimaryStyle,
+                            padding: '0.6rem 1.5rem',
+                            fontSize: '0.9rem',
+                            whiteSpace: 'nowrap'
+                        }}
                     >
-                        Demonstração
+                        Teste Grátis (7 Dias)
                     </a>
                 </div>
             </header>
@@ -304,12 +336,30 @@ export default function LandingPage() {
                 {/* Content Container */}
                 <div className="hero-content" style={{
                     position: 'relative',
-                    zIndex: 10,
+                    zIndex: 1,
                     textAlign: 'center',
-                    maxWidth: '1000px',
-                    marginBottom: '4rem'
+                    maxWidth: '800px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '1.5rem'
                 }}>
-                    {/* Logo */}
+                    {/* Hero Logo (Mobile Focus) - ADDED HERE */}
+                    <img
+                        src="/LogoTransparente.png"
+                        alt="Vector GymHub Logo"
+                        style={{
+                            width: '550px',
+                            maxWidth: '100%',
+                            height: 'auto',
+                            marginBottom: '-3rem',
+                            marginTop: '-4rem',
+                            transform: 'scale(1.3)', // Zoom in to ignore transparent borders
+                            filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))'
+                        }}
+                    />
+
+                    {/* Badge */}
                     <div style={{ marginBottom: '2rem', display: 'inline-block' }}>
                         <div className="hero-badge" style={{
                             background: 'rgba(255, 255, 255, 0.03)',
@@ -321,7 +371,7 @@ export default function LandingPage() {
                             gap: '0.75rem',
                             backdropFilter: 'blur(10px)'
                         }}>
-                            <img src="/logo.png" alt="GymManager" style={{ height: '24px' }} />
+
                             <span style={{ color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500' }}>
                                 O sistema nº 1 para sua academia
                             </span>
@@ -598,7 +648,7 @@ export default function LandingPage() {
                                 Fechar
                             </button>
                             <a
-                                href="https://wa.me/5521982626387?text=Ol%C3%A1%2C%20gostaria%20de%20saber%20mais%20sobre%20o%20Gym%20Manager"
+                                href="https://wa.me/5521982626387?text=Ol%C3%A1%21%20Gostaria%20de%20contratar%20o%20Vector%20GymHub%20para%20minha%20academia."
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 style={{
@@ -614,123 +664,400 @@ export default function LandingPage() {
                 </div>
             )}
 
+            {/* Mobile Section */}
+            <section style={{
+                padding: '8rem 2rem',
+                background: 'linear-gradient(to right, #0f172a, #1e293b)',
+                overflow: 'hidden'
+            }}>
+                <div style={{
+                    maxWidth: '1200px',
+                    margin: '0 auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                    gap: '4rem',
+                    alignItems: 'center'
+                }}>
+                    {/* Text Content */}
+                    <div style={{ textAlign: 'left' }}>
+                        <div style={{
+                            display: 'inline-block',
+                            padding: '0.5rem 1rem',
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            color: '#10b981',
+                            borderRadius: '99px',
+                            fontWeight: 'bold',
+                            fontSize: '0.9rem',
+                            marginBottom: '1.5rem',
+                            border: '1px solid rgba(16, 185, 129, 0.2)'
+                        }}>
+                            📱 App Completo
+                        </div>
+                        <h2 style={{
+                            fontSize: '3rem',
+                            fontWeight: 'bold',
+                            color: 'white',
+                            lineHeight: '1.1',
+                            marginBottom: '1.5rem'
+                        }}>
+                            Gestão na <span style={{ color: '#06b6d4' }}>Palma da Mão</span>
+                        </h2>
+                        <p style={{
+                            color: '#94a3b8',
+                            fontSize: '1.1rem',
+                            lineHeight: '1.6',
+                            marginBottom: '2rem'
+                        }}>
+                            Acesse o sistema completo direto pelo navegador do seu celular. Sem precisar baixar nada na App Store ou Google Play.
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {[
+                                "Web App otimizado: Rápido e sem ocupar memória",
+                                "Painel financeiro e administrativo completo",
+                                "Professores montam treinos pelo celular"
+                            ].map((item, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#e2e8f0' }}>
+                                    <div style={{
+                                        background: 'rgba(6, 182, 212, 0.2)',
+                                        borderRadius: '50%',
+                                        padding: '4px',
+                                        display: 'flex'
+                                    }}>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Mobile Image - CSS Phone Mockup */}
+                    <div style={{
+                        position: 'relative',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        perspective: '1000px'
+                    }}>
+                        {/* Glow Effect */}
+                        <div style={{
+                            position: 'absolute',
+                            width: '300px',
+                            height: '500px',
+                            background: '#06b6d4',
+                            filter: 'blur(120px)',
+                            opacity: '0.3',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            borderRadius: '50%',
+                            zIndex: 0
+                        }}></div>
+
+                        {/* Phone Bezel */}
+                        <div style={{
+                            position: 'relative',
+                            width: '280px',
+                            height: '560px',
+                            background: '#0f172a',
+                            borderRadius: '40px',
+                            border: '8px solid #334155',
+                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 2px #000',
+                            overflow: 'hidden',
+                            zIndex: 1,
+                            transform: 'rotateY(-5deg) rotateX(5deg)',
+                            transition: 'transform 0.3s ease'
+                        }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'rotateY(0) rotateX(0) scale(1.02)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'rotateY(-5deg) rotateX(5deg)'}
+                        >
+                            {/* Notch */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '0',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: '120px',
+                                height: '25px',
+                                background: '#000',
+                                borderBottomLeftRadius: '16px',
+                                borderBottomRightRadius: '16px',
+                                zIndex: 10
+                            }}></div>
+
+                            {/* Screen Content - Updating to use Finance Screenshot */}
+                            <img
+                                src="/img/mobile-dashboard-final.png"
+                                alt="Dashboard Financeiro"
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             {/* Pricing Section */}
             <section className="pricing-section" style={{
                 padding: '6rem 2rem',
                 background: 'linear-gradient(to bottom, #0f172a, #1e293b)',
                 textAlign: 'center'
             }}>
-                <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
                     <h2 style={{
                         fontSize: '2.5rem',
                         fontWeight: 'bold',
                         marginBottom: '1rem',
                         color: 'white'
                     }}>
-                        Comece sua transformação hoje
+                        Escolha seu Plano
                     </h2>
+                    <div style={{
+                        display: 'inline-block',
+                        background: 'rgba(6, 182, 212, 0.1)',
+                        color: '#06b6d4',
+                        padding: '0.5rem 1rem',
+                        borderRadius: '99px',
+                        fontSize: '0.9rem',
+                        fontWeight: 'bold',
+                        marginBottom: '2rem',
+                        border: '1px solid rgba(6, 182, 212, 0.2)'
+                    }}>
+                        ⚡ Teste Grátis por 7 Dias Sem Compromisso
+                    </div>
                     <p style={{ color: '#94a3b8', marginBottom: '3rem', fontSize: '1.1rem' }}>
-                        Tudo o que você precisa para gerenciar sua academia em um único lugar.
+                        Invista na gestão profissional da sua academia. Sem taxas de 'setup', cancele quando quiser.
                     </p>
 
-                    <div className="pricing-card" style={{
-                        background: 'rgba(30, 41, 59, 0.6)',
-                        border: '1px solid rgba(6, 182, 212, 0.3)',
-                        borderRadius: '24px',
-                        padding: '3rem 2rem',
-                        position: 'relative',
-                        backdropFilter: 'blur(10px)',
-                        boxShadow: '0 20px 40px -10px rgba(0, 0, 0, 0.5)'
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                        gap: '2rem',
+                        alignItems: 'center'
                     }}>
-                        {/* Badge */}
+                        {/* Monthly Plan */}
                         <div style={{
-                            position: 'absolute',
-                            top: '-15px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-                            padding: '0.5rem 1.5rem',
-                            borderRadius: '9999px',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: '0.9rem',
-                            boxShadow: '0 4px 12px rgba(6, 182, 212, 0.4)'
-                        }}>
-                            7 DIAS GRÁTIS
+                            background: 'rgba(30, 41, 59, 0.4)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '24px',
+                            padding: '3rem 2rem',
+                            position: 'relative',
+                            transition: 'transform 0.3s'
+                        }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-10px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+                        >
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
+                                Mensal
+                            </h3>
+                            <div style={{
+                                fontSize: '3.5rem',
+                                fontWeight: '800',
+                                color: 'white',
+                                marginBottom: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem'
+                            }}>
+                                <span style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal' }}>R$</span>
+                                97,00
+                                <span style={{ fontSize: '1rem', color: '#94a3b8', fontWeight: 'normal' }}>/mês</span>
+                            </div>
+
+                            <ul style={{
+                                textAlign: 'left',
+                                marginBottom: '2.5rem',
+                                marginTop: '2rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1rem',
+                                color: '#cbd5e1'
+                            }}>
+                                {[
+                                    'Gestão Ilimitada de Alunos',
+                                    'Controle Financeiro Completo',
+                                    'Montagem de Treinos Personalizada',
+                                    'Acesso para Professores',
+                                    'Suporte via WhatsApp'
+                                ].map((item, index) => (
+                                    <li key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{
+                                            background: 'rgba(30, 41, 59, 0.8)',
+                                            borderRadius: '50%',
+                                            padding: '4px',
+                                            color: '#3b82f6'
+                                        }}>
+                                            <Check size={14} />
+                                        </div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+
+                            <a
+                                href="https://wa.me/5521982626387?text=Ol%C3%A1%21%20Tenho%20interesse%20no%20Plano%20Mensal%20(R%24%2097)%20do%20Vector%20GymHub."
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    padding: '1rem',
+                                    borderRadius: '12px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    textDecoration: 'none',
+                                    transition: 'background 0.3s'
+                                }}
+                                onMouseEnter={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+                                onMouseLeave={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+                            >
+                                Falar com Consultor
+                            </a>
+                            <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#64748b' }}>Pagamento seguro via Stripe</p>
                         </div>
 
-                        <h3 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
-                            Plano Completo
-                        </h3>
+                        {/* Annual Plan (Highlighted) */}
                         <div style={{
-                            fontSize: '3rem',
-                            fontWeight: '800',
-                            color: '#06b6d4',
-                            marginBottom: '0.5rem'
+                            background: 'rgba(15, 23, 42, 0.8)',
+                            border: '2px solid #10b981', // Emerald green border
+                            borderRadius: '24px',
+                            padding: '3rem 2rem',
+                            position: 'relative',
+                            boxShadow: '0 20px 40px -10px rgba(16, 185, 129, 0.2)',
+                            transform: 'scale(1.05)'
                         }}>
-                            R$ 97,00
-                            <span style={{ fontSize: '1rem', color: '#94a3b8', fontWeight: 'normal' }}>/mês</span>
-                        </div>
-                        <p style={{ color: '#94a3b8', marginBottom: '2rem' }}>
-                            Acesso ilimitado a todas as funcionalidades
-                        </p>
+                            {/* Best Value Badge */}
+                            <div style={{
+                                position: 'absolute',
+                                top: '-18px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                background: '#10b981',
+                                padding: '0.5rem 1.5rem',
+                                borderRadius: '9999px',
+                                color: 'white',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                whiteSpace: 'nowrap'
+                            }}>
+                                <span style={{ fontSize: '1.1rem' }}>★</span> MELHOR VALOR
+                            </div>
 
-                        <ul style={{
-                            textAlign: 'left',
-                            marginBottom: '2.5rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '1rem',
-                            color: '#cbd5e1'
-                        }}>
-                            {[
-                                'Alunos Ilimitados',
-                                'Gestão Financeira Completa',
-                                'App do Aluno',
-                                'Fichas de Treino Personalizadas',
-                                'Avaliações Físicas',
-                                'Suporte Prioritário'
-                            ].map((item, index) => (
-                                <li key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'white' }}>
+                                Anual (Oferta)
+                            </h3>
+                            <div style={{
+                                fontSize: '4rem',
+                                fontWeight: '800',
+                                color: 'white',
+                                marginBottom: '0.5rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.5rem'
+                            }}>
+                                <span style={{ fontSize: '1.2rem', color: '#94a3b8', fontWeight: 'normal' }}>R$</span>
+                                900,00
+                                <span style={{ fontSize: '1rem', color: '#94a3b8', fontWeight: 'normal' }}>/ano</span>
+                            </div>
+
+                            <div style={{
+                                display: 'inline-block',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: '#10b981',
+                                padding: '0.25rem 1rem',
+                                borderRadius: '99px',
+                                fontSize: '0.9rem',
+                                fontWeight: 'bold',
+                                marginBottom: '2rem'
+                            }}>
+                                Economize R$ 264,00
+                            </div>
+
+                            <ul style={{
+                                textAlign: 'left',
+                                marginBottom: '2.5rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '1rem',
+                                color: '#e2e8f0'
+                            }}>
+                                <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                     <div style={{
-                                        background: 'rgba(6, 182, 212, 0.1)',
+                                        background: 'rgba(16, 185, 129, 0.2)',
                                         borderRadius: '50%',
                                         padding: '4px',
-                                        color: '#06b6d4'
+                                        color: '#10b981'
                                     }}>
-                                        <Check size={16} />
+                                        <Check size={14} />
                                     </div>
-                                    {item}
+                                    <strong>Todo o Pacote Mensal Incluso</strong>
                                 </li>
-                            ))}
-                        </ul>
+                                {[
+                                    '2 Meses de Acesso Grátis',
+                                    'Prioridade Máxima no Suporte',
+                                    'Consultoria de Setup Inicial'
+                                ].map((item, index) => (
+                                    <li key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{
+                                            background: 'rgba(16, 185, 129, 0.2)',
+                                            borderRadius: '50%',
+                                            padding: '4px',
+                                            color: '#10b981'
+                                        }}>
+                                            <Check size={14} />
+                                        </div>
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
 
-                        <a
-                            href="https://wa.me/5521982626387?text=Ol%C3%A1%2C%20quero%20aproveitar%20os%207%20dias%20gr%C3%A1tis%20do%20Gym%20Manager"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                ...buttonPrimaryStyle,
-                                width: '100%',
-                                justifyContent: 'center',
-                                padding: '1rem',
-                                fontSize: '1.1rem'
-                            }}
-                        >
-                            Começar Teste Grátis
-                        </a>
+                            <a
+                                href="https://wa.me/5521982626387?text=Ol%C3%A1%21%20Quero%20aproveitar%20a%20oferta%20do%20Plano%20Anual%20(R%24%20900)%20do%20Vector%20GymHub."
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'block',
+                                    width: '100%',
+                                    padding: '1rem',
+                                    borderRadius: '12px',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                    textDecoration: 'none',
+                                    boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)',
+                                    transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
+                                onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                            >
+                                Falar com Consultor (Oferta)
+                            </a>
+                            <p style={{ marginTop: '1rem', fontSize: '0.9rem', color: '#64748b' }}>Pagamento seguro via Stripe</p>
+                        </div>
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* Contact Section */}
-            <section style={{
+            < section style={{
                 padding: '6rem 2rem',
                 background: '#0f172a',
                 borderTop: '1px solid rgba(255, 255, 255, 0.05)',
                 display: 'flex',
                 justifyContent: 'center'
-            }}>
+            }
+            }>
                 <div style={{
                     width: '100%',
                     maxWidth: '600px',
@@ -744,17 +1071,8 @@ export default function LandingPage() {
                     </p>
 
                     <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            const name = e.target.name.value;
-                            const email = e.target.email.value; // Just for visual, or include in body
-                            const message = e.target.message.value;
-
-                            const subject = `Contato pelo Site - ${name}`;
-                            const body = `Nome: ${name}%0D%0AEmail: ${email}%0D%0A%0D%0AMensagem:%0D%0A${message}`;
-
-                            window.location.href = `mailto:j.17jvictor@gmail.com?subject=${subject}&body=${body}`;
-                        }}
+                        action="https://formsubmit.co/j.17jvictor@gmail.com"
+                        method="POST"
                         style={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -762,6 +1080,11 @@ export default function LandingPage() {
                             textAlign: 'left'
                         }}
                     >
+                        {/* Configurações do FormSubmit */}
+                        <input type="hidden" name="_subject" value="Novo Lead - Vector GymHub" />
+                        <input type="hidden" name="_captcha" value="false" />
+                        <input type="hidden" name="_next" value="http://localhost:5173/?success=true" />
+                        <input type="hidden" name="_template" value="table" />
                         <div>
                             <label style={{ display: 'block', color: '#cbd5e1', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Seu Nome</label>
                             <input
@@ -846,21 +1169,105 @@ export default function LandingPage() {
                         </button>
                     </form>
                 </div>
+            </section >
+
+            {/* FAQ Section */}
+            <section style={{
+                padding: '4rem 2rem',
+                maxWidth: '800px',
+                margin: '0 auto'
+            }}>
+                <h2 style={{
+                    textAlign: 'center',
+                    fontSize: '2rem',
+                    fontWeight: 'bold',
+                    marginBottom: '3rem',
+                    color: 'white'
+                }}>
+                    Dúvidas Frequentes
+                </h2>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {[
+                        {
+                            q: "Preciso instalar algum programa no computador?",
+                            a: "Não! O Vector GymHub é 100% online (nas nuvens). Você acessa pelo navegador de qualquer computador, tablet ou celular, igual acessa seu e-mail ou banco. Se seu computador estragar, seus dados continuam salvos."
+                        },
+                        {
+                            q: "Funciona em iPhone e Android?",
+                            a: "Sim. O sistema é otimizado para celulares e funciona como um aplicativo. Você não precisa baixar nada na loja de aplicativos, basta acessar pelo navegador e adicionar à tela inicial."
+                        },
+                        {
+                            q: "Meus dados estão seguros?",
+                            a: "Muito mais seguros do que no papel ou planilha. Usamos criptografia de ponta (a mesma dos bancos) e realizamos backups automáticos diários. Ninguém além de você tem acesso às informações da sua academia."
+                        },
+                        {
+                            q: "Como funciona o suporte?",
+                            a: "Nosso suporte é humanizado e rápido. Nada de robôs. Você terá um canal direto no WhatsApp com nosso time de sucesso do cliente para tirar dúvidas e ajudar na configuração inicial."
+                        }
+                    ].map((faq, index) => (
+                        <div
+                            key={index}
+                            onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                            style={{
+                                background: 'rgba(30, 41, 59, 0.4)',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(255, 255, 255, 0.05)',
+                                cursor: 'pointer',
+                                overflow: 'hidden',
+                                transition: 'all 0.3s'
+                            }}
+                        >
+                            <div style={{
+                                padding: '1.5rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontWeight: 'bold',
+                                color: openFaq === index ? '#06b6d4' : '#e2e8f0'
+                            }}>
+                                {faq.q}
+                                <ChevronDown
+                                    size={20}
+                                    style={{
+                                        transform: openFaq === index ? 'rotate(180deg)' : 'rotate(0)',
+                                        transition: 'transform 0.3s',
+                                        color: openFaq === index ? '#06b6d4' : '#64748b'
+                                    }}
+                                />
+                            </div>
+                            <div style={{
+                                height: openFaq === index ? 'auto' : '0',
+                                opacity: openFaq === index ? '1' : '0',
+                                overflow: 'hidden',
+                                transition: 'all 0.3s'
+                            }}>
+                                <div style={{
+                                    padding: '0 1.5rem 1.5rem 1.5rem',
+                                    color: '#94a3b8',
+                                    lineHeight: '1.6'
+                                }}>
+                                    {faq.a}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </section>
 
             {/* Footer */}
-            <footer style={{
+            < footer style={{
                 padding: '4rem 2rem',
                 textAlign: 'center',
                 color: '#64748b',
                 borderTop: '1px solid rgba(255,255,255,0.05)'
             }}>
-                <p>&copy; {new Date().getFullYear()} GymManager. Todos os direitos reservados.</p>
+                <p>&copy; {new Date().getFullYear()} Vector GymHub. Todos os direitos reservados.</p>
                 <p style={{ fontSize: '0.8rem', marginTop: '0.5rem', opacity: 0.5 }}>v0.0.2</p>
-            </footer>
+            </footer >
 
             {/* Global Responsive Styles */}
-            <style>{`
+            < style > {`
                 @media (max-width: 768px) {
                     /* Header Adjustments */
                     header {
@@ -914,7 +1321,7 @@ export default function LandingPage() {
                         padding: 1.5rem !important;
                     }
                 }
-            `}</style>
-        </div>
+            `}</style >
+        </div >
     );
 }
