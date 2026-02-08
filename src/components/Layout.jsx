@@ -81,7 +81,7 @@ export default function Layout() {
                         </svg>
                     </button>
                     <span style={{ marginLeft: '1rem', fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>
-                        {settings?.gymName || 'Vector GymHub'}
+                        {settings?.gymName || 'GymManager'}
                     </span>
                 </div>
             )}
@@ -155,7 +155,7 @@ export default function Layout() {
                         WebkitTextFillColor: 'transparent',
                         margin: 0
                     }}>
-                        {settings?.gymName || 'Vector GymHub'}
+                        {settings?.gymName || 'GymManager'}
                     </h1>
                 </div>
 
@@ -168,10 +168,13 @@ export default function Layout() {
                         <Users size={20} />
                         <span>Alunos</span>
                     </Link>
-                    <Link to="/app/teachers" style={linkStyle('/app/teachers')} onClick={() => setSidebarOpen(false)}>
-                        <Briefcase size={20} />
-                        <span>Professores</span>
-                    </Link>
+                    {/* Teachers Link - Configurable */}
+                    {(settings?.enableTeachers ?? true) && (
+                        <Link to="/app/teachers" style={linkStyle('/app/teachers')} onClick={() => setSidebarOpen(false)}>
+                            <Briefcase size={20} />
+                            <span>Professores</span>
+                        </Link>
+                    )}
 
                     {/* Only Owner or Admin sees Financials */}
                     {(!user?.role || user.role === 'owner' || user.role === 'admin') && (

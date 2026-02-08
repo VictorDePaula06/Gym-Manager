@@ -144,122 +144,138 @@ export default function WorkoutBuilder() {
     };
 
     const getBase64FromUrl = async (url) => {
-        const data = await fetch(url);
-        const blob = await data.blob();
         return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-                const base64data = reader.result;
-                resolve(base64data);
-            }
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.src = url;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                const dataURL = canvas.toDataURL('image/png');
+                resolve(dataURL);
+            };
+            img.onerror = () => {
+                resolve(null);
+            };
         });
     }
 
     const generatePDF = async () => {
-        const doc = new jsPDF();
-        // Use targetWorkouts based on current sheet
-        const workouts = getTargetWorkouts();
-        const variations = Object.keys(workouts).sort();
+        try {
+            const doc = new jsPDF();
+            // Use targetWorkouts based on current sheet
+            const workouts = getTargetWorkouts();
+            const variations = Object.keys(workouts).sort();
 
-        // Get Sheet Name
-        let sheetName = "Ficha de Treino";
-        if (sheetId !== 'legacy' && student.workoutSheets?.[sheetId]) {
-            sheetName = student.workoutSheets[sheetId].name;
-        }
-
-        // Header Layer (Professional Dark Theme)
-        doc.setFillColor(15, 23, 42); // Dark Slate/Blue
-        doc.rect(0, 0, 210, 40, 'F');
-
-        // Logo
-        if (settings?.logoUrl) {
-            try {
-                const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
-            } catch (e) {
-                console.error("Failed to load logo", e);
+            // Get Sheet Name
+            let sheetName = "Ficha de Treino";
+            if (sheetId !== 'legacy' && student.workoutSheets?.[sheetId]) {
+                sheetName = student.workoutSheets[sheetId].name;
             }
-        }
 
-        // Header Text
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
-        const gymName = settings?.gymName || "Vector GymHub";
-        doc.text(gymName, 105, 18, { align: "center" });
+            // Header Layer (Professional Dark Theme)
+            doc.setFillColor(15, 23, 42); // Dark Slate/Blue
+            doc.rect(0, 0, 210, 40, 'F');
 
-        doc.setFontSize(14);
-        doc.text(sheetName, 105, 30, { align: "center" });
-
-        // Reset for Content
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-
-        doc.text(`Aluno: ${student.name}`, 14, 50); // Shifted down
-        doc.text(`Data de Emissão: ${new Date().toLocaleDateString()}`, 14, 58);
-
-        // Iterate through all variations
-        let currentY = 70; // Adjusted Y
-
-        variations.forEach((variation, index) => {
-            const data = workouts[variation];
-            const exercisesList = data.exercises || [];
-
-            // If not the first item, check if we need a page break or spacing
-            if (index > 0) {
-                if (doc.lastAutoTable.finalY > 250) {
-                    doc.addPage();
-                    currentY = 20;
-                } else {
-                    currentY = doc.lastAutoTable.finalY + 15;
+            // Logo
+            if (settings?.logoUrl) {
+                try {
+                    const logoBase64 = await getBase64FromUrl(settings.logoUrl);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    }
+                } catch (e) {
+                    console.error("Failed to load logo", e);
                 }
             }
 
-            doc.setFontSize(16);
-            doc.setTextColor(59, 130, 246); // Primary Blue
-            doc.text(`Treino ${variation} - ${data.name || ''}`, 14, currentY);
+            // Header Text
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            const gymName = settings?.gymName || "GymManager";
+            doc.text(gymName, 105, 18, { align: "center" });
 
-            // Add Observations if present
-            if (data.observations) {
-                currentY += 7;
+            doc.setFontSize(14);
+            doc.text(sheetName, 105, 30, { align: "center" });
+
+            // Reset for Content
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+
+            doc.text(`Aluno: ${student.name}`, 14, 50); // Shifted down
+            doc.text(`Data de Emissão: ${new Date().toLocaleDateString()}`, 14, 58);
+
+            // Iterate through all variations
+            let currentY = 70; // Adjusted Y
+
+            variations.forEach((variation, index) => {
+                const data = workouts[variation];
+                const exercisesList = data.exercises || [];
+
+                // If not the first item, check if we need a page break or spacing
+                if (index > 0) {
+                    if (doc.lastAutoTable.finalY > 250) {
+                        doc.addPage();
+                        currentY = 20;
+                    } else {
+                        currentY = doc.lastAutoTable.finalY + 15;
+                    }
+                }
+
+                doc.setFontSize(16);
+                doc.setTextColor(59, 130, 246); // Primary Blue
+                doc.text(`Treino ${variation} - ${data.name || ''}`, 14, currentY);
+
+                // Add Observations if present
+                if (data.observations) {
+                    currentY += 7;
+                    doc.setFontSize(10);
+                    doc.setTextColor(100);
+                    const splitObs = doc.splitTextToSize(`Obs: ${data.observations}`, 180);
+                    doc.text(splitObs, 14, currentY);
+                    currentY += (splitObs.length * 4);
+                }
+
+                const tableColumn = ["Exercício", "Séries", "Repetições", "Carga (kg)"];
+                const tableRows = exercisesList.map(exercise => [
+                    exercise.name,
+                    exercise.sets,
+                    exercise.reps,
+                    exercise.weight || '-'
+                ]);
+
+                autoTable(doc, {
+                    head: [tableColumn],
+                    body: tableRows,
+                    startY: currentY + 5,
+                    theme: 'grid',
+                    headStyles: { fillColor: [59, 130, 246] },
+                    styles: { fontSize: 10, cellPadding: 3 },
+                    margin: { top: 20 }
+                });
+            });
+
+            // Footer on all pages
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                const pageHeight = doc.internal.pageSize.height;
                 doc.setFontSize(10);
-                doc.setTextColor(100);
-                const splitObs = doc.splitTextToSize(`Obs: ${data.observations}`, 180);
-                doc.text(splitObs, 14, currentY);
-                currentY += (splitObs.length * 4);
+                doc.setTextColor(150);
+                const footerText = `${gymName} - Seu parceiro de treinos`;
+                doc.text(footerText, 105, pageHeight - 10, { align: "center" });
+                doc.text(`Página ${i} de ${pageCount}`, 190, pageHeight - 10, { align: "right" });
             }
 
-            const tableColumn = ["Exercício", "Séries", "Repetições", "Carga (kg)"];
-            const tableRows = exercisesList.map(exercise => [
-                exercise.name,
-                exercise.sets,
-                exercise.reps,
-                exercise.weight || '-'
-            ]);
-
-            autoTable(doc, {
-                head: [tableColumn],
-                body: tableRows,
-                startY: currentY + 5,
-                theme: 'grid',
-                headStyles: { fillColor: [59, 130, 246] },
-                styles: { fontSize: 10, cellPadding: 3 },
-                margin: { top: 20 }
-            });
-        });
-
-        // Footer on all pages
-        const pageCount = doc.internal.getNumberOfPages();
-        for (let i = 1; i <= pageCount; i++) {
-            doc.setPage(i);
-            const pageHeight = doc.internal.pageSize.height;
-            doc.setFontSize(10);
-            doc.setTextColor(150);
-            doc.text("Vector GymHub - Seu parceiro de treinos", 105, pageHeight - 10, { align: "center" });
-            doc.text(`Página ${i} de ${pageCount}`, 190, pageHeight - 10, { align: "right" });
+            doc.save(`${student.name}_${sheetName}.pdf`);
+            addToast("PDF gerado com sucesso!", 'success');
+        } catch (error) {
+            console.error("Erro ao gerar PDF:", error);
+            addToast("Ocorreu um erro ao gerar o PDF.", 'error');
         }
-
-        doc.save(`${student.name}_${sheetName}.pdf`);
     };
 
     if (!student) return <div style={{ padding: '2rem' }}>Carregando...</div>;

@@ -9,7 +9,9 @@ const TrialExpired = () => {
     const navigate = useNavigate();
 
     const handleContactSupport = () => {
-        const phone = settings?.whatsapp?.replace(/\D/g, '') || '5511999999999'; // Fallback if not set
+        // Support number for GymManager (SaaS Owner)
+        const phone = '5521982626387';
+
         const message = `Olá, meu período de teste acabou e gostaria de assinar o Vector GymHub PRO. Meu email é: ${user?.email}`;
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     };

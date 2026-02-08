@@ -488,6 +488,47 @@ export default function Settings() {
                             </div>
                         </div>
 
+                        {/* Feature Toggles */}
+                        <div style={{ marginBottom: '2rem' }}>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Funcionalidades</label>
+
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '1rem',
+                                background: 'var(--card-bg)',
+                                border: '1px solid var(--border-glass)',
+                                borderRadius: '8px'
+                            }}>
+                                <div>
+                                    <span style={{ display: 'block', fontWeight: '500', color: 'var(--text-main)' }}>Gestão de Professores</span>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                        Habilite se você possui outros instrutores na academia (ex: Arena, Box).
+                                    </span>
+                                </div>
+                                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '28px' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings?.enableTeachers ?? true}
+                                        onChange={(e) => updateSettings({ ...settings, enableTeachers: e.target.checked })}
+                                        style={{ opacity: 0, width: 0, height: 0 }}
+                                    />
+                                    <span style={{
+                                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                                        backgroundColor: (settings?.enableTeachers ?? true) ? '#10b981' : '#ccc',
+                                        transition: '.4s', borderRadius: '34px'
+                                    }}>
+                                        <span style={{
+                                            position: 'absolute', content: '""', height: '20px', width: '20px',
+                                            left: (settings?.enableTeachers ?? true) ? '26px' : '4px', bottom: '4px',
+                                            backgroundColor: 'white', transition: '.4s', borderRadius: '50%'
+                                        }}></span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '3rem' }}>
                             <button
                                 onClick={handleSave}

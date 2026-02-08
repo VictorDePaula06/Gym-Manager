@@ -101,9 +101,10 @@ export const GymProvider = ({ children }) => {
             setSettings({
                 gymName: data.gymName || 'Vector GymHub',
                 // Use local default logo if DB has none
-                logoUrl: '/logo.png', // Force new brand logo
+                logoUrl: data.logoUrl || '/logo.png',
                 whatsapp: data.whatsapp || '',
-                theme: data.theme || 'dark'
+                theme: data.theme || 'dark',
+                enableTeachers: data.enableTeachers !== undefined ? data.enableTeachers : true, // Default to true for existing users
             });
 
             if (data.theme === 'light') {

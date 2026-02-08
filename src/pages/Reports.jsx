@@ -32,16 +32,26 @@ const translatePlan = (plan) => {
 };
 
 const getBase64FromUrl = async (url) => {
-    const data = await fetch(url);
-    const blob = await data.blob();
-    return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-            const base64data = reader.result;
-            resolve(base64data);
-        }
-    });
+    if (!url) return null;
+    try {
+        const response = await fetch(url + '?not-from-cache-please', {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache' // Important to bypass cached responses without CORS headers
+        });
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.warn("Failed to load image via fetch:", error);
+        // Fallback to Image/Canvas approach if fetch fails? 
+        // No, usually if fetch fails CORS, Canvas will also fail.
+        return null;
+    }
 }
 
 const Reports = () => {
@@ -227,7 +237,11 @@ const Reports = () => {
             if (settings?.logoUrl) {
                 try {
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo loaded but returned null (CORS or error).");
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
@@ -340,7 +354,11 @@ const Reports = () => {
             if (settings?.logoUrl) {
                 try {
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo loaded but returned null (CORS or error).");
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
@@ -398,11 +416,16 @@ const Reports = () => {
             if (settings?.logoUrl) {
                 try {
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo loaded but returned null (CORS or error).");
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
             }
+
 
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(22);

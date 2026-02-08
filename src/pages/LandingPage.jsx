@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, TrendingUp, Users, Check, ArrowRight, FileText, DollarSign, GraduationCap, X, Plus, ChevronDown } from 'lucide-react';
+import { Dumbbell, TrendingUp, Users, Check, ArrowRight, FileText, DollarSign, GraduationCap, X, Plus, ChevronDown, Activity } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -83,9 +83,9 @@ export default function LandingPage() {
     const features = [
         {
             id: 'students',
-            title: 'Gestão de Alunos',
+            title: 'Seus Alunos',
             shortDesc: 'Controle total de matrículas e avaliações.',
-            longDesc: 'Tenha controle total sobre matrículas, pagamentos e evolução física. Utilize avaliações detalhadas e mapas corporais interativos para entregar resultados visíveis aos seus alunos.',
+            longDesc: 'Tenha todos os seus alunos na palma da mão. Acompanhe a evolução física com gráficos, fotos comparativas e avaliações detalhadas para mostrar resultados reais.',
             icon: Users,
             color: '16, 185, 129', // Emerald
             images: [
@@ -98,45 +98,34 @@ export default function LandingPage() {
         {
             id: 'financial',
             title: 'Financeiro',
-            shortDesc: 'Fluxo de caixa e mensalidades.',
-            longDesc: 'Organize suas finanças com facilidade. Visualize receitas, despesas e lucro líquido em um dashboard intuitivo. Acompanhe o histórico de pagamentos de cada aluno e evite inadimplência.',
+            shortDesc: 'Controle quem pagou e quem deve.',
+            longDesc: 'Diga adeus às cobranças manuais constrangedoras. Saiba exatamente quem pagou, quem está atrasado e tenha uma visão clara do seu faturamento mensal como Personal.',
             icon: DollarSign,
             color: '14, 165, 233', // Sky Blue (Cyan-ish)
             images: [
                 { src: '/img/financial-dashboard.png', label: 'Dashboard Financeiro' },
-                { src: '/img/financial-student.png', label: 'Histórico do Aluno' }
+                { src: '/img/financial-student.png', label: 'Histórico de Pagamentos' }
             ]
         },
         {
             id: 'workouts',
-            title: 'Treinos',
-            shortDesc: 'Montagem de fichas personalizadas.',
-            longDesc: 'Crie treinos personalizados em segundos. Utilize nossa biblioteca de exercícios ou cadastre os seus. Imprima fichas ou envie em PDF diretamente para o aluno.',
+            title: 'Prescrição de Treinos',
+            shortDesc: 'Fichas personalizadas em segundos.',
+            longDesc: 'Monte treinos completos com nossa biblioteca de exercícios ou crie os seus próprios. Envie o treino diretamente para o WhatsApp do aluno ou gere um PDF profissional.',
             icon: Dumbbell,
             color: '249, 115, 22', // Orange
             images: [
-                { src: '/img/workouts-grid.png', label: 'Gerenciamento de Treinos' },
+                { src: '/img/workouts-grid.png', label: 'Biblioteca de Treinos' },
                 { src: '/img/workout-editor.png', label: 'Editor de Fichas' },
                 { src: '/img/workouts-main.png', label: 'Visão Geral' }
             ]
         },
-        {
-            id: 'teachers',
-            title: 'Professores',
-            shortDesc: 'Gestão de equipe e comissões.',
-            longDesc: 'Gerencie seus professores e personal trainers. Configure comissões, vincule alunos e acompanhe o desempenho da sua equipe.',
-            icon: GraduationCap,
-            color: '139, 92, 246', // Violet
-            images: [
-                { src: '/img/teacher-dashboard.png', label: 'Painel do Professor' },
-                { src: '/img/teacher-profile.png', label: 'Perfil e Comissões' }
-            ]
-        },
+        /* REMOVED TEACHERS SECTION FOR PERSONAL TRAINER PIVOT */
         {
             id: 'reports',
-            title: 'Relatórios',
-            shortDesc: 'Dados para tomada de decisão.',
-            longDesc: 'Exporte relatórios detalhados em PDF. Tenha em mãos dados precisos sobre alunos ativos, faturamento e retenção para tomar as melhores decisões para sua academia.',
+            title: 'Relatórios Pro',
+            shortDesc: 'Mostre seu valor com dados.',
+            longDesc: 'Gere relatórios de evolução para seus alunos e mostre o quanto eles melhoraram com sua consultoria. Dados visuais que ajudam a reter alunos por mais tempo.',
             icon: FileText,
             color: '236, 72, 153', // Pink
             images: [
@@ -145,15 +134,27 @@ export default function LandingPage() {
             ]
         },
         {
+            id: 'assessments',
+            title: 'Avaliação Física',
+            shortDesc: 'Monitore a evolução corporal.',
+            longDesc: 'Registre dobras cutâneas, perímetros e peso. Gere gráficos automáticos de composição corporal para mostrar ao aluno que o treino está funcionando.',
+            icon: Activity,
+            color: '139, 92, 246', // Violet (Reusing the color from the removed 'Teachers' card or similar)
+            images: [
+                { src: '/img/assessments.png', label: 'Avaliações Físicas' },
+                { src: '/img/body-map.png', label: 'Mapa Corporal' }
+            ]
+        },
+        {
             id: 'dashboard',
-            title: 'Dashboard',
-            shortDesc: 'Visão geral do seu negócio.',
-            longDesc: 'Acompanhe os principais indicadores da sua academia em tempo real. Alunos ativos, faturamento mensal, aniversariantes e muito mais em uma única tela.',
+            title: 'Seu Painel',
+            shortDesc: 'Seu negócio em uma tela.',
+            longDesc: 'Comece o dia sabendo exatamente como está sua consultoria. Alunos ativos, faturamento do mês e aniversariantes do dia em um único lugar.',
             icon: TrendingUp,
             color: '234, 179, 8', // Yellow
             images: [
-                { src: '/img/dashboard-hero.png', label: 'Dashboard Principal' },
-                { src: '/img/dashboard-overview.png', label: 'Resumo Geral' }
+                { src: '/img/dashboard-hero.png', label: 'Visão Geral' },
+                { src: '/img/dashboard-overview.png', label: 'Resumo do Negócio' }
             ]
         }
     ];
@@ -373,7 +374,7 @@ export default function LandingPage() {
                         }}>
 
                             <span style={{ color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500' }}>
-                                O sistema nº 1 para sua academia
+                                O App nº 1 para Personal Trainers
                             </span>
                         </div>
                     </div>
@@ -390,13 +391,13 @@ export default function LandingPage() {
                         WebkitTextFillColor: 'transparent',
                         textShadow: '0 20px 40px rgba(0,0,0,0.2)'
                     }}>
-                        A Evolução da sua <br />
+                        A Plataforma Definitiva para sua <br />
                         <span style={{
                             background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent'
                         }}>
-                            Gestão Fitness
+                            Consultoria Online
                         </span>
                     </h1>
 
@@ -408,13 +409,13 @@ export default function LandingPage() {
                         margin: '0 auto 3rem',
                         lineHeight: '1.6'
                     }}>
-                        Abandone as planilhas. Tenha controle total de alunos, financeiro e treinos em uma plataforma moderna e intuitiva.
+                        Abandone as planilhas e o PDF. Tenha controle total dos seus alunos, anamneses e treinos em um app moderno que valoriza seu trabalho.
                     </p>
 
                     {/* CTA Buttons */}
                     <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <a
-                            href="https://wa.me/5521982626387?text=Ol%C3%A1%2C%20quero%20conhecer%20o%20Gym%20Manager"
+                            href="https://wa.me/5521982626387?text=Ol%C3%A1%2C%20quero%20conhecer%20o%20Vector%20GymHub"
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
@@ -700,7 +701,7 @@ export default function LandingPage() {
                             lineHeight: '1.1',
                             marginBottom: '1.5rem'
                         }}>
-                            Gestão na <span style={{ color: '#06b6d4' }}>Palma da Mão</span>
+                            Consultoria na <span style={{ color: '#06b6d4' }}>Palma da Mão</span>
                         </h2>
                         <p style={{
                             color: '#94a3b8',
@@ -708,14 +709,14 @@ export default function LandingPage() {
                             lineHeight: '1.6',
                             marginBottom: '2rem'
                         }}>
-                            Acesse o sistema completo direto pelo navegador do seu celular. Sem precisar baixar nada na App Store ou Google Play.
+                            Gerencie seus alunos de qualquer lugar. Monte treinos, verifique pagamentos e responda dúvidas direto pelo seu celular.
                         </p>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {[
-                                "Web App otimizado: Rápido e sem ocupar memória",
-                                "Painel financeiro e administrativo completo",
-                                "Professores montam treinos pelo celular"
+                                "Web App ultra rápido: Acesse de qualquer lugar",
+                                "Painel do aluno com treinos e avaliações",
+                                "Monte treinos completos pelo celular em segundos"
                             ].map((item, idx) => (
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#e2e8f0' }}>
                                     <div style={{

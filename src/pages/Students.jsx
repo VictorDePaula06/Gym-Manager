@@ -12,7 +12,17 @@ export default function Students() {
     const { confirm } = useDialog();
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('Active'); // All, Active, Pending, Inactive
+    const [filterPlan, setFilterPlan] = useState('All'); // All, Mensal, Trimestral, Semestral, Anual
     const [sortBy, setSortBy] = useState('name'); // 'name' or 'recent'
+
+    // Helpers
+    const getPlanType = (planName) => {
+        const lowerPlan = (planName || '').toLowerCase();
+        if (lowerPlan.includes('semiannual') || lowerPlan.includes('semestral')) return 'Semestral';
+        if (lowerPlan.includes('annual') || lowerPlan.includes('anual')) return 'Anual';
+        if (lowerPlan.includes('quarterly') || lowerPlan.includes('trimestral')) return 'Trimestral';
+        return 'Mensal'; // Default
+    };
 
     const filteredStudents = students.filter(student => {
         const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -22,7 +32,11 @@ export default function Students() {
             ? true
             : student.status === filterStatus;
 
-        return matchesSearch && matchesStatus;
+        const matchesPlan = filterPlan === 'All'
+            ? true
+            : getPlanType(student.plan) === filterPlan;
+
+        return matchesSearch && matchesStatus && matchesPlan;
     }).sort((a, b) => {
         if (sortBy === 'name') {
             return a.name.localeCompare(b.name);
@@ -45,6 +59,14 @@ export default function Students() {
         'Active': 'Ativos',
         'Pending': 'Pendentes',
         'Inactive': 'Inativos'
+    };
+
+    const planMap = {
+        'All': 'Todos os Planos',
+        'Mensal': 'Mensal',
+        'Trimestral': 'Trimestral',
+        'Semestral': 'Semestral',
+        'Anual': 'Anual'
     };
 
     const handleDelete = async (e, id, name) => {
@@ -153,8 +175,11 @@ export default function Students() {
                 />
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {/* Filters Row */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+
+                {/* Status Filters */}
+                <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
                     {['All', 'Active', 'Pending', 'Inactive'].map(status => (
                         <button
                             key={status}
@@ -177,24 +202,54 @@ export default function Students() {
                     ))}
                 </div>
 
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Ordenar:</span>
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        style={{
-                            background: 'var(--input-bg)',
-                            color: 'var(--text-main)',
-                            border: '1px solid var(--border-glass)',
-                            padding: '0.5rem',
-                            borderRadius: '8px',
-                            outline: 'none',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <option value="name">A-Z</option>
-                        <option value="recent">Mais Recentes</option>
-                    </select>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+
+                    {/* Plan Filters */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', overflowX: 'auto' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Plano:</span>
+                        {['All', 'Mensal', 'Trimestral', 'Semestral', 'Anual'].map(plan => (
+                            <button
+                                key={plan}
+                                onClick={() => setFilterPlan(plan)}
+                                style={{
+                                    background: filterPlan === plan ? 'var(--input-bg)' : 'transparent',
+                                    color: filterPlan === plan ? 'var(--primary)' : 'var(--text-muted)',
+                                    border: `1px solid ${filterPlan === plan ? 'var(--primary)' : 'var(--border-glass)'}`,
+                                    padding: '0.4rem 1rem',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    fontWeight: filterPlan === plan ? '600' : '500',
+                                    transition: 'all 0.2s',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                {planMap[plan]}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Sort */}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Ordenar:</span>
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            style={{
+                                background: 'var(--input-bg)',
+                                color: 'var(--text-main)',
+                                border: '1px solid var(--border-glass)',
+                                padding: '0.4rem 0.8rem',
+                                borderRadius: '8px',
+                                outline: 'none',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem'
+                            }}
+                        >
+                            <option value="name">A-Z</option>
+                            <option value="recent">Mais Recentes</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -62,12 +62,36 @@ export default function StudentDetails() {
         method: 'Cartão de Crédito',
         date: new Date().toISOString().split('T')[0]
     });
+
+    // --- Photo Gallery Logic ---
+    const [galleryItems, setGalleryItems] = useState([]);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [expandedPhoto, setExpandedPhoto] = useState(null);
-    const [galleryItems, setGalleryItems] = useState([]); // Local state for interaction
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [editingDescription, setEditingDescription] = useState(false);
+    const [tempDescription, setTempDescription] = useState("");
+
 
     const scrollRef = useRef(null);
+
+    // Initial Load of Gallery Items
+    useEffect(() => {
+        if (!student?.photoGallery) {
+            setGalleryItems([]);
+            return;
+        }
+        // Ensure legacy strings are converted to objects
+        const normalized = student.photoGallery.map(item => {
+            if (typeof item === 'string') {
+                return { url: item, date: new Date().toISOString(), description: '' };
+            }
+            return item;
+        });
+
+        // Sort by date desc
+        normalized.sort((a, b) => new Date(b.date) - new Date(a.date));
+        setGalleryItems(normalized);
+    }, [student]);
 
     const scroll = (scrollOffset) => {
         if (scrollRef.current) {
@@ -80,7 +104,7 @@ export default function StudentDetails() {
         if (found) {
             setStudent(found);
 
-            setGalleryItems(found.photoGallery || []);
+
 
 
             if (found.workoutSheets && Object.keys(found.workoutSheets).length > 0 && selectedSheetId === 'default') {
@@ -445,8 +469,13 @@ export default function StudentDetails() {
 
             if (settings?.logoUrl) {
                 try {
+                    console.log("Attempting to load logo for Assessment PDF:", settings.logoUrl);
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo returned null.");
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
@@ -570,16 +599,24 @@ export default function StudentDetails() {
     };
 
     const getBase64FromUrl = async (url) => {
-        const data = await fetch(url);
-        const blob = await data.blob();
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(blob);
-            reader.onloadend = () => {
-                const base64data = reader.result;
-                resolve(base64data);
-            }
-        });
+        if (!url) return null;
+        try {
+            const response = await fetch(url + '?not-from-cache-please', {
+                method: 'GET',
+                mode: 'cors',
+                cache: 'no-cache'
+            });
+            const blob = await response.blob();
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (error) {
+            console.warn("Failed to load image via fetch:", error);
+            return null;
+        }
     }
 
     const generatePDF = async () => {
@@ -599,11 +636,18 @@ export default function StudentDetails() {
             doc.rect(0, 0, 210, 40, 'F');
 
             // Logo
+            // Logo
             if (settings?.logoUrl) {
                 try {
+                    console.log("Attempting to load logo for PDF:", settings.logoUrl);
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    // Increased size from 25x25 to 35x35 and adjusted position
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        // Increased size from 25x25 to 35x35 and adjusted position
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo loaded but returned null/empty base64.");
+                        addToast("Aviso: Logo não pôde ser carregada no PDF.", 'warning');
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
@@ -850,63 +894,70 @@ export default function StudentDetails() {
             .map(([k, v]) => ({ id: k, ...v }))
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
         : [];
+    // --- Photo Gallery Logic ---
 
-    const toggleAssessmentSelection = (assessment) => {
-        if (selectedAssessments.find(a => a.id === assessment.id)) {
-            setSelectedAssessments(selectedAssessments.filter(a => a.id !== assessment.id));
-        } else {
-            if (selectedAssessments.length >= 2) {
-                addToast("Selecione no máximo 2 avaliações para comparar.", 'info');
-                return;
-            }
-            setSelectedAssessments([...selectedAssessments, assessment]);
-        }
-    };
 
-    const handlePhotoUpload = async (event) => {
-        const file = event.target.files[0];
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files[0];
         if (!file) return;
 
         setUploadingPhoto(true);
         try {
-            const storageRef = ref(storage, `students/${id}/photos/${Date.now()}_${file.name}`);
-            const snapshot = await uploadBytes(storageRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
+            const storageRef = ref(storage, `students/${id}/gallery/${Date.now()}_${file.name}`);
+            await uploadBytes(storageRef, file);
+            const url = await getDownloadURL(storageRef);
 
-            const photoData = {
-                url: downloadURL,
-                path: snapshot.ref.fullPath,
+            const newPhoto = {
+                url,
                 date: new Date().toISOString(),
-                name: file.name
+                description: ''
             };
 
-            await updateStudent(id, {
-                photoGallery: arrayUnion(photoData)
+            const updatedGallery = [newPhoto, ...galleryItems];
+
+            const studentRef = doc(db, `users/${user.uid}/students`, id);
+            await updateDoc(studentRef, {
+                photoGallery: updatedGallery
             });
 
-            setStudent(prev => ({
-                ...prev,
-                photoGallery: [...(prev.photoGallery || []), photoData]
-            }));
-
-            // If it's the first photo, set as profile picture automatically
-            if (!student.profilePictureUrl) {
-                await updateStudent(id, {
-                    profilePictureUrl: downloadURL
-                });
-                setStudent(prev => ({ ...prev, profilePictureUrl: downloadURL }));
-            }
-            addToast("Foto enviada com sucesso!", 'success');
-
+            // Local update strictly for immediate feedback (though listener should catch it)
+            // setGalleryItems(updatedGallery); 
+            addToast("Foto adicionada a galeria!", 'success');
         } catch (error) {
-            console.error("Error uploading photo:", error);
-            addToast(`Erro ao enviar foto: ${error.message}`, 'error');
+            console.error("Erro no upload:", error);
+            addToast("Falha ao enviar foto.", 'error');
         } finally {
             setUploadingPhoto(false);
         }
     };
 
-    const handleDeletePhoto = async (photo, indexToDelete) => {
+    const handleUpdateDescription = async () => {
+        if (!expandedPhoto) return;
+
+        try {
+            const updatedGallery = galleryItems.map((item, index) => {
+                if (index === selectedIndex) {
+                    return { ...item, description: tempDescription };
+                }
+                return item;
+            });
+
+            const studentRef = doc(db, `users/${user.uid}/students`, id);
+            await updateDoc(studentRef, {
+                photoGallery: updatedGallery
+            });
+
+            // Update local state to reflect immediately in UI
+            setExpandedPhoto(prev => ({ ...prev, description: tempDescription }));
+            setEditingDescription(false);
+            addToast("Descrição atualizada!", 'success');
+        } catch (error) {
+            console.error("Erro ao atualizar descrição:", error);
+            addToast("Erro ao salvar descrição.", 'error');
+        }
+    };
+
+    const handleDeletePhoto = async (photoToDelete, indexToDelete) => {
         const confirmed = await confirm({
             title: 'Excluir Foto',
             message: 'Tem certeza que deseja excluir esta foto?',
@@ -916,54 +967,34 @@ export default function StudentDetails() {
 
         if (!confirmed) return;
 
-        // Optimistically update UI
-        // Use index for the local gallery state (guarantees single removal even with duplicates)
-        if (indexToDelete !== undefined) {
-            const newGallery = galleryItems.filter((_, i) => i !== indexToDelete);
-            setGalleryItems(newGallery);
-        } else {
-            // Fallback if no index provided (legacy behavior, though we updated call site)
-            setGalleryItems(prev => prev.filter(p => p.date !== photo.date));
-        }
-
-        setStudent(prev => ({
-            ...prev,
-            // Use date as unique key since simulated items have unique dates, 
-            // or fall back to strictly not same object if dates matched (unlikely in this sim)
-            photoGallery: prev.photoGallery ? prev.photoGallery.filter(p => p.date !== photo.date) : [],
-            profilePictureUrl: prev.profilePictureUrl === photo.url ? null : prev.profilePictureUrl
-        }));
-
         try {
-            // Try deleting from storage if it has a path
-            if (photo.path) {
-                try {
-                    const storageRef = ref(storage, photo.path);
-                    await deleteObject(storageRef);
-                } catch (storageError) {
-                    console.warn("Could not delete from storage (might be local simulation):", storageError);
-                }
-            }
-
-            await updateStudent(id, {
-                photoGallery: arrayRemove(photo)
+            // 1. Remove from Firestore array
+            const updatedGallery = galleryItems.filter((_, index) => index !== indexToDelete);
+            const studentRef = doc(db, `users/${user.uid}/students`, id);
+            await updateDoc(studentRef, {
+                photoGallery: updatedGallery
             });
 
-            // If deleted photo was profile picture, unset it
-            if (student.profilePictureUrl === photo.url) {
-                await updateStudent(id, {
-                    profilePictureUrl: null
-                });
+            // 2. Setup Reference to file in Storage
+            // Need to extract path from URL or use a stored path. 
+            // For simplicity, we just remove the reference from Firestore. 
+            // Proper cleanup would require storing the full path or parsing the URL.
+            try {
+                const fileRef = ref(storage, photoToDelete.url);
+                await deleteObject(fileRef);
+            } catch (err) {
+                console.warn("Could not delete from storage (maybe strict rules or legacy url)", err);
             }
 
-            addToast("Foto excluída com sucesso!", 'success');
-
+            addToast("Foto excluída.", 'success');
+            if (expandedPhoto) setExpandedPhoto(null); // Close modal if open
         } catch (error) {
-            console.error("Error deleting photo:", error);
+            console.error("Erro ao excluir foto:", error);
             addToast("Erro ao excluir foto.", 'error');
-            // Revert UI on critical failure would go here, but complex with local state
         }
     };
+
+
 
     const handleSetProfilePicture = async (photoUrl) => {
         try {
@@ -1282,8 +1313,13 @@ export default function StudentDetails() {
 
             if (settings?.logoUrl) {
                 try {
+                    console.log("Attempting to load logo for Assessment PDF:", settings.logoUrl);
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo returned null.");
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
@@ -1370,8 +1406,13 @@ export default function StudentDetails() {
 
             if (settings?.logoUrl) {
                 try {
+                    console.log("Attempting to load logo for Assessment PDF:", settings.logoUrl);
                     const logoBase64 = await getBase64FromUrl(settings.logoUrl);
-                    doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    if (logoBase64) {
+                        doc.addImage(logoBase64, 'PNG', 14, 5, 30, 30);
+                    } else {
+                        console.warn("Logo returned null.");
+                    }
                 } catch (e) {
                     console.error("Failed to load logo", e);
                 }
@@ -2985,6 +3026,8 @@ export default function StudentDetails() {
                                                 onClick={() => {
                                                     setSelectedIndex(index);
                                                     setExpandedPhoto(photo);
+                                                    setTempDescription(photo.description || "");
+                                                    setEditingDescription(false);
                                                 }}
                                             >
                                                 <img src={photo.url} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -3029,22 +3072,80 @@ export default function StudentDetails() {
                     alignItems: 'center',
                     padding: '2rem'
                 }} onClick={() => setExpandedPhoto(null)}>
-                    <div style={{ position: 'relative', width: 'auto', height: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ position: 'relative', width: 'auto', height: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
                         <img
                             src={expandedPhoto.url}
                             alt="Expanded"
                             style={{
-                                maxHeight: '95vh',
-                                maxWidth: '85vw',
+                                maxHeight: '80vh',
+                                maxWidth: '100%',
                                 objectFit: 'contain',
                                 borderRadius: '8px',
                                 boxShadow: '0 0 40px rgba(0,0,0,0.8)'
                             }}
                         />
 
+                        {/* Description Overlay */}
+                        <div style={{
+                            marginTop: '1rem',
+                            width: '100%',
+                            maxWidth: '600px',
+                            background: 'rgba(0,0,0,0.8)',
+                            padding: '1rem',
+                            borderRadius: '8px',
+                            backdropFilter: 'blur(10px)',
+                            border: '1px solid rgba(255,255,255,0.1)'
+                        }}>
+                            {editingDescription ? (
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        type="text"
+                                        value={tempDescription}
+                                        onChange={(e) => setTempDescription(e.target.value)}
+                                        placeholder="Adicione uma descrição..."
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.5rem',
+                                            borderRadius: '4px',
+                                            border: 'none',
+                                            background: 'rgba(255,255,255,0.1)',
+                                            color: 'white'
+                                        }}
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleUpdateDescription();
+                                        }}
+                                    />
+                                    <button
+                                        onClick={handleUpdateDescription}
+                                        style={{ background: '#10b981', color: 'white', border: 'none', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                    >
+                                        <Check size={20} />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    onClick={() => {
+                                        setEditingDescription(true);
+                                        setTempDescription(expandedPhoto.description || "");
+                                    }}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: '24px' }}
+                                >
+                                    <span style={{ color: expandedPhoto.description ? 'white' : 'rgba(255,255,255,0.5)', fontStyle: expandedPhoto.description ? 'normal' : 'italic' }}>
+                                        {expandedPhoto.description || "Clique para adicionar uma descrição..."}
+                                    </span>
+                                    <Edit2 size={16} color="rgba(255,255,255,0.5)" />
+                                </div>
+                            )}
+                        </div>
+
                         {/* Navigation Arrows */}
                         <button
-                            onClick={(e) => { e.stopPropagation(); handlePrev(); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrev();
+                                setEditingDescription(false);
+                            }}
                             style={{
                                 position: 'absolute',
                                 left: '-80px',
@@ -3066,7 +3167,11 @@ export default function StudentDetails() {
                         </button>
 
                         <button
-                            onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleNext();
+                                setEditingDescription(false);
+                            }}
                             style={{
                                 position: 'absolute',
                                 right: '-80px',

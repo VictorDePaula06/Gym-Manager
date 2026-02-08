@@ -9,7 +9,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyDkStdF3cISspSvaM6n9MCs3K_fgXm3g-4",
     authDomain: "gymmanager-4c352.firebaseapp.com",
     projectId: "gymmanager-4c352",
-    storageBucket: "gymmanager-4c352.appspot.com",
+    storageBucket: "gymmanager-4c352.firebasestorage.app",
     messagingSenderId: "56940277686",
     appId: "1:56940277686:web:22146ce1af15006e9a9b17",
     measurementId: "G-RZPRKLYBM1"

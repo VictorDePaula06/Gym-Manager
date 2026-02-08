@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Users, DollarSign, Activity, TrendingUp, AlertTriangle, MessageCircle } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Users, TrendingUp, Calendar, DollarSign, Activity, AlertTriangle, MessageCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StatsCard from '../components/StatsCard';
 import { useGym } from '../context/GymContext';
@@ -29,6 +29,7 @@ const formatCurrency = (value) => {
 export default function Dashboard() {
     const { students, settings, loading } = useGym();
     const { user, trialInfo } = useAuth();
+    const [showPending, setShowPending] = useState(false); // Collapsed by default
 
     const showOnboardingAlert = !loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp);
 
@@ -52,6 +53,19 @@ export default function Dashboard() {
     const retentionRate = totalStudents > 0
         ? Math.round((activeStudents / totalStudents) * 100)
         : 0;
+
+    // Pending Payments Logic
+    const pendingStudents = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return students.filter(student => {
+            if (!student.nextPaymentDate) return false;
+            const dueDate = new Date(student.nextPaymentDate);
+            dueDate.setHours(0, 0, 0, 0);
+            return dueDate < today; // Due date is in the past
+        });
+    }, [students]);
 
 
     // 2. Financial Chart Data (Current Month)
@@ -138,6 +152,130 @@ export default function Dashboard() {
                 <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Visão Geral</h1>
                 <p style={{ color: 'var(--text-muted)' }}>Bem-vindo de volta, gerencie sua academia com eficiência.</p>
             </div>
+
+            {/* Pending Payments Alert - Critical Priority */}
+            {pendingStudents.length > 0 && (
+                <div style={{
+                    marginBottom: '2rem',
+                    borderRadius: '12px',
+                    border: '1px solid #ef4444',
+                    overflow: 'hidden', // Ensure children don't overflow corners
+                    background: 'rgba(239, 68, 68, 0.05)',
+                }}>
+                    {/* Header - Clickable to Toggle */}
+                    <button
+                        onClick={() => setShowPending(!showPending)}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem 1.5rem',
+                            background: showPending ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#f87171',
+                            transition: 'background 0.2s',
+                            textAlign: 'left'
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <AlertTriangle size={20} />
+                            <span style={{ fontWeight: '600', fontSize: '1rem' }}>
+                                {pendingStudents.length} {pendingStudents.length === 1 ? 'Pagamento Pendente' : 'Pagamentos Pendentes'}
+                            </span>
+                        </div>
+                        {showPending ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </button>
+
+                    {/* Collapsible Content */}
+                    {showPending && (
+                        <div className="fade-in" style={{ padding: '1.5rem', borderTop: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            <p style={{ color: 'var(--text-muted)', margin: '0 0 1rem 0', fontSize: '0.9rem' }}>
+                                Alunos com mensalidade vencida. Clique em "Cobrar" para enviar uma mensagem.
+                            </p>
+                            <div style={{ display: 'grid', gap: '0.75rem' }}>
+                                {pendingStudents.map(student => (
+                                    <div key={student.id} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        background: 'var(--card-bg)',
+                                        padding: '1rem',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border-glass)'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{
+                                                width: '40px',
+                                                height: '40px',
+                                                borderRadius: '50%',
+                                                background: 'var(--input-bg)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                overflow: 'hidden'
+                                            }}>
+                                                {student.profilePictureUrl ? (
+                                                    <img src={student.profilePictureUrl} alt={student.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <Users size={20} color="var(--text-muted)" />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <span style={{ fontWeight: '500', display: 'block' }}>{student.name}</span>
+                                                <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>
+                                                    Venceu em: {new Date(student.nextPaymentDate).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Prevent toggling accordion
+                                                const phone = student.phone ? student.phone.replace(/\D/g, '') : '';
+                                                if (!phone) {
+                                                    alert('Aluno sem telefone cadastrado.');
+                                                    return;
+                                                }
+                                                const firstName = student.name.split(' ')[0];
+                                                const dueDate = new Date(student.nextPaymentDate).toLocaleDateString('pt-BR');
+                                                const message = `Olá ${firstName}, notamos que sua mensalidade venceu em ${dueDate}. Gostaria de renovar seu plano agora?`;
+                                                window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                                            }}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                color: '#ef4444',
+                                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontWeight: '600',
+                                                fontSize: '0.9rem',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = '#ef4444';
+                                                e.currentTarget.style.color = 'white';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                                                e.currentTarget.style.color = '#ef4444';
+                                            }}
+                                        >
+                                            <MessageCircle size={18} />
+                                            Cobrar
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Trial Mode Alert - High Priority */}
             {trialInfo && trialInfo.isTrial && (
