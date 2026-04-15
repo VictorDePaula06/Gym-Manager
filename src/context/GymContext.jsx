@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy } from 'firebase/firestore';
 
 const GymContext = createContext();
 
@@ -23,6 +23,7 @@ export const GymProvider = ({ children }) => {
     const [expenses, setExpenses] = useState([]);
     const [teachers, setTeachers] = useState([]);
     const [teacherPayments, setTeacherPayments] = useState([]);
+    const [exerciseLibrary, setExerciseLibrary] = useState([]);
 
     useEffect(() => {
         // If no user, reset state
@@ -48,53 +49,65 @@ export const GymProvider = ({ children }) => {
 
         console.log(`[GymContext] Initializing for Tenant: ${tenantId} (Role: ${user.role})`);
 
-        // Listener for students collection
-        const unsubscribeStudents = onSnapshot(collection(db, `${userBasePath}/students`), (snapshot) => {
-            const studentsData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setStudents(studentsData);
-            setLoadingStudents(false);
-        }, (error) => {
-            console.error("Error fetching students:", error);
-            setLoadingStudents(false);
-        });
+        // Fetch Students (Adaptive Role-based Listener)
+        let unsubscribeStudents = () => {};
+        if (user.role === 'student') {
+            const studentId = user.studentId;
+            if (studentId) {
+                unsubscribeStudents = onSnapshot(doc(db, `${userBasePath}/students`, studentId), (docSnap) => {
+                    if (docSnap.exists()) {
+                        setStudents([{ id: docSnap.id, ...docSnap.data() }]);
+                    } else {
+                        setStudents([]);
+                    }
+                    setLoadingStudents(false);
+                }, (error) => {
+                    console.error("Error fetching own student doc:", error);
+                    setLoadingStudents(false);
+                });
+            } else {
+                setStudents([]);
+                setLoadingStudents(false);
+            }
+        } else {
+            // Owner/Teacher: Listen to full collection
+            unsubscribeStudents = onSnapshot(collection(db, `${userBasePath}/students`), (snapshot) => {
+                const studentsData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setStudents(studentsData);
+                setLoadingStudents(false);
+            }, (error) => {
+                console.error("Error fetching students collection:", error);
+                setLoadingStudents(false);
+            });
+        }
 
-        // Listener for expenses collection
-        const unsubscribeExpenses = onSnapshot(collection(db, `${userBasePath}/expenses`), (snapshot) => {
-            const expensesData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setExpenses(expensesData);
-        }, (error) => {
-            console.error("Error fetching expenses:", error);
-        });
+        // Restricted Listeners (Owner/Teacher only)
+        let unsubscribeExpenses = () => {};
+        let unsubscribeTeachers = () => {};
+        let unsubscribeTeacherPayments = () => {};
 
-        // Listener for teachers collection
-        const unsubscribeTeachers = onSnapshot(collection(db, `${userBasePath}/teachers`), (snapshot) => {
-            const teachersData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setTeachers(teachersData);
-        }, (error) => {
-            console.error("Error fetching teachers:", error);
-        });
+        if (user.role !== 'student') {
+            // ... (keep expenses, teachers, payments logic as is from previous correct edit)
+            unsubscribeExpenses = onSnapshot(collection(db, `${userBasePath}/expenses`), (snapshot) => {
+                const expensesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setExpenses(expensesData);
+            }, (error) => { console.error("Error fetching expenses:", error); });
 
-        // Listener for teacher payments
-        const unsubscribeTeacherPayments = onSnapshot(collection(db, `${userBasePath}/teacher_payments`), (snapshot) => {
-            const paymentsData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            setTeacherPayments(paymentsData);
-        }, (error) => {
-            console.error("Error fetching teacher payments:", error);
-        });
+            unsubscribeTeachers = onSnapshot(collection(db, `${userBasePath}/teachers`), (snapshot) => {
+                const teachersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setTeachers(teachersData);
+            }, (error) => { console.error("Error fetching teachers:", error); });
 
-        // Listener for Settings
+            unsubscribeTeacherPayments = onSnapshot(collection(db, `${userBasePath}/teacher_payments`), (snapshot) => {
+                const paymentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setTeacherPayments(paymentsData);
+            }, (error) => { console.error("Error fetching teacher payments:", error); });
+        }
+
+        // Listener for Settings (Available to all authenticated users)
         const unsubscribeSettings = onSnapshot(doc(db, `${userBasePath}/settings`, 'global'), (docSnap) => {
             const data = docSnap.exists() ? docSnap.data() : {};
 
@@ -124,6 +137,22 @@ export const GymProvider = ({ children }) => {
         };
     }, [user]);
 
+    // Listener for Exercise Library (Available to all authenticated users)
+    useEffect(() => {
+        if (!user) {
+            setExerciseLibrary([]);
+            return;
+        }
+
+        const tenantId = user.tenantId || user.uid;
+        const q = query(collection(db, `users/${tenantId}/exercise_library`), orderBy('name', 'asc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setExerciseLibrary(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
     const getUserBasePath = () => {
         if (!user) throw new Error("User not authenticated");
         // Use tenantId if available (it should be attached by AuthContext)
@@ -143,7 +172,23 @@ export const GymProvider = ({ children }) => {
     const addStudent = async (studentData) => {
         try {
             const basePath = getUserBasePath();
-            await addDoc(collection(db, `${basePath}/students`), studentData);
+            const tenantId = user.tenantId || user.uid;
+            
+            // 1. Add to main students collection
+            const docRef = await addDoc(collection(db, `${basePath}/students`), studentData);
+            const studentId = docRef.id;
+
+            // 2. If has email and password, create student_access record
+            if (studentData.email && studentData.password) {
+                const emailKey = studentData.email.toLowerCase().trim().replace(/\./g, '_');
+                await setDoc(doc(db, 'student_access', emailKey), {
+                    email: studentData.email,
+                    password: studentData.password,
+                    name: studentData.name,
+                    tenantId: tenantId,
+                    studentId: studentId
+                });
+            }
         } catch (error) {
             console.error("Error adding student:", error);
             throw error;
@@ -153,8 +198,36 @@ export const GymProvider = ({ children }) => {
     const updateStudent = async (id, studentData) => {
         try {
             const basePath = getUserBasePath();
+            const tenantId = user.tenantId || user.uid;
+            
+            // Get old data to check if email changed
+            const oldStudentRef = doc(db, `${basePath}/students`, id);
+            const oldStudentSnap = await getDoc(oldStudentRef);
+            const oldData = oldStudentSnap.exists() ? oldStudentSnap.data() : {};
+
             const { id: _, ...data } = studentData;
-            await updateDoc(doc(db, `${basePath}/students`, id), data);
+            await updateDoc(oldStudentRef, data);
+
+            // Sync student_access
+            if (data.email && data.password) {
+                // If email changed, delete old access record
+                if (oldData.email && oldData.email !== data.email) {
+                    const oldEmailKey = oldData.email.toLowerCase().trim().replace(/\./g, '_');
+                    await deleteDoc(doc(db, 'student_access', oldEmailKey));
+                }
+
+                const emailKey = data.email.toLowerCase().trim().replace(/\./g, '_');
+                await setDoc(doc(db, 'student_access', emailKey), {
+                    email: data.email,
+                    password: data.password,
+                    name: data.name,
+                    tenantId: tenantId,
+                    studentId: id
+                });
+            } else if (oldData.email && !data.password) {
+                // If password removed, maybe remove access? Or keep old?
+                // For safety, if no password, they can't log in anyway.
+            }
         } catch (error) {
             console.error("Error updating student:", error);
             throw error;
@@ -164,7 +237,20 @@ export const GymProvider = ({ children }) => {
     const deleteStudent = async (id) => {
         try {
             const basePath = getUserBasePath();
-            await deleteDoc(doc(db, `${basePath}/students`, id));
+            
+            // Get data to find email
+            const studentRef = doc(db, `${basePath}/students`, id);
+            const studentSnap = await getDoc(studentRef);
+            
+            if (studentSnap.exists()) {
+                const data = studentSnap.data();
+                if (data.email) {
+                    const emailKey = data.email.toLowerCase().trim().replace(/\./g, '_');
+                    await deleteDoc(doc(db, 'student_access', emailKey));
+                }
+            }
+
+            await deleteDoc(studentRef);
         } catch (error) {
             console.error("Error deleting student:", error);
             throw error;
@@ -259,7 +345,20 @@ export const GymProvider = ({ children }) => {
         deleteTeacher,
         addTeacherPayment,
         deleteTeacherPayment,
-        teacherPayments
+        teacherPayments,
+        exerciseLibrary,
+        addExerciseToLibrary: async (data) => {
+            const basePath = `users/${user.tenantId || user.uid}`;
+            await addDoc(collection(db, `${basePath}/exercise_library`), { ...data, createdAt: new Date().toISOString() });
+        },
+        updateExerciseInLibrary: async (id, data) => {
+            const basePath = `users/${user.tenantId || user.uid}`;
+            await updateDoc(doc(db, `${basePath}/exercise_library`, id), data);
+        },
+        deleteExerciseFromLibrary: async (id) => {
+            const basePath = `users/${user.tenantId || user.uid}`;
+            await deleteDoc(doc(db, `${basePath}/exercise_library`, id));
+        }
     };
 
     return (

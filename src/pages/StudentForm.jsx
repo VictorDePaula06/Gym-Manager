@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { Save, ChevronLeft, User, CreditCard, MapPin, Activity, Camera, Trash2 } from 'lucide-react';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../utils/imageOptimizer';
 
 export default function StudentForm() {
     const { id } = useParams();
@@ -33,7 +34,8 @@ export default function StudentForm() {
         diseases: '',    // Will treat as comma-separated string for compatibility
         trainingFrequency: '',
         objective: '',
-        teacherId: '' // Optional link to a teacher
+        teacherId: '', // Optional link to a teacher
+        password: '' // New password field
     });
 
     const ROUTINE_OPTIONS = [
@@ -139,11 +141,26 @@ export default function StudentForm() {
         }));
     };
 
-    const handlePhotoChange = (e) => {
+    const handlePhotoChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
-            setItemPhoto(file);
-            setPhotoPreview(URL.createObjectURL(file));
+            try {
+                const compressedFile = await compressImage(file, 800, 0.8);
+                // Convert blob back to file if needed, or just use blob. 
+                // specialized uploadBytes works with Blob or File.
+                // We'll rename it to preserve original name but with jpg extension if converted? 
+                // compressImage outputs jpeg/blob. 
+                // Let's create a new File object to keep it simple for the rest of the logic
+                const newFile = new File([compressedFile], file.name, { type: 'image/jpeg' });
+
+                setItemPhoto(newFile);
+                setPhotoPreview(URL.createObjectURL(newFile));
+            } catch (error) {
+                console.error("Error compressing image:", error);
+                // Fallback to original
+                setItemPhoto(file);
+                setPhotoPreview(URL.createObjectURL(file));
+            }
         }
     };
 
@@ -152,7 +169,6 @@ export default function StudentForm() {
         setPhotoPreview(null);
         setFormData(prev => ({ ...prev, profilePictureUrl: null }));
     };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -165,9 +181,49 @@ export default function StudentForm() {
                 photoUrl = await getDownloadURL(photoRef);
             }
 
+            // --- Sincronização Inteligente de Vencimento (Proteção de Receita) ---
+            let nextPaymentDate = formData.nextPaymentDate || null;
+            const targetDay = parseInt(formData.paymentDay);
+            
+            if (!isNaN(targetDay)) {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0); 
+                
+                // Pegar a data base (último pagamento ou data de início)
+                let baseDateString = formData.lastPaymentDate || formData.startDate;
+                let baseDate = null;
+
+                if (baseDateString) {
+                    if (baseDateString.seconds) {
+                        baseDate = new Date(baseDateString.seconds * 1000);
+                    } else {
+                        baseDate = new Date(baseDateString);
+                    }
+                }
+
+                let syncDate;
+                if (baseDate && !isNaN(baseDate.getTime())) {
+                    // Começa do mês da data base
+                    syncDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
+                    // Se o dia 05 deste mês da data base foi ANTES ou IGUAL ao pagamento, 
+                    // significa que o próximo compromisso é no mês seguinte.
+                    if (syncDate <= baseDate) {
+                        syncDate.setMonth(syncDate.getMonth() + 1);
+                    }
+                } else {
+                    // Sem histórico, assume o dia fixo do mês atual
+                    syncDate = new Date(now.getFullYear(), now.getMonth(), targetDay);
+                }
+                
+                if (!isNaN(syncDate.getTime())) {
+                    nextPaymentDate = syncDate.toISOString();
+                }
+            }
+
             const dataToSave = {
                 ...formData,
-                profilePictureUrl: photoUrl || null
+                profilePictureUrl: photoUrl || null,
+                nextPaymentDate: nextPaymentDate
             };
 
             if (id) {
@@ -177,7 +233,7 @@ export default function StudentForm() {
             } else {
                 await addStudent({
                     ...dataToSave,
-                    createdAt: new Date().toISOString() // Store creation time for sorting
+                    createdAt: new Date().toISOString()
                 });
                 addToast('Aluno cadastrado com sucesso!', 'success');
                 navigate('/app/students');
@@ -380,7 +436,7 @@ export default function StudentForm() {
                                 />
                             </div>
                             <div>
-                                <label style={labelStyle}>E-mail</label>
+                                <label style={labelStyle}>E-mail (Login do Aluno)</label>
                                 <input
                                     name="email"
                                     type="email"
@@ -391,17 +447,53 @@ export default function StudentForm() {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label style={labelStyle}>Endereço (Rua, Número, Bairro)</label>
-                            <div style={{ position: 'relative' }}>
-                                <input
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    style={{ ...inputStyle, paddingLeft: '2.5rem' }}
-                                    placeholder="Rua Exemplo, 123"
-                                />
-                                <MapPin size={18} style={{ position: 'absolute', left: '0.75rem', top: '55%', color: 'var(--text-muted)' }} />
+                        <div className="responsive-grid">
+                            <div>
+                                <label style={labelStyle}>Senha de Acesso (Portal do Aluno)</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        name="password"
+                                        type="text"
+                                        value={formData.password || ''}
+                                        onChange={handleChange}
+                                        style={inputStyle}
+                                        placeholder="Min. 6 caracteres"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+                                            let pass = "";
+                                            for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+                                            setFormData(prev => ({ ...prev, password: pass }));
+                                        }}
+                                        style={{
+                                            marginTop: '0.4rem',
+                                            padding: '0 1rem',
+                                            background: 'var(--border-glass)',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            color: 'var(--text-main)',
+                                            cursor: 'pointer',
+                                            fontSize: '0.8rem'
+                                        }}
+                                    >
+                                        Gerar
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label style={labelStyle}>Endereço (Rua, Número, Bairro)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        name="address"
+                                        value={formData.address}
+                                        onChange={handleChange}
+                                        style={{ ...inputStyle, paddingLeft: '2.5rem' }}
+                                        placeholder="Rua Exemplo, 123"
+                                    />
+                                    <MapPin size={18} style={{ position: 'absolute', left: '0.75rem', top: '55%', color: 'var(--text-muted)' }} />
+                                </div>
                             </div>
                         </div>
                     </div>

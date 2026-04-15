@@ -43,9 +43,18 @@ export default function PrivateRoute({ children, roleRequired }) {
     }
 
     // Role Based Access Control
+    if (user.role === 'student' && location.pathname.startsWith('/app')) {
+        return <Navigate to="/student" />;
+    }
+
+    if (user.role !== 'student' && location.pathname.startsWith('/student')) {
+        return <Navigate to="/app" />;
+    }
+
     if (roleRequired && user.role && user.role !== roleRequired) {
         // Redirect to dashboard if trying to access restricted area
-        return <Navigate to="/app" />;
+        const target = user.role === 'student' ? '/student' : '/app';
+        return <Navigate to={target} />;
     }
 
     return children;

@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle, Video } from 'lucide-react';
 import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -187,6 +187,10 @@ export default function Layout() {
                     <Link to="/app/workouts" style={linkStyle('/app/workouts')} onClick={() => setSidebarOpen(false)}>
                         <Dumbbell size={20} />
                         <span>Treinos</span>
+                    </Link>
+                    <Link to="/app/exercises" style={linkStyle('/app/exercises')} onClick={() => setSidebarOpen(false)}>
+                        <Video size={20} />
+                        <span>Meus Exercícios</span>
                     </Link>
                     <Link to="/app/reports" style={linkStyle('/app/reports')} onClick={() => setSidebarOpen(false)}>
                         <PieChart size={20} />

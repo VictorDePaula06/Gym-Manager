@@ -51,8 +51,36 @@ export default function Financial() {
                 }
             });
 
-            // Status is valid if paid this month OR if due date is in future
-            const isUpToDate = hasPaymentThisMonth || (s.nextPaymentDate && new Date(s.nextPaymentDate) >= new Date().setHours(0, 0, 0, 0));
+            // --- Inteligência de Proteção de Receita (Âncora de Cobrança) ---
+            let nextPaymentDate = null;
+            const targetDay = parseInt(s.paymentDay);
+            
+            if (s.nextPaymentDate) {
+                nextPaymentDate = s.nextPaymentDate.seconds 
+                    ? new Date(s.nextPaymentDate.seconds * 1000) 
+                    : new Date(s.nextPaymentDate);
+            }
+
+            if (!isNaN(targetDay)) {
+                let baseDateString = s.lastPaymentDate || s.startDate;
+                let baseDate = null;
+                if (baseDateString) {
+                    baseDate = baseDateString.seconds 
+                        ? new Date(baseDateString.seconds * 1000) 
+                        : new Date(baseDateString);
+                }
+                
+                if (baseDate && !isNaN(baseDate.getTime())) {
+                    let expectedDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
+                    if (expectedDate <= baseDate) expectedDate.setMonth(expectedDate.getMonth() + 1);
+                    if (!nextPaymentDate || expectedDate < nextPaymentDate) {
+                        nextPaymentDate = expectedDate;
+                    }
+                }
+            }
+
+            if (nextPaymentDate) nextPaymentDate.setHours(0, 0, 0, 0);
+            const isUpToDate = hasPaymentThisMonth || (nextPaymentDate && nextPaymentDate >= new Date().setHours(0, 0, 0, 0));
 
             return {
                 ...s,

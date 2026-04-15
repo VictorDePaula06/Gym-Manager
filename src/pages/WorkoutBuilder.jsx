@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
-import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check } from 'lucide-react';
+import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check, Video, Loader2, Library } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { storage } from '../firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { commonExercises } from '../constants/exercises';
 
 const getSortedVariations = (workouts, current) => {
@@ -19,7 +21,7 @@ export default function WorkoutBuilder() {
     const { id } = useParams();
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
-    const { students, updateStudent, settings } = useGym();
+    const { students, updateStudent, settings, exerciseLibrary } = useGym();
     const { addToast } = useToast();
 
     const student = students.find(s => s.id === id);
@@ -73,18 +75,83 @@ export default function WorkoutBuilder() {
         }
     }, [student, currentVariation, sheetId]);
 
+    // --- AUTO-SYNC WITH LIBRARY ---
+    useEffect(() => {
+        if (exercises.length > 0 && exerciseLibrary.length > 0) {
+            setExercises(prev => {
+                let changed = false;
+                const updated = prev.map(ex => {
+                    if (!ex.videoUrl && ex.name) {
+                        const match = exerciseLibrary.find(l => 
+                            l.name.trim().toLowerCase() === ex.name.trim().toLowerCase()
+                        );
+                        if (match && match.videoUrl) {
+                            changed = true;
+                            return { ...ex, videoUrl: match.videoUrl, fromLibrary: true };
+                        }
+                    }
+                    return ex;
+                });
+                return changed ? updated : prev;
+            });
+        }
+    }, [exerciseLibrary]); 
+    // We only sync when library loads/changes, or when exercises are manually updated in another useEffect if needed
+    // But updateExercise already handles the name change case.
+
     const addExercise = () => {
-        setExercises([...exercises, { id: crypto.randomUUID(), name: '', sets: 3, reps: '12', weight: '' }]);
+        setExercises([...exercises, { id: crypto.randomUUID(), name: '', sets: 3, reps: '12', weight: '', videoUrl: '' }]);
     };
 
     const updateExercise = (exerciseId, field, value) => {
-        setExercises(exercises.map(ex =>
-            ex.id === exerciseId ? { ...ex, [field]: value } : ex
-        ));
+        setExercises(prev => prev.map(ex => {
+            if (ex.id === exerciseId) {
+                const updated = { ...ex, [field]: value };
+                
+                // --- AUTO-LINK VIDEO FROM LIBRARY ---
+                if (field === 'name' && value) {
+                    const libraryEx = exerciseLibrary.find(l => 
+                        l.name.trim().toLowerCase() === value.trim().toLowerCase()
+                    );
+                    if (libraryEx && libraryEx.videoUrl && !ex.videoUrl) {
+                        updated.videoUrl = libraryEx.videoUrl;
+                        updated.fromLibrary = true;
+                    }
+                }
+                
+                return updated;
+            }
+            return ex;
+        }));
     };
 
     const removeExercise = (exerciseId) => {
         setExercises(exercises.filter(ex => ex.id !== exerciseId));
+    };
+
+    const handleVideoUpload = async (exerciseId, file) => {
+        if (!file) return;
+        
+        // Show loading state for this exercise
+        setExercises(prev => prev.map(ex => 
+            ex.id === exerciseId ? { ...ex, uploadingVideo: true } : ex
+        ));
+
+        try {
+            const videoRef = ref(storage, `exercises_videos/${exerciseId}_${Date.now()}`);
+            await uploadBytes(videoRef, file);
+            const url = await getDownloadURL(videoRef);
+            
+            updateExercise(exerciseId, 'videoUrl', url);
+            addToast("Vídeo enviado com sucesso!", 'success');
+        } catch (error) {
+            console.error("Error uploading video:", error);
+            addToast("Erro ao enviar vídeo.", 'error');
+        } finally {
+            setExercises(prev => prev.map(ex => 
+                ex.id === exerciseId ? { ...ex, uploadingVideo: false } : ex
+            ));
+        }
     };
 
     const handleSave = async () => {
@@ -510,12 +577,46 @@ export default function WorkoutBuilder() {
                                             style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
                                         />
                                     </div>
-                                    <button
-                                        onClick={() => removeExercise(exercise.id)}
-                                        style={{ padding: '0.5rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', cursor: 'pointer', border: 'none', height: 'fit-content', alignSelf: 'end' }}
-                                    >
-                                        <Trash2 size={18} />
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'end' }}>
+                                        <div style={{ position: 'relative' }}>
+                                            <input 
+                                                type="file" 
+                                                accept="video/*" 
+                                                id={`video-${exercise.id}`}
+                                                style={{ display: 'none' }}
+                                                onChange={(e) => handleVideoUpload(exercise.id, e.target.files[0])}
+                                            />
+                                            <button
+                                                onClick={() => document.getElementById(`video-${exercise.id}`).click()}
+                                                disabled={exercise.uploadingVideo}
+                                                style={{ 
+                                                    padding: '0.5rem', 
+                                                    color: exercise.videoUrl ? (exercise.fromLibrary ? '#10b981' : 'var(--primary)') : 'var(--text-muted)', 
+                                                    background: exercise.fromLibrary ? 'rgba(16, 185, 129, 0.1)' : 'rgba(148, 163, 184, 0.1)', 
+                                                    borderRadius: '6px', 
+                                                    cursor: 'pointer', 
+                                                    border: exercise.fromLibrary ? '1px solid rgba(16, 185, 129, 0.3)' : 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.25rem'
+                                                }}
+                                                title={exercise.videoUrl ? (exercise.fromLibrary ? "Vínculo Automático da Biblioteca" : "Vídeo Customizado") : "Adicionar vídeo"}
+                                            >
+                                                {exercise.uploadingVideo ? (
+                                                    <Loader2 size={18} className="animate-spin" />
+                                                ) : (
+                                                    exercise.fromLibrary ? <Library size={18} /> : <Video size={18} />
+                                                )}
+                                                {exercise.videoUrl && <Check size={14} color={exercise.fromLibrary ? "#10b981" : "currentColor"} />}
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => removeExercise(exercise.id)}
+                                            style={{ padding: '0.5rem', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '6px', cursor: 'pointer', border: 'none' }}
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -566,7 +667,10 @@ export default function WorkoutBuilder() {
             </div>
 
             <datalist id="exercise-suggestions">
-                {commonExercises.map((ex) => (
+                {exerciseLibrary.map((ex) => (
+                    <option key={ex.id} value={ex.name} />
+                ))}
+                {commonExercises.filter(ce => !exerciseLibrary.some(le => le.name === ce)).map((ex) => (
                     <option key={ex} value={ex} />
                 ))}
             </datalist>

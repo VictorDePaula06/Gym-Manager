@@ -1,6 +1,7 @@
 import React from 'react';
 import './StudentCard.css';
 import { User } from 'lucide-react';
+import OptimizedImage from './OptimizedImage';
 
 const StudentCard = ({ student, settings, className = '', style = {} }) => {
     if (!student) return null;
@@ -45,7 +46,12 @@ const StudentCard = ({ student, settings, className = '', style = {} }) => {
             <div className="member-avatar-container">
                 <div className="member-avatar" style={{ borderColor: color }}>
                     {userImage ? (
-                        <img src={userImage} alt={student.name} draggable="false" />
+                        <OptimizedImage
+                            src={userImage}
+                            alt={student.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            placeholderColor={color}
+                        />
                     ) : (
                         <User size={40} color={color} />
                     )}

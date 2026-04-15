@@ -101,16 +101,6 @@ export const AuthProvider = ({ children }) => {
                                 isSubscriber = subscriptionStatus === 'active' || subscriptionStatus === 'trialing' || subscriptionStatus === undefined;
                             }
 
-                            // 1. LIFETIME ACCESS CHECK (Prioridade Máxima)
-                            // Se tiver acesso vitalício, ignora status do stripe, atrasos, etc.
-                            if (data.lifetimeAccess === true) {
-                                isSubscriber = true;
-                                console.log('Access granted via Lifetime Access');
-                            } else {
-                                // Active, Trialing or missing status (legacy/free) grants access
-                                isSubscriber = subscriptionStatus === 'active' || subscriptionStatus === 'trialing' || subscriptionStatus === undefined;
-                            }
-
                             // Check for Past Due with Grace Period (Only if not already valid via lifetime)
                             if (!data.lifetimeAccess && subscriptionStatus === 'past_due') {
                                 const currentPeriodEnd = data.current_period_end; // Timestamp from Firestore
@@ -140,24 +130,13 @@ export const AuthProvider = ({ children }) => {
                                         console.log('Grace Period Expired on:', gracePeriodEnd);
                                     }
                                 } else {
-                                    // If no period end date found, default to blocking or unsafe open?
-                                    // Defaulting to block for safety if status is explicitly past_due
                                     isSubscriber = false;
                                     setPaymentOverdue(true);
                                 }
                             } else {
-                                // Reset payment overdue if active or other status (e.g. trial / active)
                                 setPaymentOverdue(false);
                                 setGracePeriodDaysRemaining(null);
                             }
-
-                            // LOGIC FIX: If status is manually set to 'trial', we should NOT run the date check logic that blocks old users.
-                            // The date check logic (lines below) only runs if !isSubscriber.
-                            // By adding 'trial' to isSubscriber above, we bypass the block.
-                            // BUT we still want to show the trial countdown if possible?
-                            // For now, if admin sets 'trial', let's treat it as "Authorized Trial" (Unlimited or managed by admin)
-                            // OR we can make the date check purely visual if isSubscriber is true? 
-                            // Let's stick to simple: 'trial' status = Access Granted.
 
                             if (!isSubscriber && !paymentOverdue) {
                                 // Calculate days since creation of the GYM
@@ -191,9 +170,6 @@ export const AuthProvider = ({ children }) => {
                                 setAccessDenied(false);
                                 setPaymentOverdue(false);
                                 setGracePeriodDaysRemaining(null);
-                            } else {
-                                // Fallback for blocked via payment overdue
-                                setTrialExpired(false); // Ensure trial screen doesn't conflict
                             }
 
                             // Check Password Change Requirement
@@ -213,7 +189,6 @@ export const AuthProvider = ({ children }) => {
                         }
                     } else {
                         // If tenant doc doesn't exist AND I am the owner, create it.
-                        // If I am staff and owner doc missing, something is wrong, but default to safe.
                         if (role === 'owner') {
                             await setDoc(tenantRef, {
                                 active: true,
@@ -237,23 +212,83 @@ export const AuthProvider = ({ children }) => {
                     console.error("Error checking tenant status:", error);
                     setAccessDenied(false);
                 }
+                setUser(currentUser);
+                setLoading(false);
             } else {
+                // If no Firebase user, check for Student Session
+                const studentSession = localStorage.getItem('gym_student_session');
+                if (studentSession) {
+                    try {
+                        const sessionData = JSON.parse(studentSession);
+                        console.log('Logged in as Student:', sessionData.email);
+                        setUser({
+                            ...sessionData,
+                            role: 'student',
+                            uid: `student_${sessionData.studentId}` // Synthetic UID
+                        });
+                    } catch (e) {
+                        console.error("Error parsing student session:", e);
+                        localStorage.removeItem('gym_student_session');
+                        setUser(null);
+                    }
+                } else {
+                    setUser(null);
+                }
+                
                 setAccessDenied(false);
                 setTrialExpired(false);
                 setRequiresPasswordChange(false);
                 setTermsAccepted(true);
+                setLoading(false);
             }
-
-            setUser(currentUser);
-            setLoading(false);
         });
 
         return unsubscribe;
     }, []);
 
+    const loginAsStudent = async (email, password) => {
+        try {
+            const emailKey = email.toLowerCase().trim().replace(/\./g, '_');
+            const studentAccessRef = doc(db, 'student_access', emailKey);
+            const studentAccessSnap = await getDoc(studentAccessRef);
+
+            if (!studentAccessSnap.exists()) {
+                throw new Error('Conta não encontrada.');
+            }
+
+            const accessData = studentAccessSnap.data();
+
+            if (accessData.password !== password) {
+                throw new Error('Senha incorreta.');
+            }
+
+            // Valid - Create Session
+            const session = {
+                email: accessData.email,
+                name: accessData.name || 'Aluno',
+                studentId: accessData.studentId,
+                tenantId: accessData.tenantId,
+                role: 'student'
+            };
+
+            localStorage.setItem('gym_student_session', JSON.stringify(session));
+            setUser({
+                ...session,
+                uid: `student_${accessData.studentId}`
+            });
+
+            return session;
+        } catch (error) {
+            console.error("Student Login Error:", error);
+            throw error;
+        }
+    };
+
     const logout = async () => {
         try {
             await signOut(auth);
+            localStorage.removeItem('gym_student_session');
+            setUser(null);
             setAccessDenied(false);
         } catch (error) {
             console.error("Error logging out:", error);
@@ -270,6 +305,7 @@ export const AuthProvider = ({ children }) => {
         trialInfo,
         requiresPasswordChange,
         termsAccepted,
+        loginAsStudent,
         logout
     };
 

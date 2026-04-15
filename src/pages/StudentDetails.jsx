@@ -15,6 +15,8 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import BodyMeasurementMap from '../components/BodyMeasurementMap';
 import StudentCard from '../components/StudentCard';
 import { generateWorkout } from '../utils/workoutRecommendations';
+import { compressImage } from '../utils/imageOptimizer';
+import OptimizedImage from '../components/OptimizedImage';
 
 export default function StudentDetails() {
     const { id } = useParams();
@@ -835,16 +837,20 @@ export default function StudentDetails() {
             const [pYear, pMonth, pDay] = paymentForm.date.split('-').map(Number);
             const paymentDateObj = new Date(pYear, pMonth - 1, pDay, 12, 0, 0); // Noon to avoid DST/timezone shift
 
-            // Calculate next due date based on plan
-            let monthsToAdd = 1; // Default Monthly
+            // Cálculo de ancoragem: Próximo vencimento sempre no dia fixo escolhido
+            let monthsToAdd = 1;
             const plan = (student.plan || '').toLowerCase();
-
             if (plan.includes('trimestral') || plan.includes('quarterly')) monthsToAdd = 3;
             else if (plan.includes('semestral') || plan.includes('semiannual')) monthsToAdd = 6;
             else if (plan.includes('anual') || plan.includes('annual')) monthsToAdd = 12;
 
             const nextDueDate = new Date(paymentDateObj);
             nextDueDate.setMonth(nextDueDate.getMonth() + monthsToAdd);
+            
+            const targetDay = parseInt(student.paymentDay);
+            if (!isNaN(targetDay)) {
+                nextDueDate.setDate(targetDay);
+            }
 
             const newHistory = [
                 {
@@ -903,8 +909,16 @@ export default function StudentDetails() {
 
         setUploadingPhoto(true);
         try {
-            const storageRef = ref(storage, `students/${id}/gallery/${Date.now()}_${file.name}`);
-            await uploadBytes(storageRef, file);
+            let fileToUpload = file;
+            try {
+                const compressedBlob = await compressImage(file, 1024, 0.8); // 1024px for gallery (slightly better quality)
+                fileToUpload = new File([compressedBlob], file.name, { type: 'image/jpeg' });
+            } catch (err) {
+                console.warn("Compression failed, using original", err);
+            }
+
+            const storageRef = ref(storage, `students/${id}/gallery/${Date.now()}_${fileToUpload.name}`);
+            await uploadBytes(storageRef, fileToUpload);
             const url = await getDownloadURL(storageRef);
 
             const newPhoto = {
@@ -1680,17 +1694,45 @@ export default function StudentDetails() {
                             {/* Plan Summary */}
                             {/* Plan Summary */}
                             {(() => {
-                                // Payment Logic Lifted for Overview
+                                // Lógica de Proteção de Receita na Exibição
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);
 
                                 let nextPaymentDate = null;
+                                const targetDay = parseInt(student.paymentDay);
+                                
+                                // 1. Tentar ler a data salva no banco
                                 if (student.nextPaymentDate) {
-                                    nextPaymentDate = new Date(student.nextPaymentDate);
-                                } else {
-                                    const dueDay = parseInt(student.paymentDay);
-                                    if (!isNaN(dueDay)) {
-                                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
+                                    nextPaymentDate = student.nextPaymentDate.seconds 
+                                        ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                        : new Date(student.nextPaymentDate);
+                                }
+
+                                // 2. Validar contra a regra do "Dia Fixo" e último pagamento para evitar pulos
+                                if (!isNaN(targetDay)) {
+                                    let baseDateString = student.lastPaymentDate || student.startDate;
+                                    let baseDate = null;
+                                    if (baseDateString) {
+                                        baseDate = baseDateString.seconds 
+                                            ? new Date(baseDateString.seconds * 1000) 
+                                            : new Date(baseDateString);
+                                    }
+                                    
+                                    if (baseDate && !isNaN(baseDate.getTime())) {
+                                        // Calcula qual deveria ser o PRÓXIMO vencimento após o último pagamento
+                                        let expectedDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
+                                        if (expectedDate <= baseDate) {
+                                            expectedDate.setMonth(expectedDate.getMonth() + 1);
+                                        }
+                                        
+                                        // Se a data esperada (ex: 05/04) for anterior à data salva (ex: 05/05),
+                                        // priorizamos exibir a data esperada, pois é a mensalidade que falta pagar.
+                                        if (!nextPaymentDate || expectedDate < nextPaymentDate) {
+                                            nextPaymentDate = expectedDate;
+                                        }
+                                    } else if (!nextPaymentDate) {
+                                        // Fallback se não houver nada no banco
+                                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), targetDay);
                                     }
                                 }
 
@@ -3030,7 +3072,11 @@ export default function StudentDetails() {
                                                     setEditingDescription(false);
                                                 }}
                                             >
-                                                <img src={photo.url} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                <OptimizedImage
+                                                    src={photo.url}
+                                                    alt="Student"
+                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                />
                                             </div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.25rem' }}>
                                                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(photo.date).toLocaleDateString()}</span>
@@ -3058,159 +3104,161 @@ export default function StudentDetails() {
                 }
             </div>
             {/* Lightbox Modal */}
-            {expandedPhoto && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0,0,0,0.9)',
-                    zIndex: 9999,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: '2rem'
-                }} onClick={() => setExpandedPhoto(null)}>
-                    <div style={{ position: 'relative', width: 'auto', height: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
-                        <img
-                            src={expandedPhoto.url}
-                            alt="Expanded"
-                            style={{
-                                maxHeight: '80vh',
-                                maxWidth: '100%',
-                                objectFit: 'contain',
+            {
+                expandedPhoto && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        zIndex: 9999,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: '2rem'
+                    }} onClick={() => setExpandedPhoto(null)}>
+                        <div style={{ position: 'relative', width: 'auto', height: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', maxWidth: '90vw', maxHeight: '90vh' }} onClick={e => e.stopPropagation()}>
+                            <img
+                                src={expandedPhoto.url}
+                                alt="Expanded"
+                                style={{
+                                    maxHeight: '80vh',
+                                    maxWidth: '100%',
+                                    objectFit: 'contain',
+                                    borderRadius: '8px',
+                                    boxShadow: '0 0 40px rgba(0,0,0,0.8)'
+                                }}
+                            />
+
+                            {/* Description Overlay */}
+                            <div style={{
+                                marginTop: '1rem',
+                                width: '100%',
+                                maxWidth: '600px',
+                                background: 'rgba(0,0,0,0.8)',
+                                padding: '1rem',
                                 borderRadius: '8px',
-                                boxShadow: '0 0 40px rgba(0,0,0,0.8)'
-                            }}
-                        />
-
-                        {/* Description Overlay */}
-                        <div style={{
-                            marginTop: '1rem',
-                            width: '100%',
-                            maxWidth: '600px',
-                            background: 'rgba(0,0,0,0.8)',
-                            padding: '1rem',
-                            borderRadius: '8px',
-                            backdropFilter: 'blur(10px)',
-                            border: '1px solid rgba(255,255,255,0.1)'
-                        }}>
-                            {editingDescription ? (
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <input
-                                        type="text"
-                                        value={tempDescription}
-                                        onChange={(e) => setTempDescription(e.target.value)}
-                                        placeholder="Adicione uma descrição..."
-                                        style={{
-                                            flex: 1,
-                                            padding: '0.5rem',
-                                            borderRadius: '4px',
-                                            border: 'none',
-                                            background: 'rgba(255,255,255,0.1)',
-                                            color: 'white'
+                                backdropFilter: 'blur(10px)',
+                                border: '1px solid rgba(255,255,255,0.1)'
+                            }}>
+                                {editingDescription ? (
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <input
+                                            type="text"
+                                            value={tempDescription}
+                                            onChange={(e) => setTempDescription(e.target.value)}
+                                            placeholder="Adicione uma descrição..."
+                                            style={{
+                                                flex: 1,
+                                                padding: '0.5rem',
+                                                borderRadius: '4px',
+                                                border: 'none',
+                                                background: 'rgba(255,255,255,0.1)',
+                                                color: 'white'
+                                            }}
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleUpdateDescription();
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleUpdateDescription}
+                                            style={{ background: '#10b981', color: 'white', border: 'none', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                        >
+                                            <Check size={20} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        onClick={() => {
+                                            setEditingDescription(true);
+                                            setTempDescription(expandedPhoto.description || "");
                                         }}
-                                        autoFocus
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') handleUpdateDescription();
-                                        }}
-                                    />
-                                    <button
-                                        onClick={handleUpdateDescription}
-                                        style={{ background: '#10b981', color: 'white', border: 'none', padding: '0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: '24px' }}
                                     >
-                                        <Check size={20} />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div
-                                    onClick={() => {
-                                        setEditingDescription(true);
-                                        setTempDescription(expandedPhoto.description || "");
-                                    }}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: '24px' }}
-                                >
-                                    <span style={{ color: expandedPhoto.description ? 'white' : 'rgba(255,255,255,0.5)', fontStyle: expandedPhoto.description ? 'normal' : 'italic' }}>
-                                        {expandedPhoto.description || "Clique para adicionar uma descrição..."}
-                                    </span>
-                                    <Edit2 size={16} color="rgba(255,255,255,0.5)" />
-                                </div>
-                            )}
+                                        <span style={{ color: expandedPhoto.description ? 'white' : 'rgba(255,255,255,0.5)', fontStyle: expandedPhoto.description ? 'normal' : 'italic' }}>
+                                            {expandedPhoto.description || "Clique para adicionar uma descrição..."}
+                                        </span>
+                                        <Edit2 size={16} color="rgba(255,255,255,0.5)" />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Navigation Arrows */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePrev();
+                                    setEditingDescription(false);
+                                }}
+                                style={{
+                                    position: 'absolute',
+                                    left: '-80px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    padding: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'transform 0.2s',
+                                }}
+                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1.2)'}
+                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1)'}
+                            >
+                                <ChevronLeft size={64} style={{ filter: 'drop-shadow(0 0 5px black)' }} />
+                            </button>
+
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleNext();
+                                    setEditingDescription(false);
+                                }}
+                                style={{
+                                    position: 'absolute',
+                                    right: '-80px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    padding: '20px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    transition: 'transform 0.2s',
+                                }}
+                                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1.2)'}
+                                onMouseOut={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1)'}
+                            >
+                                <ChevronRight size={64} style={{ filter: 'drop-shadow(0 0 5px black)' }} />
+                            </button>
+
+                            <button
+                                onClick={() => setExpandedPhoto(null)}
+                                style={{
+                                    position: 'absolute',
+                                    top: '-50px',
+                                    right: '-40px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    padding: '10px'
+                                }}
+                            >
+                                <X size={32} />
+                            </button>
                         </div>
-
-                        {/* Navigation Arrows */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handlePrev();
-                                setEditingDescription(false);
-                            }}
-                            style={{
-                                position: 'absolute',
-                                left: '-80px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'white',
-                                cursor: 'pointer',
-                                padding: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                transition: 'transform 0.2s',
-                            }}
-                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1.2)'}
-                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1)'}
-                        >
-                            <ChevronLeft size={64} style={{ filter: 'drop-shadow(0 0 5px black)' }} />
-                        </button>
-
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleNext();
-                                setEditingDescription(false);
-                            }}
-                            style={{
-                                position: 'absolute',
-                                right: '-80px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'white',
-                                cursor: 'pointer',
-                                padding: '20px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                transition: 'transform 0.2s',
-                            }}
-                            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1.2)'}
-                            onMouseOut={e => e.currentTarget.style.transform = 'translateY(-50%) scale(1)'}
-                        >
-                            <ChevronRight size={64} style={{ filter: 'drop-shadow(0 0 5px black)' }} />
-                        </button>
-
-                        <button
-                            onClick={() => setExpandedPhoto(null)}
-                            style={{
-                                position: 'absolute',
-                                top: '-50px',
-                                right: '-40px',
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'white',
-                                cursor: 'pointer',
-                                padding: '10px'
-                            }}
-                        >
-                            <X size={32} />
-                        </button>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dumbbell, TrendingUp, Users, Check, ArrowRight, FileText, DollarSign, GraduationCap, X, Plus, ChevronDown, Activity } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import PricingCards from '../components/vector/PricingCards';
 
 gsap.registerPlugin(ScrollTrigger);
 

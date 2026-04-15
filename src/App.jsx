@@ -14,6 +14,7 @@ import TeacherForm from './pages/TeacherForm';
 import Financial from './pages/Financial';
 import Workouts from './pages/Workouts';
 import WorkoutBuilder from './pages/WorkoutBuilder';
+import ExerciseLibrary from './pages/ExerciseLibrary';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Settings from './pages/Settings';
@@ -33,6 +34,12 @@ import LandingPage from './pages/LandingPage';
 import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
 import Subscription from './pages/Subscription';
+
+// Student Portal Imports
+import StudentLayout from './components/StudentLayout';
+import StudentDashboard from './pages/StudentPortal/StudentDashboard';
+import StudentWorkouts from './pages/StudentPortal/StudentWorkouts';
+import StudentAssessments from './pages/StudentPortal/StudentAssessments';
 
 
 import { useAuth } from './context/AuthContext';
@@ -89,6 +96,7 @@ function App() {
                   <Route path="students/new" element={<StudentForm />} />
                   <Route path="students/:id" element={<StudentDetails />} />
                   <Route path="students/:id/edit" element={<StudentForm />} />
+                  <Route path="exercises" element={<ExerciseLibrary />} />
                   <Route path="teachers" element={<Teachers />} />
                   <Route path="teachers/new" element={<TeacherForm />} />
                   <Route path="teachers/edit/:id" element={<TeacherForm />} />
@@ -104,6 +112,18 @@ function App() {
                   <Route path="subscription" element={<Subscription />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
+
+                {/* Student Portal Routes */}
+                <Route path="/student" element={
+                  <PrivateRoute>
+                    <StudentLayout />
+                  </PrivateRoute>
+                }>
+                  <Route index element={<StudentDashboard />} />
+                  <Route path="workouts" element={<StudentWorkouts />} />
+                  <Route path="assessments" element={<StudentAssessments />} />
+                </Route>
+
                 <Route path="*" element={<Navigate to="/" />} />
               </Routes>
             </BrowserRouter>

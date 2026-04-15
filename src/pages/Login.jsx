@@ -13,11 +13,16 @@ const Login = () => {
     const [loadingLocal, setLoadingLocal] = useState(false); // Renamed to avoid conflict with auth loading
     const navigate = useNavigate();
     const { addToast } = useToast();
-    const { user, loading: authLoading, accessDenied } = useAuth(); // Get accessDenied
+    const { user, loading: authLoading, accessDenied, loginAsStudent } = useAuth(); // Get accessDenied
+    const [loginType, setLoginType] = useState('gestor'); // 'gestor' or 'aluno'
 
     useEffect(() => {
         if (user) {
-            navigate('/app');
+            if (user.role === 'student') {
+                navigate('/student');
+            } else {
+                navigate('/app');
+            }
         } else if (accessDenied) {
             navigate('/access-denied');
         }
@@ -29,19 +34,20 @@ const Login = () => {
         setLoadingLocal(true);
 
         try {
-            await signInWithEmailAndPassword(auth, email, password);
-            // SUCCESS: Do NOT set loadingLocal(false). 
-            // The useEffect will detect the user change and redirect.
-            // Keeping loadingLocal=true keeps the spinner/disabled state active preventing double-submit.
+            if (loginType === 'gestor') {
+                await signInWithEmailAndPassword(auth, email, password);
+            } else {
+                await loginAsStudent(email, password);
+            }
         } catch (err) {
             console.error("Login Error:", err);
-            setLoadingLocal(false); // Only stop loading on error
+            setLoadingLocal(false);
             if (err.code === 'auth/user-disabled') {
-                setError('Sua conta foi suspensa. Entre em contato com o administrador.');
-            } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                setError('Sua conta foi suspensa.');
+            } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.message === 'Conta não encontrada.' || err.message === 'Senha incorreta.') {
                 setError('E-mail ou senha incorretos.');
             } else {
-                setError('Falha ao fazer login. Tente novamente.');
+                setError(err.message || 'Falha ao fazer login.');
             }
         }
     };
@@ -155,6 +161,50 @@ const Login = () => {
                         Vector GymHub
                     </h1>
                     <p style={{ color: '#cbd5e1', fontSize: '0.95rem', fontWeight: '300' }}>Gerencie sua academia com excelência</p>
+                </div>
+
+                <div style={{
+                    display: 'flex',
+                    background: 'rgba(2, 6, 23, 0.4)',
+                    padding: '4px',
+                    borderRadius: '0.75rem',
+                    marginBottom: '2rem',
+                    border: '1px solid rgba(148, 163, 184, 0.1)'
+                }}>
+                    <button
+                        onClick={() => setLoginType('gestor')}
+                        style={{
+                            flex: 1,
+                            padding: '0.75rem',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            backgroundColor: loginType === 'gestor' ? '#10b981' : 'transparent',
+                            color: loginType === 'gestor' ? 'white' : '#94a3b8'
+                        }}
+                    >
+                        Sou Gestor
+                    </button>
+                    <button
+                        onClick={() => setLoginType('aluno')}
+                        style={{
+                            flex: 1,
+                            padding: '0.75rem',
+                            border: 'none',
+                            borderRadius: '0.5rem',
+                            fontSize: '0.9rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            backgroundColor: loginType === 'aluno' ? '#10b981' : 'transparent',
+                            color: loginType === 'aluno' ? 'white' : '#94a3b8'
+                        }}
+                    >
+                        Sou Aluno
+                    </button>
                 </div>
 
                 {error && (
