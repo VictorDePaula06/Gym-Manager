@@ -270,17 +270,20 @@ export default function Students() {
                     <p style={{ fontSize: '1.1rem' }}>Nenhum aluno encontrado nesta categoria.</p>
                 </div>
             ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem' }}>
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                    gap: '1.5rem',
+                    width: '100%'
+                }}>
                     {filteredStudents.map(student => (
-                        <div key={student.id} style={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
-                            <Link to={`/app/students/${student.id}`} style={{ textDecoration: 'none', transition: 'transform 0.2s', display: 'block' }}>
-                                <div style={{ transform: 'scale(0.9)', transformOrigin: 'top center' }}>
-                                    <StudentCard student={student} settings={settings} />
-                                </div>
-                            </Link>
-
-
-                        </div>
+                        <Link 
+                            key={student.id} 
+                            to={`/app/students/${student.id}`} 
+                            style={{ textDecoration: 'none', display: 'flex', justifyContent: 'center' }}
+                        >
+                            <StudentCard student={student} settings={settings} />
+                        </Link>
                     ))}
                 </div>
             )}

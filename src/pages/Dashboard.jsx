@@ -475,7 +475,9 @@ export default function Dashboard() {
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
                 gap: '1.5rem',
-                marginBottom: '2rem'
+                marginBottom: '2rem',
+                width: '100%',
+                maxWidth: '1200px'
             }}>
                 <StatsCard
                     title="Total de Alunos"

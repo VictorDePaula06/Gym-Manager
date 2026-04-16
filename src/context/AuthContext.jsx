@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
@@ -21,11 +21,11 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-            if (currentUser) {
+            if (currentUser && !currentUser.isAnonymous) {
                 try {
                     // 1. Determine Role & Tenant
                     const SUPER_ADMINS = ['j.17jvictor@gmail.com'];
-                    console.log('Checking Admin Access for:', currentUser.email);
+
 
                     if (SUPER_ADMINS.some(admin => admin.toLowerCase() === currentUser.email?.toLowerCase())) {
                         console.log('User is Super Admin!');
@@ -215,17 +215,25 @@ export const AuthProvider = ({ children }) => {
                 setUser(currentUser);
                 setLoading(false);
             } else {
-                // If no Firebase user, check for Student Session
+                // If no Firebase user (OR is Anonymous), check for Student Session
                 const studentSession = localStorage.getItem('gym_student_session');
                 if (studentSession) {
                     try {
                         const sessionData = JSON.parse(studentSession);
                         console.log('Logged in as Student:', sessionData.email);
+                        
+                        // We set the user state immediately for UI responsiveness
                         setUser({
                             ...sessionData,
                             role: 'student',
                             uid: `student_${sessionData.studentId}` // Synthetic UID
                         });
+
+                        // Ensure Firebase session is active for Firestore permissions
+                        if (!auth.currentUser) {
+                            console.log('Establishing anonymous Firebase session for student...');
+                            signInAnonymously(auth).catch(e => console.error("Anonymous sign-in error:", e));
+                        }
                     } catch (e) {
                         console.error("Error parsing student session:", e);
                         localStorage.removeItem('gym_student_session');
@@ -270,6 +278,9 @@ export const AuthProvider = ({ children }) => {
                 tenantId: accessData.tenantId,
                 role: 'student'
             };
+
+            // Sign-in anonymously to get Firestore permissions before finishing
+            await signInAnonymously(auth);
 
             localStorage.setItem('gym_student_session', JSON.stringify(session));
             setUser({

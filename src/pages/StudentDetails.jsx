@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -29,6 +29,8 @@ export default function StudentDetails() {
     const [student, setStudent] = useState(null);
     const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'overview');
     const [assessments, setAssessments] = useState([]);
+    const [trainingLogs, setTrainingLogs] = useState([]);
+    const [loadingLogs, setLoadingLogs] = useState(false);
     const [showAssessmentForm, setShowAssessmentForm] = useState(false);
     const [editingAssessmentId, setEditingAssessmentId] = useState(null);
 
@@ -39,6 +41,7 @@ export default function StudentDetails() {
     const [useRecommendation, setUseRecommendation] = useState(false); // New state for AI gen
     const [selectedLevel, setSelectedLevel] = useState('Iniciante'); // Manual override
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showHistoryModal, setShowHistoryModal] = useState(false);
 
     const [newAssessment, setNewAssessment] = useState({
         weight: '',
@@ -150,6 +153,28 @@ export default function StudentDetails() {
                 id: doc.id,
                 ...doc.data()
             })));
+        });
+
+        return () => unsubscribe();
+    }, [id, user]);
+
+    // Fetch Training Logs
+    useEffect(() => {
+        if (!id || !user) return;
+
+        setLoadingLogs(true);
+        const basePath = `users/${user.uid}`;
+        const q = query(collection(db, `${basePath}/students`, id, 'training_logs'), orderBy('timestamp', 'desc'));
+        
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setTrainingLogs(snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })));
+            setLoadingLogs(false);
+        }, (error) => {
+            console.error("Error fetching training logs:", error);
+            setLoadingLogs(false);
         });
 
         return () => unsubscribe();
@@ -767,6 +792,95 @@ export default function StudentDetails() {
             {label}
         </button>
     );
+
+    const renderTrainingLogs = () => {
+        if (loadingLogs) return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Buscando histórico...</div>;
+        
+        if (trainingLogs.length === 0) {
+            return (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'rgba(255,255,255,0.02)', borderRadius: '24px', border: '1px dashed var(--border-glass)' }}>
+                    <Dumbbell size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
+                    <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Nenhum treino registrado</h3>
+                    <p style={{ color: 'var(--text-muted)', maxWidth: '300px', margin: '0 auto' }}>Os treinos aparecerão aqui assim que o aluno concluir as atividades pelo portal.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Activity size={20} className="text-primary" />
+                        <h3 style={{ margin: 0 }}>Histórico de Atividade</h3>
+                    </div>
+                    <button 
+                        onClick={() => setShowHistoryModal(true)}
+                        style={{ 
+                            background: 'rgba(59, 130, 246, 0.1)', 
+                            color: 'var(--primary)', 
+                            border: 'none', 
+                            padding: '0.5rem 1rem', 
+                            borderRadius: '10px', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 'bold',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Visualizar Treinos ({trainingLogs.length})
+                    </button>
+                </div>
+
+                {/* Full History Modal */}
+                {showHistoryModal && (
+                    <div style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 99999, background: 'rgba(0,0,0,0.85)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+                        backdropFilter: 'blur(10px)'
+                    }}>
+                        <div className="glass-panel" style={{ width: '100%', maxWidth: '500px', padding: '2rem', borderRadius: '24px', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '85vh' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Histórico Completo</h3>
+                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>{trainingLogs.length} treinos realizados</p>
+                                </div>
+                                <button onClick={() => setShowHistoryModal(false)} style={{ background: 'rgba(255,255,255,0.05)', border: 'none', padding: '0.5rem', borderRadius: '50%', color: 'white', cursor: 'pointer' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.5rem' }}>
+                                {trainingLogs.map(log => (
+                                    <div key={log.id} style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-glass)' }}>
+                                        <div style={{ width: '45px', height: '45px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                                             <CheckCircle size={22} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                <h4 style={{ margin: 0, fontSize: '1rem' }}>Treino {log.variation}</h4>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                    {new Date(log.timestamp).toLocaleDateString('pt-BR')} às {new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={14} /> {log.duration} min</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Dumbbell size={14} /> {log.exercisesCompleted} exercícios</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Activity size={14} /> {log.sheetName?.split(' ')[0]}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button onClick={() => setShowHistoryModal(false)} className="btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '14px', fontWeight: 'bold' }}>
+                                Fechar Histórico
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const handleOpenPaymentModal = () => {
         setPaymentForm({
@@ -1649,41 +1763,35 @@ export default function StudentDetails() {
             </div>
 
             {/* Navigation Tabs */}
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem', overflowX: 'auto' }}>
+            <div className="tab-navigation desktop-only" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem', overflowX: 'auto' }}>
                 <TabButton id="overview" label="Visão Geral" icon={User} />
-                <TabButton id="assessments" label="Avaliações" icon={Activity} />
+                <TabButton id="assessments" label="Avaliações" icon={Scale} />
                 <TabButton id="map" label="Mapa Corporal" icon={Accessibility} />
                 <TabButton id="workouts" label="Treinos" icon={Dumbbell} />
                 <TabButton id="financial" label="Financeiro" icon={DollarSign} />
                 <TabButton id="photos" label="Fotos" icon={ImageIcon} />
             </div>
+            
+            <div className="tab-navigation mobile-only" style={{ display: 'none', overflowX: 'auto', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-glass)' }}>
+                <TabButton id="overview" label="Visão Geral" icon={User} />
+                <TabButton id="assessments" label="Avaliações" icon={Scale} />
+                <TabButton id="map" label="Mapa" icon={Accessibility} />
+                <TabButton id="workouts" label="Treinos" icon={Dumbbell} />
+                <TabButton id="financial" label="Financeiro" icon={DollarSign} />
+                <TabButton id="photos" label="Fotos" icon={ImageIcon} />
+            </div>
+            <style>{`
+                @media (max-width: 768px) {
+                    .tab-navigation.desktop-only { display: none !important; }
+                    .tab-navigation.mobile-only { display: flex !important; }
+                }
+            `}</style>
 
             {/* Content Area */}
             <div style={{ marginTop: '2rem' }}>
 
-                {activeTab === 'overview' && (<>
-                    <style>{`
-                        .details-overview-grid {
-                            display: grid;
-                            grid-template-columns: 350px 1fr;
-                            gap: 2rem;
-                            align-items: start;
-                        }
-
-                        @media (max-width: 1024px) {
-                            .details-overview-grid {
-                                grid-template-columns: 1fr 1fr; /* Tablet: 50/50 might be ok, or stacked? Let's go stacked for safety if narrow */
-                            }
-                        }
-
-                        @media (max-width: 768px) {
-                            .details-overview-grid {
-                                grid-template-columns: 1fr;
-                                gap: 1.5rem;
-                            }
-                        }
-                    `}</style>
-                    <div className="details-overview-grid">
+                {activeTab === 'overview' && (
+                    <div className="responsive-grid" style={{ gap: '2rem', gridTemplateColumns: 'minmax(320px, auto) 1fr' }}>
                         {/* LEFT COLUMN: Profile & Personal */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {/* Profile Card */}
@@ -2024,7 +2132,9 @@ export default function StudentDetails() {
                             {/* Body Map removed from here */}
                         </div>
                     </div>
-                </>)}
+                )}
+
+
 
                 {activeTab === 'map' && (
                     <div className="glass-panel" style={{ padding: '2rem', background: 'var(--card-bg)', minHeight: '600px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -2750,6 +2860,11 @@ export default function StudentDetails() {
                                         <span style={{ fontWeight: '600' }}>Nova Divisão</span>
                                     </button>
                                 </div>
+                            </div>
+                            
+                            {/* NEW: Workout History integrated at the bottom of the Workouts tab */}
+                            <div style={{ marginTop: '3rem' }}>
+                                {renderTrainingLogs()}
                             </div>
                         </div>
                     )

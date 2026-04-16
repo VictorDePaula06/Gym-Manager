@@ -328,6 +328,8 @@ export const GymProvider = ({ children }) => {
         }
     };
 
+    const [isTrainingMode, setIsTrainingMode] = useState(false);
+
     const value = {
         students,
         loading,
@@ -347,6 +349,8 @@ export const GymProvider = ({ children }) => {
         deleteTeacherPayment,
         teacherPayments,
         exerciseLibrary,
+        isTrainingMode,
+        setIsTrainingMode,
         addExerciseToLibrary: async (data) => {
             const basePath = `users/${user.tenantId || user.uid}`;
             await addDoc(collection(db, `${basePath}/exercise_library`), { ...data, createdAt: new Date().toISOString() });
@@ -358,6 +362,21 @@ export const GymProvider = ({ children }) => {
         deleteExerciseFromLibrary: async (id) => {
             const basePath = `users/${user.tenantId || user.uid}`;
             await deleteDoc(doc(db, `${basePath}/exercise_library`, id));
+        },
+        logWorkoutCompletion: async (studentId, workoutData) => {
+            try {
+                const basePath = getUserBasePath();
+                console.log(`[GymContext] Logging workout for student ${studentId} at path: ${basePath}/students/${studentId}/training_logs`);
+                const logsRef = collection(db, `${basePath}/students/${studentId}/training_logs`);
+                await addDoc(logsRef, {
+                    ...workoutData,
+                    timestamp: new Date().toISOString()
+                });
+                console.log("[GymContext] Workout logged successfully");
+            } catch (error) {
+                console.error("Error logging workout completion:", error);
+                throw error;
+            }
         }
     };
 

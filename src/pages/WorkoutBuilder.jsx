@@ -100,7 +100,7 @@ export default function WorkoutBuilder() {
     // But updateExercise already handles the name change case.
 
     const addExercise = () => {
-        setExercises([...exercises, { id: crypto.randomUUID(), name: '', sets: 3, reps: '12', weight: '', videoUrl: '' }]);
+        setExercises([...exercises, { id: crypto.randomUUID(), name: '', sets: 3, reps: '12', weight: '', restTime: 60, videoUrl: '' }]);
     };
 
     const updateExercise = (exerciseId, field, value) => {
@@ -306,12 +306,13 @@ export default function WorkoutBuilder() {
                     currentY += (splitObs.length * 4);
                 }
 
-                const tableColumn = ["Exercício", "Séries", "Repetições", "Carga (kg)"];
+                const tableColumn = ["Exercício", "Séries", "Repetições", "Carga", "Descanso"];
                 const tableRows = exercisesList.map(exercise => [
                     exercise.name,
                     exercise.sets,
                     exercise.reps,
-                    exercise.weight || '-'
+                    exercise.weight || '-',
+                    exercise.restTime ? `${exercise.restTime}s` : '60s'
                 ]);
 
                 autoTable(doc, {
@@ -367,7 +368,7 @@ export default function WorkoutBuilder() {
             <style>{`
                 .exercise-row {
                     display: grid;
-                    grid-template-columns: minmax(200px, 3fr) 0.8fr 0.8fr 0.8fr auto;
+                    grid-template-columns: minmax(180px, 3fr) 0.7fr 0.7fr 0.7fr 0.7fr auto;
                     gap: 1rem;
                     align-items: end;
                     margin-bottom: 1rem;
@@ -574,6 +575,16 @@ export default function WorkoutBuilder() {
                                         <input
                                             value={exercise.weight}
                                             onChange={(e) => updateExercise(exercise.id, 'weight', e.target.value)}
+                                            style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem', display: 'block' }}>Desc.</label>
+                                        <input
+                                            type="number"
+                                            placeholder="s"
+                                            value={exercise.restTime || ''}
+                                            onChange={(e) => updateExercise(exercise.id, 'restTime', parseInt(e.target.value) || 0)}
                                             style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
                                         />
                                     </div>

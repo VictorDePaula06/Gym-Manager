@@ -45,7 +45,7 @@ const getRandomExercise = (key, defaultEx) => {
     const options = EXERCISE_BANK[key];
     if (!options) return defaultEx;
     const choice = options[Math.floor(Math.random() * options.length)];
-    return { id: crypto.randomUUID(), ...choice, sets: defaultEx.sets, reps: defaultEx.reps, weight: '' };
+    return { id: crypto.randomUUID(), ...choice, sets: defaultEx.sets, reps: defaultEx.reps, weight: '', restTime: defaultEx.restTime || 60 };
 };
 
 export const generateWorkout = (student, overrideLevel) => {
@@ -81,12 +81,12 @@ export const generateWorkout = (student, overrideLevel) => {
     // --- CARDIO LOGIC ---
     const getCardio = () => {
         if (goal.includes('emagreci') || goal.includes('perda')) {
-            return { id: crypto.randomUUID(), name: 'Esteira (HIIT: 1min Forte / 1min Leve)', sets: 1, reps: '20 min', weight: '' };
+            return { id: crypto.randomUUID(), name: 'Esteira (HIIT: 1min Forte / 1min Leve)', sets: 1, reps: '20 min', weight: '', restTime: 0 };
         }
         if (age > 60) {
-            return { id: crypto.randomUUID(), name: 'Caminhada Moderada ou Bike', sets: 1, reps: '15-20 min', weight: '' };
+            return { id: crypto.randomUUID(), name: 'Caminhada Moderada ou Bike', sets: 1, reps: '15-20 min', weight: '', restTime: 0 };
         }
-        return { id: crypto.randomUUID(), name: 'Cardio Livre (Esteira/Bike/Elíptico)', sets: 1, reps: '15 min', weight: '' };
+        return { id: crypto.randomUUID(), name: 'Cardio Livre (Esteira/Bike/Elíptico)', sets: 1, reps: '15 min', weight: '', restTime: 0 };
     };
 
     // --- STRATEGY SELECTION ---
@@ -414,20 +414,20 @@ const getTeenTemplate = () => ({
     'A': {
         name: 'A - Corpo Todo (Aprendizado)',
         exercises: [
-            { id: crypto.randomUUID(), name: 'Agachamento (Peso do Corpo)', sets: 3, reps: '12-15', weight: 'Corporal' },
-            { id: crypto.randomUUID(), name: 'Flexão de Braços (Apoio)', sets: 3, reps: '10-12', weight: 'Corporal' },
-            { id: crypto.randomUUID(), name: 'Puxada Frontal', sets: 3, reps: '15', weight: '' },
-            { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 3, reps: '15', weight: '' },
-            { id: crypto.randomUUID(), name: 'Prancha Abdominal', sets: 3, reps: '20-30 seg', weight: '' }
+            { id: crypto.randomUUID(), name: 'Agachamento (Peso do Corpo)', sets: 3, reps: '12-15', weight: 'Corporal', restTime: 60 },
+            { id: crypto.randomUUID(), name: 'Flexão de Braços (Apoio)', sets: 3, reps: '10-12', weight: 'Corporal', restTime: 60 },
+            { id: crypto.randomUUID(), name: 'Puxada Frontal', sets: 3, reps: '15', weight: '', restTime: 60 },
+            { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 3, reps: '15', weight: '', restTime: 45 },
+            { id: crypto.randomUUID(), name: 'Prancha Abdominal', sets: 3, reps: '20-30 seg', weight: '', restTime: 45 }
         ]
     },
     'B': {
         name: 'B - Cardio e Core',
         exercises: [
-            { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '1 min', weight: '' },
-            { id: crypto.randomUUID(), name: 'Abdominal Supra (Chão)', sets: 3, reps: '15', weight: '' },
-            { id: crypto.randomUUID(), name: 'Agachamento Isométrico (Parede)', sets: 3, reps: '30 seg', weight: '' },
-            { id: crypto.randomUUID(), name: 'Corrida Estacionária', sets: 3, reps: '1 min', weight: '' }
+            { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '1 min', weight: '', restTime: 20 },
+            { id: crypto.randomUUID(), name: 'Abdominal Supra (Chão)', sets: 3, reps: '15', weight: '', restTime: 45 },
+            { id: crypto.randomUUID(), name: 'Agachamento Isométrico (Parede)', sets: 3, reps: '30 seg', weight: '', restTime: 45 },
+            { id: crypto.randomUUID(), name: 'Corrida Estacionária', sets: 3, reps: '1 min', weight: '', restTime: 20 }
         ]
     }
 });
@@ -439,31 +439,31 @@ const getAdaptationABCTemplate = (gender) => {
         'A': {
             name: 'A - Inferiores e Costas',
             exercises: [
-                getRandomExercise('agachamento', { name: 'Agachamento Globet', sets: 3, reps: '15' }),
-                getRandomExercise('leg_press', { name: 'Leg Press 45', sets: 3, reps: '15' }),
-                getRandomExercise('puxada', { name: 'Puxada Frontal', sets: 3, reps: '15' }),
-                getRandomExercise('remada', { name: 'Remada Sentada', sets: 3, reps: '15' }),
-                { id: crypto.randomUUID(), name: 'Lombar (Extensão)', sets: 3, reps: '12', weight: '' }
+                getRandomExercise('agachamento', { name: 'Agachamento Globet', sets: 3, reps: '15', restTime: 60 }),
+                getRandomExercise('leg_press', { name: 'Leg Press 45', sets: 3, reps: '15', restTime: 60 }),
+                getRandomExercise('puxada', { name: 'Puxada Frontal', sets: 3, reps: '15', restTime: 60 }),
+                getRandomExercise('remada', { name: 'Remada Sentada', sets: 3, reps: '15', restTime: 60 }),
+                { id: crypto.randomUUID(), name: 'Lombar (Extensão)', sets: 3, reps: '12', weight: '', restTime: 45 }
             ]
         },
         'B': {
             name: 'B - Empurrar e Glúteo',
             exercises: [
-                getRandomExercise('supino_reto', { name: 'Supino Máquina', sets: 3, reps: '15' }),
-                getRandomExercise('desenvolvimento', { name: 'Desenvolvimento Máquina', sets: 3, reps: '15' }),
-                { id: crypto.randomUUID(), name: 'Tríceps Corda', sets: 3, reps: '15', weight: '' },
-                { id: crypto.randomUUID(), name: 'Elevação Pélvica', sets: 4, reps: '15', weight: '' },
-                isFemale ? { id: crypto.randomUUID(), name: 'Glúteo Caneleira', sets: 3, reps: '15', weight: '' } : { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 3, reps: '15', weight: '' }
+                getRandomExercise('supino_reto', { name: 'Supino Máquina', sets: 3, reps: '15', restTime: 60 }),
+                getRandomExercise('desenvolvimento', { name: 'Desenvolvimento Máquina', sets: 3, reps: '15', restTime: 45 }),
+                { id: crypto.randomUUID(), name: 'Tríceps Corda', sets: 3, reps: '15', weight: '', restTime: 45 },
+                { id: crypto.randomUUID(), name: 'Elevação Pélvica', sets: 4, reps: '15', weight: '', restTime: 60 },
+                isFemale ? { id: crypto.randomUUID(), name: 'Glúteo Caneleira', sets: 3, reps: '15', weight: '', restTime: 45 } : { id: crypto.randomUUID(), name: 'Elevação Lateral', sets: 3, reps: '15', weight: '', restTime: 45 }
             ]
         },
         'C': {
             name: 'C - Cardio, Core e Funcional',
             exercises: [
-                { id: crypto.randomUUID(), name: 'Caminhada Rápida', sets: 1, reps: '10 min', weight: '' },
-                { id: crypto.randomUUID(), name: 'Prancha Frontal', sets: 3, reps: '30 seg', weight: '' },
-                { id: crypto.randomUUID(), name: 'Abdominal Supra', sets: 3, reps: '20', weight: '' },
-                { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '40 seg', weight: '' },
-                { id: crypto.randomUUID(), name: 'Alongamento Geral', sets: 1, reps: '5 min', weight: '' }
+                { id: crypto.randomUUID(), name: 'Caminhada Rápida', sets: 1, reps: '10 min', weight: '', restTime: 0 },
+                { id: crypto.randomUUID(), name: 'Prancha Frontal', sets: 3, reps: '30 seg', weight: '', restTime: 30 },
+                { id: crypto.randomUUID(), name: 'Abdominal Supra', sets: 3, reps: '20', weight: '', restTime: 30 },
+                { id: crypto.randomUUID(), name: 'Polichinelo', sets: 3, reps: '40 seg', weight: '', restTime: 20 },
+                { id: crypto.randomUUID(), name: 'Alongamento Geral', sets: 1, reps: '5 min', weight: '', restTime: 0 }
             ]
         }
     };

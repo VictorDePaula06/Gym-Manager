@@ -1,13 +1,50 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
-import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle } from 'lucide-react';
+import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { db } from '../../firebase';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 
 export default function StudentDashboard() {
     const { user } = useAuth();
     const { students, settings } = useGym();
+    const [weeklyLogs, setWeeklyLogs] = useState([]);
 
     const studentData = students.find(s => s.id === user?.studentId);
+
+    // Fetch Training Logs for Current Week
+    useEffect(() => {
+        if (!user?.studentId || !user?.tenantId) return;
+
+        const tenantId = user.tenantId;
+        const studentId = user.studentId;
+        
+        // Calculate start of current week (Monday)
+        const now = new Date();
+        const firstDayOfWeek = new Date(now);
+        const day = now.getDay(); // 0 is Sunday, 1 is Monday
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust when today is Sunday
+        firstDayOfWeek.setDate(diff);
+        firstDayOfWeek.setHours(0, 0, 0, 0);
+
+        const logsRef = collection(db, `users/${tenantId}/students/${studentId}/training_logs`);
+        const q = query(
+            logsRef, 
+            where('completedAt', '>=', firstDayOfWeek.toISOString()),
+            orderBy('completedAt', 'desc')
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const logs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setWeeklyLogs(logs);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
 
     if (!studentData) {
         return (
@@ -17,6 +54,17 @@ export default function StudentDashboard() {
         );
     }
 
+    // Get training days for current week
+    const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+    const trainingDaysMap = weeklyLogs.reduce((acc, log) => {
+        const date = new Date(log.completedAt);
+        const dayIndex = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+        // Map 0 -> 6 (Dom), 1 -> 0 (Seg), 2 -> 1 (Ter), etc.
+        const mappedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
+        acc[mappedIndex] = true;
+        return acc;
+    }, {});
+
     // Get active workouts count
     const workoutCount = Object.keys(studentData.workoutSheets || {}).length + (Object.keys(studentData.workouts || {}).length > 0 ? 1 : 0);
 
@@ -25,6 +73,56 @@ export default function StudentDashboard() {
             <div style={{ marginBottom: '2rem' }}>
                 <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {studentData.name.split(' ')[0]}! 👋</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Pronto para o treino de hoje?</p>
+            </div>
+
+            {/* Weekly Activity Tracker */}
+            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <TrendingUp size={18} className="text-primary" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>ATIVIDADE SEMANAL</span>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        {Object.keys(trainingDaysMap).length} / 7 dias
+                    </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
+                    {weekDays.map((day, idx) => {
+                        const trained = trainingDaysMap[idx];
+                        const isToday = new Date().getDay() === (idx === 6 ? 0 : idx + 1);
+
+                        return (
+                            <div key={day} style={{ 
+                                flex: 1, 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                gap: '0.5rem' 
+                            }}>
+                                <div style={{ 
+                                    width: '100%', 
+                                    aspectRatio: '1', 
+                                    borderRadius: '12px', 
+                                    background: trained ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                                    border: trained ? '1px solid var(--primary)' : isToday ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: trained ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                                    position: 'relative'
+                                }}>
+                                    {trained ? <CheckCircle2 size={18} /> : <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'currentColor' }} />}
+                                    {isToday && !trained && (
+                                        <div style={{ position: 'absolute', bottom: '-2px', width: '12px', height: '2px', background: 'var(--text-muted)', borderRadius: '1px' }} />
+                                    )}
+                                </div>
+                                <span style={{ fontSize: '0.65rem', color: isToday ? 'var(--primary)' : 'var(--text-muted)', fontWeight: isToday ? 'bold' : 'normal' }}>
+                                    {day}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* Quick Stats Grid */}
@@ -171,7 +269,7 @@ export default function StudentDashboard() {
             {/* Next Workout Card */}
             <div style={{ marginBottom: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Último Treino Adicionado</h3>
+                    <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Sua Ficha de Treino</h3>
                     <Link to="/student/workouts" style={{ color: 'var(--primary)', fontSize: '0.85rem', textDecoration: 'none' }}>Ver todos</Link>
                 </div>
                 <Link to="/student/workouts" style={{ textDecoration: 'none' }}>

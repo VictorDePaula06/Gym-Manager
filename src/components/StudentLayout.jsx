@@ -6,7 +6,7 @@ import { useGym } from '../context/GymContext';
 export default function StudentLayout() {
     const location = useLocation();
     const { logout, user } = useAuth();
-    const { settings } = useGym();
+    const { settings, isTrainingMode } = useGym();
     const navigate = useNavigate();
 
     const handleLogout = async () => {
@@ -49,7 +49,8 @@ export default function StudentLayout() {
                 borderBottom: '1px solid var(--border-glass)',
                 position: 'sticky',
                 top: 0,
-                zIndex: 50
+                zIndex: 50,
+                display: isTrainingMode ? 'none' : 'flex'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     {settings?.logoUrl ? (
@@ -82,8 +83,8 @@ export default function StudentLayout() {
             {/* Main Content Area */}
             <main style={{ 
                 flex: 1, 
-                padding: '1.5rem', 
-                paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
+                padding: isTrainingMode ? '0' : '1.5rem', 
+                paddingBottom: isTrainingMode ? '0' : 'calc(80px + env(safe-area-inset-bottom))',
                 maxWidth: '600px',
                 margin: '0 auto',
                 width: '100%',
@@ -102,7 +103,7 @@ export default function StudentLayout() {
                 background: 'rgba(15, 23, 42, 0.9)',
                 backdropFilter: 'blur(16px)',
                 borderTop: '1px solid var(--border-glass)',
-                display: 'flex',
+                display: isTrainingMode ? 'none' : 'flex',
                 alignItems: 'center',
                 padding: '0 1rem env(safe-area-inset-bottom) 1rem',
                 zIndex: 100

@@ -1,6 +1,7 @@
 .member-card,
 :root[data-theme="dark"] .member-card {
-    width: 240px;
+    width: 100%;
+    max-width: 300px;
     /* Deep Slate/Blue Gradient for Premium feel */
     background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     border-radius: 20px;
