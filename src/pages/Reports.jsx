@@ -601,20 +601,50 @@ const Reports = () => {
                         align-items: center;
                     }
 
-                    .reports-table-responsive td::before {
-                        content: attr(data-label);
-                        font-weight: 600;
-                        color: var(--text-muted);
-                        font-size: 0.85rem;
-                        margin-right: 1rem;
-                    }
-                    
                     /* Special styling for amounts to pop */
                     .reports-table-responsive td[data-label="Valor"],
                     .reports-table-responsive td[data-label="Mensalidade"] {
                         font-weight: bold;
                         font-size: 1rem;
                         color: #10b981;
+                    }
+
+                    /* Standalone footer card on mobile */
+                    .reports-tfoot-row {
+                        background: rgba(16, 185, 129, 0.15) !important;
+                        border: 1px solid rgba(16, 185, 129, 0.5) !important;
+                        margin-top: 1.5rem !important;
+                        display: block !important;
+                        width: 100% !important;
+                        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+                    }
+
+                    .reports-tfoot-label {
+                        display: block !important;
+                        width: 100% !important;
+                    }
+
+                    .reports-tfoot-label::before {
+                        content: "Sumário Geral";
+                        display: block;
+                        font-size: 0.75rem;
+                        text-transform: uppercase;
+                        letter-spacing: 0.05em;
+                        font-weight: 800;
+                        color: #10b981;
+                        margin-bottom: 0.5rem;
+                    }
+
+                    .reports-tfoot-value {
+                        display: flex !important;
+                        justify-content: space-between !important;
+                        width: 100% !important;
+                        color: #10b981 !important;
+                        font-size: 1.4rem !important;
+                        font-weight: 800 !important;
+                        border-top: 1px solid rgba(16, 185, 129, 0.2) !important;
+                        padding-top: 1rem !important;
+                        margin-top: 1rem;
                     }
                 }
             `}</style>
@@ -932,10 +962,10 @@ const Reports = () => {
                                         {teacher.studentList.length > 0 && (
                                             <tfoot style={{ background: 'rgba(255,255,255,0.02)' }}>
                                                 <tr className="reports-tfoot-row">
-                                                    <td colSpan="2" className="reports-tfoot-label" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: '600', color: 'var(--text-muted)' }}>
+                                                    <td colSpan="2" data-label="Resumo" className="reports-tfoot-label" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: '600', color: 'var(--text-muted)' }}>
                                                         Total ({teacher.activeCount} ativos):
                                                     </td>
-                                                    <td className="reports-tfoot-value" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: 'bold' }}>
+                                                    <td data-label="Receita Total" className="reports-tfoot-value" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: 'bold' }}>
                                                         {formatCurrency(teacher.totalRevenue)}
                                                     </td>
                                                 </tr>
