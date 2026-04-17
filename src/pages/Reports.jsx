@@ -577,10 +577,12 @@ const Reports = () => {
 
                     .reports-table-responsive, 
                     .reports-table-responsive tbody, 
+                    .reports-table-responsive tfoot,
                     .reports-table-responsive tr, 
                     .reports-table-responsive td {
                         display: block;
                         width: 100%;
+                        box-sizing: border-box;
                     }
 
                     .reports-table-responsive tr {
@@ -611,26 +613,32 @@ const Reports = () => {
 
                     /* Standalone footer card on mobile */
                     .reports-tfoot-row {
-                        background: rgba(16, 185, 129, 0.15) !important;
-                        border: 1px solid rgba(16, 185, 129, 0.5) !important;
+                        background: rgba(16, 185, 129, 0.2) !important;
+                        border: 2px solid #10b981 !important;
                         margin-top: 1.5rem !important;
+                        margin-bottom: 2rem !important;
                         display: block !important;
                         width: 100% !important;
-                        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
+                        border-radius: 12px !important;
+                        padding: 1.25rem !important;
+                        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+                        box-sizing: border-box !important;
                     }
 
                     .reports-tfoot-label {
                         display: block !important;
                         width: 100% !important;
+                        padding: 0 !important;
+                        border: none !important;
                     }
 
                     .reports-tfoot-label::before {
-                        content: "Sumário Geral";
+                        content: "Resultado por Professor";
                         display: block;
-                        font-size: 0.75rem;
+                        font-size: 0.8rem;
                         text-transform: uppercase;
                         letter-spacing: 0.05em;
-                        font-weight: 800;
+                        font-weight: 900;
                         color: #10b981;
                         margin-bottom: 0.5rem;
                     }
@@ -640,11 +648,11 @@ const Reports = () => {
                         justify-content: space-between !important;
                         width: 100% !important;
                         color: #10b981 !important;
-                        font-size: 1.4rem !important;
-                        font-weight: 800 !important;
-                        border-top: 1px solid rgba(16, 185, 129, 0.2) !important;
-                        padding-top: 1rem !important;
-                        margin-top: 1rem;
+                        font-size: 1.6rem !important;
+                        font-weight: 900 !important;
+                        border: none !important;
+                        padding: 0 !important;
+                        margin-top: 0.5rem;
                     }
                 }
             `}</style>
