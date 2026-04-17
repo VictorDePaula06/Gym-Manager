@@ -961,23 +961,39 @@ export default function StudentDetails() {
             // Proteção de Receita: Usar o vencimento atual como base para o próximo
             // Isso evita que o aluno "pule" meses em atraso e garante que pagamentos antecipados estendam a data corretamente.
             let baseDate = paymentDateObj;
+            const targetDay = parseInt(student.paymentDay);
+
             if (student.nextPaymentDate) {
                 const currentNext = student.nextPaymentDate.seconds 
                     ? new Date(student.nextPaymentDate.seconds * 1000) 
                     : new Date(student.nextPaymentDate);
                 
                 if (!isNaN(currentNext.getTime())) {
+                    // Se o vencimento atual já for no futuro, partimos dele.
+                    // Se estiver no passado, partimos dele para que o pagamento "cubra" o mês em atraso.
                     baseDate = currentNext;
                 }
+            }
+
+            // Garante que a data base esteja ancorada no dia certo antes de somar meses
+            if (!isNaN(targetDay)) {
+                baseDate.setDate(targetDay);
             }
 
             const nextDueDate = new Date(baseDate);
             nextDueDate.setMonth(nextDueDate.getMonth() + monthsToAdd);
             
-            const targetDay = parseInt(student.paymentDay);
             if (!isNaN(targetDay)) {
-                // Garante que o vencimento caia sempre no dia combinado
+                // Forçar o dia novamente após setMonth para evitar problemas com meses curtos
                 nextDueDate.setDate(targetDay);
+                
+                // Trava de segurança: se após o cálculo o próximo vencimento ainda for 
+                // anterior ou igual à data do pagamento, significa que precisamos avançar mais um ciclo
+                // (Isso acontece se a pessoa estava MUITO atrasada ou se estamos no dia do vencimento)
+                if (nextDueDate <= paymentDateObj) {
+                    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+                    nextDueDate.setDate(targetDay);
+                }
             }
 
             const newHistory = [

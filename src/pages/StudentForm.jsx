@@ -205,14 +205,20 @@ export default function StudentForm() {
                 if (baseDate && !isNaN(baseDate.getTime())) {
                     // Começa do mês da data base
                     syncDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
-                    // Se o dia 05 deste mês da data base foi ANTES ou IGUAL ao pagamento, 
+                    // Se o dia planejado deste mês da data base foi ANTES ou IGUAL à base, 
                     // significa que o próximo compromisso é no mês seguinte.
                     if (syncDate <= baseDate) {
                         syncDate.setMonth(syncDate.getMonth() + 1);
+                        syncDate.setDate(targetDay);
                     }
                 } else {
                     // Sem histórico, assume o dia fixo do mês atual
                     syncDate = new Date(now.getFullYear(), now.getMonth(), targetDay);
+                    // Se o dia já passou este mês, pula para o próximo
+                    if (syncDate <= now) {
+                        syncDate.setMonth(syncDate.getMonth() + 1);
+                        syncDate.setDate(targetDay);
+                    }
                 }
                 
                 if (!isNaN(syncDate.getTime())) {
