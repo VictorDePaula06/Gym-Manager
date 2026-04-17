@@ -514,13 +514,63 @@ const Reports = () => {
             </div>
 
             <style>{`
+                .reports-tabs-container {
+                    display: flex;
+                    gap: 1rem;
+                    margin-bottom: 2rem;
+                    overflow-x: auto;
+                    padding-bottom: 0.5rem;
+                    -webkit-overflow-scrolling: touch;
+                }
+
+                .reports-tabs-container::-webkit-scrollbar {
+                    height: 4px;
+                }
+
+                .reports-tabs-container::-webkit-scrollbar-thumb {
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 10px;
+                }
+
+                .reports-tab-btn {
+                    flex-shrink: 0;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    padding: 0.75rem 1.5rem;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    font-weight: 600;
+                    outline: none;
+                }
+
                 .reports-table-responsive {
                     width: 100%;
                     border-collapse: collapse;
                     font-size: 0.9rem;
                 }
 
+                .reports-header-panel {
+                    padding: 1.5rem;
+                    margin-bottom: 2rem;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 1.5rem;
+                }
+
                 @media (max-width: 768px) {
+                    .reports-header-panel {
+                        flex-direction: column;
+                        align-items: flex-start;
+                    }
+
+                    .reports-header-panel .btn-primary {
+                        width: 100%;
+                        justify-content: center;
+                    }
+
                     .reports-table-responsive thead {
                         display: none;
                     }
@@ -537,7 +587,7 @@ const Reports = () => {
                         margin-bottom: 1rem;
                         background: var(--card-bg);
                         border: 1px solid var(--border-glass);
-                        borderRadius: 12px;
+                        border-radius: 12px;
                         padding: 1rem;
                         position: relative;
                     }
@@ -545,7 +595,7 @@ const Reports = () => {
                     .reports-table-responsive td {
                         text-align: left;
                         padding: 0.5rem 0;
-                        border: none;
+                        border: none !important;
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
@@ -560,25 +610,24 @@ const Reports = () => {
                     }
                     
                     /* Special styling for amounts to pop */
-                    .reports-table-responsive td[data-label="Valor"] {
+                    .reports-table-responsive td[data-label="Valor"],
+                    .reports-table-responsive td[data-label="Mensalidade"] {
                         font-weight: bold;
                         font-size: 1rem;
-                        justify-content: flex-end; /* Align right on mobile too for emphasis, or standard */
+                        color: #10b981;
                     }
                 }
             `}</style>
 
-            <div style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
+            <div className="reports-tabs-container">
                 {(user?.role === 'owner' || user?.role === 'admin') && (
                     <button
                         onClick={() => setActiveTab("financial")}
+                        className="reports-tab-btn"
                         style={{
-                            display: "flex", alignItems: "center", gap: "0.5rem",
-                            padding: '0.75rem 1.5rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600',
                             background: activeTab === "financial" ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
                             color: activeTab === "financial" ? 'white' : 'var(--text-muted)',
                             border: activeTab === "financial" ? 'none' : '1px solid var(--border-glass)',
-                            outline: 'none'
                         }}
                     >
                         <DollarSign size={18} /> Financeiro
@@ -586,26 +635,22 @@ const Reports = () => {
                 )}
                 <button
                     onClick={() => setActiveTab("students")}
+                    className="reports-tab-btn"
                     style={{
-                        display: "flex", alignItems: "center", gap: "0.5rem",
-                        padding: '0.75rem 1.5rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600',
                         background: activeTab === "students" ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
                         color: activeTab === "students" ? 'white' : 'var(--text-muted)',
                         border: activeTab === "students" ? 'none' : '1px solid var(--border-glass)',
-                        outline: 'none'
                     }}
                 >
-                    <Users size={18} /> Lista de Alunos
+                    <Users size={18} /> Alunos
                 </button>
                 <button
                     onClick={() => setActiveTab("teachers")}
+                    className="reports-tab-btn"
                     style={{
-                        display: "flex", alignItems: "center", gap: "0.5rem",
-                        padding: '0.75rem 1.5rem', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600',
                         background: activeTab === "teachers" ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
                         color: activeTab === "teachers" ? 'white' : 'var(--text-muted)',
                         border: activeTab === "teachers" ? 'none' : '1px solid var(--border-glass)',
-                        outline: 'none'
                     }}
                 >
                     <Briefcase size={18} /> Professores
@@ -803,7 +848,7 @@ const Reports = () => {
 
             {activeTab === "teachers" && (
                 <div className="fade-in">
-                    <div className="glass-panel" style={{ padding: "1.5rem", marginBottom: "2rem", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div className="glass-panel reports-header-panel">
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Relatório de Professores</h3>
                             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -861,8 +906,8 @@ const Reports = () => {
                                             {teacher.studentList.length > 0 ? (
                                                 teacher.studentList.map(s => (
                                                     <tr key={s.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                                        <td style={{ padding: '0.75rem 1.5rem' }}>{s.name}</td>
-                                                        <td style={{ padding: '0.75rem 1.5rem' }}>
+                                                        <td data-label="Aluno" style={{ padding: '0.75rem 1.5rem' }}>{s.name}</td>
+                                                        <td data-label="Status" style={{ padding: '0.75rem 1.5rem' }}>
                                                             <span style={{
                                                                 fontSize: '0.75rem',
                                                                 padding: '0.1rem 0.5rem',
@@ -873,7 +918,7 @@ const Reports = () => {
                                                                 {translateStatus(s.status)}
                                                             </span>
                                                         </td>
-                                                        <td style={{ padding: '0.75rem 1.5rem', textAlign: 'right' }}>{formatCurrency(s.price || 0)}</td>
+                                                        <td data-label="Mensalidade" style={{ padding: '0.75rem 1.5rem', textAlign: 'right' }}>{formatCurrency(s.price || 0)}</td>
                                                     </tr>
                                                 ))
                                             ) : (
@@ -886,11 +931,11 @@ const Reports = () => {
                                         </tbody>
                                         {teacher.studentList.length > 0 && (
                                             <tfoot style={{ background: 'rgba(255,255,255,0.02)' }}>
-                                                <tr>
-                                                    <td colSpan="2" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: '600', color: 'var(--text-muted)' }}>
+                                                <tr className="reports-tfoot-row">
+                                                    <td colSpan="2" className="reports-tfoot-label" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: '600', color: 'var(--text-muted)' }}>
                                                         Total ({teacher.activeCount} ativos):
                                                     </td>
-                                                    <td style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: 'bold' }}>
+                                                    <td className="reports-tfoot-value" style={{ padding: '0.75rem 1.5rem', textAlign: 'right', fontWeight: 'bold' }}>
                                                         {formatCurrency(teacher.totalRevenue)}
                                                     </td>
                                                 </tr>
