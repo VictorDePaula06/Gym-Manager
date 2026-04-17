@@ -80,7 +80,9 @@ export default function Financial() {
             }
 
             if (nextPaymentDate) nextPaymentDate.setHours(0, 0, 0, 0);
-            const isUpToDate = hasPaymentThisMonth || (nextPaymentDate && nextPaymentDate >= new Date().setHours(0, 0, 0, 0));
+            
+            // Apenas o próximo vencimento define se está em dia ou não (Proteção de Receita)
+            const isUpToDate = nextPaymentDate && nextPaymentDate >= new Date().setHours(0, 0, 0, 0);
 
             return {
                 ...s,

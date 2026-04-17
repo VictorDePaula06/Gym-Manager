@@ -958,11 +958,25 @@ export default function StudentDetails() {
             else if (plan.includes('semestral') || plan.includes('semiannual')) monthsToAdd = 6;
             else if (plan.includes('anual') || plan.includes('annual')) monthsToAdd = 12;
 
-            const nextDueDate = new Date(paymentDateObj);
+            // Proteção de Receita: Usar o vencimento atual como base para o próximo
+            // Isso evita que o aluno "pule" meses em atraso e garante que pagamentos antecipados estendam a data corretamente.
+            let baseDate = paymentDateObj;
+            if (student.nextPaymentDate) {
+                const currentNext = student.nextPaymentDate.seconds 
+                    ? new Date(student.nextPaymentDate.seconds * 1000) 
+                    : new Date(student.nextPaymentDate);
+                
+                if (!isNaN(currentNext.getTime())) {
+                    baseDate = currentNext;
+                }
+            }
+
+            const nextDueDate = new Date(baseDate);
             nextDueDate.setMonth(nextDueDate.getMonth() + monthsToAdd);
             
             const targetDay = parseInt(student.paymentDay);
             if (!isNaN(targetDay)) {
+                // Garante que o vencimento caia sempre no dia combinado
                 nextDueDate.setDate(targetDay);
             }
 
