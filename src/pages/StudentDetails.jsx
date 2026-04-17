@@ -1816,45 +1816,18 @@ export default function StudentDetails() {
                             {/* Plan Summary */}
                             {/* Plan Summary */}
                             {(() => {
-                                // Lógica de Proteção de Receita na Exibição
                                 const today = new Date();
                                 today.setHours(0, 0, 0, 0);
 
                                 let nextPaymentDate = null;
-                                const targetDay = parseInt(student.paymentDay);
-                                
-                                // 1. Tentar ler a data salva no banco
                                 if (student.nextPaymentDate) {
                                     nextPaymentDate = student.nextPaymentDate.seconds 
                                         ? new Date(student.nextPaymentDate.seconds * 1000) 
                                         : new Date(student.nextPaymentDate);
-                                }
-
-                                // 2. Validar contra a regra do "Dia Fixo" e último pagamento para evitar pulos
-                                if (!isNaN(targetDay)) {
-                                    let baseDateString = student.lastPaymentDate || student.startDate;
-                                    let baseDate = null;
-                                    if (baseDateString) {
-                                        baseDate = baseDateString.seconds 
-                                            ? new Date(baseDateString.seconds * 1000) 
-                                            : new Date(baseDateString);
-                                    }
-                                    
-                                    if (baseDate && !isNaN(baseDate.getTime())) {
-                                        // Calcula qual deveria ser o PRÓXIMO vencimento após o último pagamento
-                                        let expectedDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
-                                        if (expectedDate <= baseDate) {
-                                            expectedDate.setMonth(expectedDate.getMonth() + 1);
-                                        }
-                                        
-                                        // Se a data esperada (ex: 05/04) for anterior à data salva (ex: 05/05),
-                                        // priorizamos exibir a data esperada, pois é a mensalidade que falta pagar.
-                                        if (!nextPaymentDate || expectedDate < nextPaymentDate) {
-                                            nextPaymentDate = expectedDate;
-                                        }
-                                    } else if (!nextPaymentDate) {
-                                        // Fallback se não houver nada no banco
-                                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), targetDay);
+                                } else {
+                                    const dueDay = parseInt(student.paymentDay);
+                                    if (!isNaN(dueDay)) {
+                                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
                                     }
                                 }
 
@@ -1890,11 +1863,11 @@ export default function StudentDetails() {
                                             </span>
                                         </div>
                                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                                            {isOverdue ? 'Venceu em ' : 'Vence dia '}
+                                            {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
                                             <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
                                                 {nextPaymentDate
                                                     ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
-                                                    : student.paymentDay}
+                                                    : 'Data não def.'}
                                             </span>
                                         </p>
 
