@@ -181,50 +181,65 @@ export default function StudentForm() {
                 photoUrl = await getDownloadURL(photoRef);
             }
 
-            // --- Sincronização Inteligente de Vencimento (Proteção de Receita) ---
-            let nextPaymentDate = formData.nextPaymentDate || null;
-            const targetDay = parseInt(formData.paymentDay);
-            
-            if (!isNaN(targetDay)) {
-                const now = new Date();
-                now.setHours(0, 0, 0, 0); 
+                // --- Sincronização Inteligente de Vencimento (Fixo e Ancorado) ---
+                let nextPaymentDate = null;
+                const targetDay = parseInt(formData.paymentDay);
                 
-                // Pegar a data base (último pagamento ou data de início)
-                let baseDateString = formData.lastPaymentDate || formData.startDate;
-                let baseDate = null;
+                if (!isNaN(targetDay)) {
+                    // 1. Determina a duração do plano
+                    let monthsToAdd = 1;
+                    const planText = (formData.plan || '').toLowerCase();
+                    if (planText.includes('trimestral') || planText.includes('quarterly')) monthsToAdd = 3;
+                    else if (planText.includes('semestral') || planText.includes('semiannual')) monthsToAdd = 6;
+                    else if (planText.includes('anual') || planText.includes('annual')) monthsToAdd = 12;
 
-                if (baseDateString) {
-                    if (baseDateString.seconds) {
-                        baseDate = new Date(baseDateString.seconds * 1000);
+                    const now = new Date();
+                    now.setHours(0, 0, 0, 0); 
+                    
+                    // 2. Tentar achar o ÚLTIMO pagamento REAL do histórico se lastPaymentDate falhar
+                    let lastPayment = formData.lastPaymentDate;
+                    if (!lastPayment && formData.paymentHistory && formData.paymentHistory.length > 0) {
+                        lastPayment = formData.paymentHistory[0].date;
+                    }
+
+                    // 3. Definir Data Base
+                    let baseDateString = lastPayment || formData.startDate;
+                    let baseDate = baseDateString && baseDateString.seconds 
+                        ? new Date(baseDateString.seconds * 1000) 
+                        : new Date(baseDateString || now);
+
+                    if (isNaN(baseDate.getTime())) baseDate = now;
+
+                    // 4. Calcular Sincronização
+                    let syncDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
+                    
+                    if (lastPayment) {
+                        // Se houve pagamento, pula o período do plano contratado
+                        syncDate.setMonth(syncDate.getMonth() + monthsToAdd);
                     } else {
-                        baseDate = new Date(baseDateString);
+                        // Se nunca pagou e o dia já passou (ou é hoje), pula para o próximo mês
+                        if (syncDate <= baseDate) {
+                            syncDate.setMonth(syncDate.getMonth() + 1);
+                        }
                     }
-                }
 
-                let syncDate;
-                if (baseDate && !isNaN(baseDate.getTime())) {
-                    // Começa do mês da data base
-                    syncDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
-                    // Se o dia planejado deste mês da data base foi ANTES ou IGUAL à base, 
-                    // significa que o próximo compromisso é no mês seguinte.
-                    if (syncDate <= baseDate) {
-                        syncDate.setMonth(syncDate.getMonth() + 1);
-                        syncDate.setDate(targetDay);
+                    // 5. Garantir ancoragem e salto de segurança (não pode ficar no passado se houve pagamento)
+                    syncDate.setDate(targetDay);
+                    
+                    // Failsafe: Se o aluno pagou (Anual, etc) e a data ainda está no passado em relação a AGORA, 
+                    // significa que houve um erro de drift ou o histórico é antigo. 
+                    // Mas para Adriana (Anual), deve estar em 2027.
+                    if (lastPayment && syncDate < now) {
+                        // Se o plano é anual e estamos em abril, Jan 2026 estaria no passado. 
+                        // Vamos garantir que ele projete para o futuro relativo ao último pagamento.
+                        while (syncDate < now) {
+                            syncDate.setMonth(syncDate.getMonth() + monthsToAdd);
+                            syncDate.setDate(targetDay);
+                        }
                     }
-                } else {
-                    // Sem histórico, assume o dia fixo do mês atual
-                    syncDate = new Date(now.getFullYear(), now.getMonth(), targetDay);
-                    // Se o dia já passou este mês, pula para o próximo
-                    if (syncDate <= now) {
-                        syncDate.setMonth(syncDate.getMonth() + 1);
-                        syncDate.setDate(targetDay);
-                    }
-                }
-                
-                if (!isNaN(syncDate.getTime())) {
+                    
                     nextPaymentDate = syncDate.toISOString();
                 }
-            }
 
             const dataToSave = {
                 ...formData,
