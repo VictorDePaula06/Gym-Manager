@@ -55,13 +55,15 @@ export default function Financial() {
             let nextPaymentDate = null;
             const targetDay = parseInt(s.paymentDay);
             
+            // 1. Prioridade Total: Data de vencimento armazenada no banco
             if (s.nextPaymentDate) {
                 nextPaymentDate = s.nextPaymentDate.seconds 
                     ? new Date(s.nextPaymentDate.seconds * 1000) 
                     : new Date(s.nextPaymentDate);
             }
 
-            if (!isNaN(targetDay)) {
+            // 2. Fallback: Se não houver vencimento definido, tenta calcular com base no dia de pagamento alvo
+            if (!nextPaymentDate && !isNaN(targetDay)) {
                 let baseDateString = s.lastPaymentDate || s.startDate;
                 let baseDate = null;
                 if (baseDateString) {
@@ -73,9 +75,7 @@ export default function Financial() {
                 if (baseDate && !isNaN(baseDate.getTime())) {
                     let expectedDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
                     if (expectedDate <= baseDate) expectedDate.setMonth(expectedDate.getMonth() + 1);
-                    if (!nextPaymentDate || expectedDate < nextPaymentDate) {
-                        nextPaymentDate = expectedDate;
-                    }
+                    nextPaymentDate = expectedDate;
                 }
             }
 
