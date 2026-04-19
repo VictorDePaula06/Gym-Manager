@@ -265,7 +265,9 @@ export default function StudentDetails() {
         if (student.nextPaymentDate) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
-            const dueDate = new Date(student.nextPaymentDate);
+            const dueDate = student.nextPaymentDate.seconds 
+                ? new Date(student.nextPaymentDate.seconds * 1000) 
+                : new Date(student.nextPaymentDate);
             dueDate.setHours(0, 0, 0, 0);
 
             if (dueDate < today) {
@@ -2972,7 +2974,9 @@ export default function StudentDetails() {
 
                                     let nextPaymentDate = null;
                                     if (student.nextPaymentDate) {
-                                        nextPaymentDate = new Date(student.nextPaymentDate);
+                                        nextPaymentDate = student.nextPaymentDate.seconds 
+                                            ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                            : new Date(student.nextPaymentDate);
                                     } else {
                                         // Fallback if no nextPaymentDate set but paymentDay exists
                                         const dueDay = parseInt(student.paymentDay);

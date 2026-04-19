@@ -7,18 +7,14 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=5">
   <link rel="icon" type="image/png" sizes="192x192" href="/app-icon-192-v2.png">
   <link rel="icon" type="image/png" sizes="512x512" href="/app-icon-512-v2.png">
-  <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Vector GymHub</title>
   <script>
-    window.deferredPrompt = null;
+    // Captura o evento de instalação para o componente React usar depois
     window.addEventListener('beforeinstallprompt', (e) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
       window.deferredPrompt = e;
-      console.log('PWA: beforeinstallprompt captured globally');
+      console.log('PWA: Evento de instalação capturado para uso posterior.');
     });
   </script>
 </head>

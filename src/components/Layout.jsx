@@ -98,13 +98,13 @@ export default function Layout() {
             <aside
                 className={`glass-panel desktop-sidebar ${sidebarOpen ? 'open' : ''}`}
                 style={{
-                    width: '280px',
                     height: '96vh',
                     margin: '2vh 0 2vh 2vh',
                     display: 'flex',
                     flexDirection: 'column',
                     borderRadius: '24px',
-                    position: 'relative' // Ensure absolute children are reliable
+                    position: 'relative',
+                    transition: 'width 0.3s ease, left 0.3s ease'
                 }}
             >
                 {/* Close Button Mobile - Moved to top level */}
@@ -132,11 +132,12 @@ export default function Layout() {
                     ✕
                 </button>
 
-                <div style={{ padding: '2rem', textAlign: 'center' }}>
+                <div className="sidebar-header" style={{ padding: '2rem', textAlign: 'center', overflow: 'hidden' }}>
 
                     {settings?.logoUrl && (
                         <img
                             src={settings.logoUrl}
+                            className="sidebar-logo"
                             alt="Logo"
                             style={{
                                 width: '90px',
@@ -144,84 +145,87 @@ export default function Layout() {
                                 borderRadius: '12px',
                                 objectFit: 'cover',
                                 marginBottom: '1rem',
-                                boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                                transition: 'all 0.3s ease'
                             }}
                         />
                     )}
-                    <h1 style={{
+                    <h1 className="sidebar-text" style={{
                         fontSize: '1.5rem',
                         background: 'linear-gradient(to right, #10b981, #3b82f6)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        margin: 0
+                        margin: 0,
+                        whiteSpace: 'nowrap'
                     }}>
                         {settings?.gymName || 'GymManager'}
                     </h1>
                 </div>
 
-                <nav style={{ flex: 1, padding: '0 1rem' }}>
+                <nav className="sidebar-nav" style={{ flex: 1, padding: '0 1rem', overflowY: 'auto', overflowX: 'hidden' }}>
                     <Link to="/app" style={linkStyle('/app')} onClick={() => setSidebarOpen(false)}>
-                        <LayoutDashboard size={20} />
-                        <span>Visão Geral</span>
+                        <LayoutDashboard size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Visão Geral</span>
                     </Link>
                     <Link to="/app/students" style={linkStyle('/app/students')} onClick={() => setSidebarOpen(false)}>
-                        <Users size={20} />
-                        <span>Alunos</span>
+                        <Users size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Alunos</span>
                     </Link>
                     {/* Teachers Link - Configurable */}
                     {(settings?.enableTeachers ?? true) && (
                         <Link to="/app/teachers" style={linkStyle('/app/teachers')} onClick={() => setSidebarOpen(false)}>
-                            <Briefcase size={20} />
-                            <span>Professores</span>
+                            <Briefcase size={20} style={{ minWidth: '20px' }} />
+                            <span className="sidebar-text">Professores</span>
                         </Link>
                     )}
 
                     {/* Only Owner or Admin sees Financials */}
                     {(!user?.role || user.role === 'owner' || user.role === 'admin') && (
                         <Link to="/app/financial" style={linkStyle('/app/financial')} onClick={() => setSidebarOpen(false)}>
-                            <CreditCard size={20} />
-                            <span>Financeiro</span>
+                            <CreditCard size={20} style={{ minWidth: '20px' }} />
+                            <span className="sidebar-text">Financeiro</span>
                         </Link>
                     )}
 
                     <Link to="/app/workouts" style={linkStyle('/app/workouts')} onClick={() => setSidebarOpen(false)}>
-                        <Dumbbell size={20} />
-                        <span>Treinos</span>
+                        <Dumbbell size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Treinos</span>
                     </Link>
                     <Link to="/app/exercises" style={linkStyle('/app/exercises')} onClick={() => setSidebarOpen(false)}>
-                        <Video size={20} />
-                        <span>Meus Exercícios</span>
+                        <Video size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Meus Exercícios</span>
                     </Link>
                     <Link to="/app/reports" style={linkStyle('/app/reports')} onClick={() => setSidebarOpen(false)}>
-                        <PieChart size={20} />
-                        <span>Relatórios</span>
+                        <PieChart size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Relatórios</span>
                     </Link>
 
                     {/* Subscription Link - Only for Owner/Admin? Yes, usually. */}
                     {(!user?.role || user.role === 'owner' || user.role === 'admin') && (
                         <Link to="/app/subscription" style={linkStyle('/app/subscription')} onClick={() => setSidebarOpen(false)}>
-                            <CreditCard size={20} />
-                            <span>Assinatura</span>
+                            <CreditCard size={20} style={{ minWidth: '20px' }} />
+                            <span className="sidebar-text">Assinatura</span>
                         </Link>
                     )}
                 </nav>
 
-                <div style={{ padding: '1rem', borderTop: '1px solid var(--border-glass)' }}>
+                <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-glass)' }}>
                     {/* User Profile Info */}
-                    <div style={{
+                    <div className="sidebar-user-card" style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
                         padding: '0.75rem', marginBottom: '1rem',
-                        background: 'rgba(255,255,255,0.03)', borderRadius: '12px'
+                        background: 'rgba(255,255,255,0.03)', borderRadius: '12px',
+                        overflow: 'hidden'
                     }}>
                         <div style={{
                             width: '36px', height: '36px', borderRadius: '50%',
                             background: 'var(--primary)', color: 'white',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontWeight: 'bold', fontSize: '0.9rem'
+                            fontWeight: 'bold', fontSize: '0.9rem', flexShrink: 0
                         }}>
                             {(user?.email || '?').charAt(0).toUpperCase()}
                         </div>
-                        <div style={{ overflow: 'hidden' }}>
+                        <div className="sidebar-text" style={{ overflow: 'hidden' }}>
                             <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                 {user?.displayName || user?.email?.split('@')[0] || 'Usuário'}
                             </div>
@@ -239,8 +243,8 @@ export default function Layout() {
                     </div>
 
                     <Link to="/app/settings" style={linkStyle('/app/settings')} onClick={() => setSidebarOpen(false)}>
-                        <Settings size={20} />
-                        <span>Configurações</span>
+                        <Settings size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Configurações</span>
                     </Link>
                     <button onClick={handleLogout} style={{
                         ...linkStyle('logout'),
@@ -250,17 +254,17 @@ export default function Layout() {
                         color: '#ef4444',
                         marginTop: '0.5rem'
                     }}>
-                        <LogOut size={20} />
-                        <span>Sair</span>
+                        <LogOut size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Sair</span>
                     </button>
-                    <div style={{ textAlign: 'center', marginTop: '1rem', opacity: 0.4 }}>
+                    <div className="sidebar-text" style={{ textAlign: 'center', marginTop: '1rem', opacity: 0.4 }}>
                         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>v0.0.2</span>
                     </div>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="main-content" style={{ flex: 1, padding: '2vh', overflow: 'auto', width: '100%' }}>
+            <main className="main-content" style={{ flex: 1, padding: '2vh', overflow: 'auto', width: '100%', transition: 'padding 0.3s ease' }}>
 
                 {/* Grace Period Warning Banner */}
                 {gracePeriodDaysRemaining !== null && (
@@ -305,7 +309,26 @@ export default function Layout() {
 
                 <style>{`
                     .mobile-close-btn { display: none; }
+                    .desktop-sidebar { width: 280px; }
                     
+                    /* Table/Compact Mode (768px - 1100px) */
+                    @media (min-width: 769px) and (max-width: 1100px) {
+                        .desktop-sidebar { 
+                            width: 80px !important; 
+                            margin: 2vh 0 2vh 1vh !important;
+                        }
+                        .sidebar-text { display: none !important; }
+                        .sidebar-header { padding: 1.5rem 0.5rem !important; }
+                        .sidebar-logo { width: 45px !important; height: 45px !important; }
+                        .sidebar-nav { padding: 0 0.75rem !important; }
+                        .sidebar-nav a { justify-content: center !important; padding: 0.75rem !important; }
+                        .sidebar-user-card { padding: 0.5rem !important; justify-content: center !important; }
+                        .sidebar-footer { padding: 1rem 0.5rem !important; }
+                        .sidebar-footer a, .sidebar-footer button { justify-content: center !important; padding: 0.75rem !important; }
+                        
+                        .main-content { padding: 2vh 2vh 2vh 1vh !important; }
+                    }
+
                     @media (max-width: 768px) {
                         .mobile-header { display: flex !important; }
                         
@@ -313,26 +336,25 @@ export default function Layout() {
                             position: fixed !important;
                             top: 0 !important;
                             left: -100%;
-                            width: 100% !important; 
+                            width: 280px !important; 
                             height: 100vh !important;
                             margin: 0 !important;
                             border-radius: 0 !important;
-                            background: var(--background) !important;
+                            background: var(--bg-app) !important;
                             z-index: 50;
-                            overflow-y: auto; /* Allow scrolling if content is too tall */
-                            padding-bottom: calc(20px + env(safe-area-inset-bottom)); /* Safe area for iOS */
+                            overflow-y: auto;
+                            padding-bottom: calc(20px + env(safe-area-inset-bottom));
                         }
                         
                         .desktop-sidebar.open {
                             left: 0 !important;
+                            box-shadow: 20px 0 50px rgba(0,0,0,0.5);
                         }
 
-                        .mobile-close-btn {
-                            display: flex !important;
-                        }
+                        .mobile-close-btn { display: flex !important; }
                         
                         .main-content {
-                            padding-top: 80px !important; /* Push content below header */
+                            padding-top: 80px !important;
                         }
                     }
                 `}</style>

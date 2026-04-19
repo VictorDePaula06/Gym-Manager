@@ -474,7 +474,13 @@ export default function Students() {
                                                 color: student.status === 'Pending' ? '#ef4444' : 'var(--text-muted)',
                                                 fontWeight: student.status === 'Pending' ? 'bold' : 'normal'
                                             }}>
-                                                {student.nextPaymentDate ? new Date(student.nextPaymentDate).toLocaleDateString('pt-BR') : '-'}
+                                                {(() => {
+                                                    if (!student.nextPaymentDate) return '-';
+                                                    const date = student.nextPaymentDate.seconds 
+                                                        ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                                        : new Date(student.nextPaymentDate);
+                                                    return date.toLocaleDateString('pt-BR');
+                                                })()}
                                             </span>
                                         </td>
                                         <td className="hide-tablet">

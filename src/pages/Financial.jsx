@@ -90,7 +90,7 @@ export default function Financial() {
                 lastPaymentDate: foundPaymentDate,
                 displayPrice: parseFloat(s.price) || (s.plan === 'Premium' ? 120 : s.plan === 'Gold' ? 150 : 80),
                 nextPaymentDate: s.nextPaymentDate,
-                daysRemaining: s.nextPaymentDate ? Math.ceil((new Date(s.nextPaymentDate) - new Date()) / (1000 * 60 * 60 * 24)) : null
+                daysRemaining: nextPaymentDate ? Math.ceil((nextPaymentDate - new Date()) / (1000 * 60 * 60 * 24)) : null
             };
         } catch (e) {
             return null;
@@ -259,7 +259,7 @@ export default function Financial() {
                     border-collapse: collapse;
                 }
 
-                @media (max-width: 768px) {
+                @media (max-width: 1100px) {
                     .financial-table-responsive thead {
                         display: none;
                     }
@@ -347,7 +347,7 @@ export default function Financial() {
                     align-items: start;
                 }
 
-                @media (max-width: 768px) {
+                @media (max-width: 1100px) {
                     .expense-form-grid {
                         grid-template-columns: 1fr;
                         gap: 1rem;
@@ -494,7 +494,13 @@ export default function Financial() {
                                     <td data-label="Plano" style={{ textTransform: 'capitalize' }}>{{ 'Monthly': 'Mensal', 'Quarterly': 'Trimestral', 'Semiannual': 'Semestral', 'Annual': 'Anual' }[student.plan] || student.plan}</td>
                                     <td data-label="Valor">R$ {(student.displayPrice || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                     <td data-label="Data Pagamento" style={{ color: 'var(--text-muted)' }}>{student.currentMonthStatus === 'Paid' && student.lastPaymentDate ? new Date(student.lastPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
-                                    <td data-label="Vencimento">{student.nextPaymentDate ? new Date(student.nextPaymentDate).toLocaleDateString('pt-BR') : '-'}</td>
+                                    <td data-label="Vencimento">{(() => {
+                                        if (!student.nextPaymentDate) return '-';
+                                        const date = student.nextPaymentDate.seconds 
+                                            ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                            : new Date(student.nextPaymentDate);
+                                        return date.toLocaleDateString('pt-BR');
+                                    })()}</td>
                                     <td data-label="Dias Restantes">
                                         {student.daysRemaining !== null ? (
                                             <span style={{ color: student.daysRemaining < 0 ? '#ef4444' : student.daysRemaining <= 7 ? '#eab308' : '#10b981', fontWeight: 'bold' }}>

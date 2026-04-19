@@ -61,9 +61,14 @@ export default function Dashboard() {
 
         return students.filter(student => {
             if (!student.nextPaymentDate) return false;
-            const dueDate = new Date(student.nextPaymentDate);
+            
+            // Suporte para Timestamps do Firebase ou strings ISO
+            const dueDate = student.nextPaymentDate.seconds 
+                ? new Date(student.nextPaymentDate.seconds * 1000) 
+                : new Date(student.nextPaymentDate);
+                
             dueDate.setHours(0, 0, 0, 0);
-            return dueDate < today; // Due date is in the past
+            return dueDate < today; // Vencimento no passado
         });
     }, [students]);
 
@@ -225,7 +230,12 @@ export default function Dashboard() {
                                             <div>
                                                 <span style={{ fontWeight: '500', display: 'block' }}>{student.name}</span>
                                                 <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>
-                                                    Venceu em: {new Date(student.nextPaymentDate).toLocaleDateString('pt-BR')}
+                                                    Venceu em: {(() => {
+                                                        const date = student.nextPaymentDate.seconds 
+                                                            ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                                            : new Date(student.nextPaymentDate);
+                                                        return date.toLocaleDateString('pt-BR');
+                                                    })()}
                                                 </span>
                                             </div>
                                         </div>
@@ -239,7 +249,10 @@ export default function Dashboard() {
                                                     return;
                                                 }
                                                 const firstName = student.name.split(' ')[0];
-                                                const dueDate = new Date(student.nextPaymentDate).toLocaleDateString('pt-BR');
+                                                const dateObj = student.nextPaymentDate.seconds 
+                                                    ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                                    : new Date(student.nextPaymentDate);
+                                                const dueDate = dateObj.toLocaleDateString('pt-BR');
                                                 const message = `Olá ${firstName}, notamos que sua mensalidade venceu em ${dueDate}. Gostaria de renovar seu plano agora?`;
                                                 window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                             }}
@@ -596,7 +609,7 @@ export default function Dashboard() {
 
             {/* Recent Activity Section */}
             <div className="glass-panel" style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                     <h3>Atividade Recente</h3>
                     <button style={{
                         background: 'rgba(255,255,255,0.05)',
@@ -607,12 +620,50 @@ export default function Dashboard() {
                     }}>Ver Tudo</button>
                 </div>
 
+                <style>{`
+                    .recent-activity-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+
+                    @media (max-width: 1100px) {
+                        .recent-activity-table thead { display: none; }
+                        .recent-activity-table tr { 
+                            display: block; 
+                            background: rgba(255,255,255,0.02);
+                            border: 1px solid var(--border-glass);
+                            border-radius: 12px;
+                            margin-bottom: 1rem;
+                            padding: 1rem;
+                        }
+                        .recent-activity-table td { 
+                            display: flex; 
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 0.5rem 0 !important;
+                            border: none !important;
+                        }
+                        .recent-activity-table td::before {
+                            content: attr(data-label);
+                            font-weight: 600;
+                            color: var(--text-muted);
+                            font-size: 0.85rem;
+                        }
+                        .recent-activity-table td[data-label="Aluno"] {
+                            font-weight: bold;
+                            font-size: 1.1rem;
+                            padding-bottom: 0.75rem !important;
+                        }
+                        .recent-activity-table td[data-label="Aluno"]::before { display: none; }
+                    }
+                `}</style>
+
                 {students.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                         <p>Nenhuma atividade ainda. Comece adicionando um aluno.</p>
                     </div>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <table className="recent-activity-table">
                         <thead>
                             <tr style={{ textAlign: 'left', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-glass)' }}>
                                 <th style={{ padding: '1rem 0' }}>Aluno</th>
@@ -636,8 +687,8 @@ export default function Dashboard() {
 
                                 return (
                                     <tr key={student.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                        <td style={{ padding: '1rem 0', fontWeight: '500' }}>{student.name}</td>
-                                        <td>
+                                        <td data-label="Aluno" style={{ padding: '1rem 0', fontWeight: '500' }}>{student.name}</td>
+                                        <td data-label="Status">
                                             <span style={{
                                                 padding: '0.25rem 0.75rem',
                                                 borderRadius: '20px',
@@ -648,8 +699,8 @@ export default function Dashboard() {
                                                 {(student.status || 'Active') === 'Active' ? 'Ativo' : 'Inativo'}
                                             </span>
                                         </td>
-                                        <td style={{ color: 'var(--text-muted)' }}>{planMap[student.plan] || student.plan || 'Mensal'}</td>
-                                        <td style={{ color: 'var(--text-muted)' }}>
+                                        <td data-label="Plano" style={{ color: 'var(--text-muted)' }}>{planMap[student.plan] || student.plan || 'Mensal'}</td>
+                                        <td data-label="Último Pagto." style={{ color: 'var(--text-muted)' }}>
                                             {lastPayment ? new Date(lastPayment.date).toLocaleDateString('pt-BR') : 'Nunca'}
                                         </td>
                                     </tr>
