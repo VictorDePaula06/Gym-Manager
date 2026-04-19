@@ -2,11 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
 import { Dumbbell, ChevronRight, Play, X, Info, ChevronLeft, CheckCircle2, Clock, Trophy } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { useDialog } from '../../context/DialogContext';
 import RestTimer from '../../components/RestTimer';
 
 export default function StudentWorkouts() {
     const { user } = useAuth();
     const { students, exerciseLibrary } = useGym();
+    const { addToast } = useToast();
+    const { confirm } = useDialog();
     const [selectedSheetId, setSelectedSheetId] = useState('legacy');
     const [currentVariation, setCurrentVariation] = useState('A');
     const [activeExercise, setActiveExercise] = useState(null);
@@ -141,6 +145,21 @@ export default function StudentWorkouts() {
         }
     };
 
+    const handleCancelWorkout = async () => {
+        const confirmed = await confirm({
+            title: 'Cancelar Treino?',
+            message: 'Seu progresso neste treino não será salvo. Tem certeza que deseja sair?',
+            confirmText: 'Sair do Treino',
+            type: 'danger'
+        });
+
+        if (confirmed) {
+            setIsWorkoutActive(false);
+            setIsTrainingMode(false);
+            addToast('Treino cancelado.', 'info');
+        }
+    };
+
     if (isWorkoutActive && exercises[currentExIndex]) {
         return (
             <div style={{
@@ -160,6 +179,22 @@ export default function StudentWorkouts() {
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Treino em Andamento</span>
                         <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Variação {activeVar}</h3>
                     </div>
+                    <button 
+                        onClick={handleCancelWorkout}
+                        style={{ 
+                            background: 'rgba(239, 68, 68, 0.1)', 
+                            border: '1px solid rgba(239, 68, 68, 0.2)', 
+                            color: '#ef4444', 
+                            padding: '0.5rem', 
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <X size={24} />
+                    </button>
                 </div>
 
                 {/* Exercise Focus Card */}
