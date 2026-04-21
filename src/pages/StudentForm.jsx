@@ -260,7 +260,11 @@ export default function StudentForm() {
                 navigate('/app/students');
             }
         } catch (error) {
-            addToast('Erro ao salvar aluno. Tente novamente.', 'error');
+            if (error.message === 'EMAIL_EXISTS') {
+                addToast('Este e-mail já está em uso por outro aluno.', 'error');
+            } else {
+                addToast('Erro ao salvar aluno. Tente novamente.', 'error');
+            }
             console.error(error);
         } finally {
             setSaving(false);

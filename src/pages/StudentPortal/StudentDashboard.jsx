@@ -153,36 +153,11 @@ export default function StudentDashboard() {
                 let nextPaymentDate = null;
                 const targetDay = parseInt(studentData.paymentDay);
                 
-                // 1. Tentar ler o dado salvo no banco
+                // Reliance on Database source of truth for payment status
                 if (studentData.nextPaymentDate) {
                     nextPaymentDate = studentData.nextPaymentDate.seconds 
                         ? new Date(studentData.nextPaymentDate.seconds * 1000) 
                         : new Date(studentData.nextPaymentDate);
-                }
-
-                // 2. Inteligência Anti-Pulo (Sincronizar com ADM)
-                if (!isNaN(targetDay)) {
-                    let baseDateString = studentData.lastPaymentDate || studentData.startDate;
-                    let baseDate = null;
-                    if (baseDateString) {
-                        baseDate = baseDateString.seconds 
-                            ? new Date(baseDateString.seconds * 1000) 
-                            : new Date(baseDateString);
-                    }
-                    
-                    if (baseDate && !isNaN(baseDate.getTime())) {
-                        let expectedDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), targetDay);
-                        if (expectedDate <= baseDate) {
-                            expectedDate.setMonth(expectedDate.getMonth() + 1);
-                        }
-                        
-                        // Prioriza a mensalidade pendente mais antiga
-                        if (!nextPaymentDate || expectedDate < nextPaymentDate) {
-                            nextPaymentDate = expectedDate;
-                        }
-                    } else if (!nextPaymentDate) {
-                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), targetDay);
-                    }
                 }
 
                 if (nextPaymentDate) nextPaymentDate.setHours(0, 0, 0, 0);
@@ -224,7 +199,7 @@ export default function StudentDashboard() {
                                 {isOverdue 
                                     ? `Atraso detectado desde ${nextPaymentDate.toLocaleDateString('pt-BR')}.` 
                                     : isActive 
-                                        ? 'Tudo certo com seu plano! Treino liberado.' 
+                                        ? `Tudo certo! Próximo vencimento em ${nextPaymentDate.toLocaleDateString('pt-BR')}.` 
                                         : 'Sua assinatura não está ativa no momento.'}
                             </p>
                         </div>
