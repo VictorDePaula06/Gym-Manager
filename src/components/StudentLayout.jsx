@@ -41,7 +41,7 @@ export default function StudentLayout() {
             {/* Student Top Header */}
             <header style={{
                 padding: '1.25rem 1.5rem',
-                display: 'flex',
+                display: isTrainingMode ? 'none' : 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 background: 'rgba(15, 23, 42, 0.4)',
@@ -49,8 +49,7 @@ export default function StudentLayout() {
                 borderBottom: '1px solid var(--border-glass)',
                 position: 'sticky',
                 top: 0,
-                zIndex: 50,
-                display: isTrainingMode ? 'none' : 'flex'
+                zIndex: 50
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     {settings?.logoUrl ? (

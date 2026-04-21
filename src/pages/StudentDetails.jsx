@@ -988,20 +988,15 @@ export default function StudentDetails() {
             if (!isNaN(targetDay)) {
                 // Forçar o dia novamente após setMonth para evitar problemas com meses curtos
                 nextDueDate.setDate(targetDay);
-                
-                // Trava de segurança: se após o cálculo o próximo vencimento ainda for 
-                // anterior ou igual à data do pagamento, significa que precisamos avançar mais um ciclo
-                // (Isso acontece se a pessoa estava MUITO atrasada ou se estamos no dia do vencimento)
-                if (nextDueDate <= paymentDateObj) {
-                    nextDueDate.setMonth(nextDueDate.getMonth() + 1);
-                    nextDueDate.setDate(targetDay);
-                }
             }
+
+            // Usar baseDate para a descrição para refletir o mês que está sendo pago
+            const referenceMonth = baseDate.toLocaleDateString('pt-BR', { month: 'long' });
 
             const newHistory = [
                 {
                     date: paymentDateObj.toISOString(),
-                    description: `Mensalidade - ${paymentDateObj.toLocaleDateString('pt-BR', { month: 'long' })}`,
+                    description: `Mensalidade - ${referenceMonth}`,
                     value: paymentAmount,
                     status: 'Paid',
                     method: paymentForm.method
@@ -3035,7 +3030,25 @@ export default function StudentDetails() {
 
                             {showPaymentModal && (
                                 <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', border: '1px solid #10b981' }}>
-                                    <h4 style={{ margin: 0, marginBottom: '1rem', color: '#10b981' }}>Registrar Pagamento</h4>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                        <h4 style={{ margin: 0, color: '#10b981' }}>Registrar Pagamento</h4>
+                                        {(() => {
+                                            const today = new Date();
+                                            let referenceDate = today;
+                                            if (student.nextPaymentDate) {
+                                                referenceDate = student.nextPaymentDate.seconds 
+                                                    ? new Date(student.nextPaymentDate.seconds * 1000) 
+                                                    : new Date(student.nextPaymentDate);
+                                            }
+                                            return (
+                                                <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '0.4rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                                    <span style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 'bold' }}>
+                                                        Referente a: {referenceDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Valor (R$)</label>
