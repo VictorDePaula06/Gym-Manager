@@ -173,10 +173,18 @@ export const GymProvider = ({ children }) => {
         try {
             const basePath = getUserBasePath();
             const tenantId = user.tenantId || user.uid;
-            
-            // 0. CHECK IF EMAIL ALREADY EXISTS (GLOBAL UNICITY)
-            if (studentData.email) {
-                const emailKey = studentData.email.toLowerCase().trim().replace(/\./g, '_');
+            const normalizedEmail = (studentData.email || '').toLowerCase().trim();
+
+            // 0. CHECK IF EMAIL ALREADY EXISTS (GLOBAL UNICITY & LOCAL)
+            if (normalizedEmail) {
+                // Check locally first (Immediate feedback for same gym)
+                const existsLocally = students.some(s => (s.email || '').toLowerCase().trim() === normalizedEmail);
+                if (existsLocally) {
+                    throw new Error("EMAIL_EXISTS");
+                }
+
+                // Check globally via Registry
+                const emailKey = normalizedEmail.replace(/\./g, '_');
                 const accessRef = doc(db, 'student_access', emailKey);
                 const accessSnap = await getDoc(accessRef);
                 if (accessSnap.exists()) {
@@ -188,12 +196,12 @@ export const GymProvider = ({ children }) => {
             const docRef = await addDoc(collection(db, `${basePath}/students`), studentData);
             const studentId = docRef.id;
 
-            // 2. If has email and password, create student_access record
-            if (studentData.email && studentData.password) {
-                const emailKey = studentData.email.toLowerCase().trim().replace(/\./g, '_');
+            // 2. Register in student_access if email is present
+            if (normalizedEmail) {
+                const emailKey = normalizedEmail.replace(/\./g, '_');
                 await setDoc(doc(db, 'student_access', emailKey), {
                     email: studentData.email,
-                    password: studentData.password,
+                    password: studentData.password || null,
                     name: studentData.name,
                     tenantId: tenantId,
                     studentId: studentId
@@ -216,20 +224,26 @@ export const GymProvider = ({ children }) => {
             const oldData = oldStudentSnap.exists() ? oldStudentSnap.data() : {};
 
             const { id: _, ...data } = studentData;
-            
+            const normalizedEmail = (data.email || '').toLowerCase().trim();
+
             // 2. CHECK EMAIL UNICITY BEFORE ANY WRITE
-            if (data.email) {
-                const emailKey = data.email.toLowerCase().trim().replace(/\./g, '_');
+            if (normalizedEmail) {
+                // Local check (excluding self)
+                const existsLocally = students.some(s => s.id !== id && (s.email || '').toLowerCase().trim() === normalizedEmail);
+                if (existsLocally) {
+                    throw new Error("EMAIL_EXISTS");
+                }
+
+                // Global check
+                const emailKey = normalizedEmail.replace(/\./g, '_');
                 const accessRef = doc(db, 'student_access', emailKey);
                 const accessSnap = await getDoc(accessRef);
 
                 if (accessSnap.exists()) {
                     const accessData = accessSnap.data();
                     
-                    // Case 1: studentId matches (New records)
-                    // Case 2: studentId missing but email matches oldData (Legacy records)
                     const isSameStudent = accessData.studentId === id || 
-                                         (!accessData.studentId && data.email.toLowerCase().trim() === oldData.email?.toLowerCase().trim());
+                                         (!accessData.studentId && normalizedEmail === (oldData.email || '').toLowerCase().trim());
 
                     if (!isSameStudent) {
                         throw new Error("EMAIL_EXISTS");
@@ -241,28 +255,29 @@ export const GymProvider = ({ children }) => {
             await updateDoc(oldStudentRef, data);
 
             // 4. Sync student_access
-            if (data.email && data.password) {
-                const emailKey = data.email.toLowerCase().trim().replace(/\./g, '_');
+            const oldEmailNormalized = (oldData.email || '').toLowerCase().trim();
+
+            if (normalizedEmail) {
+                const emailKey = normalizedEmail.replace(/\./g, '_');
                 
                 // If email changed, delete old access record
-                const oldEmailNormalized = (oldData.email || '').toLowerCase().trim();
-                const newEmailNormalized = (data.email || '').toLowerCase().trim();
-
-                if (oldEmailNormalized && oldEmailNormalized !== newEmailNormalized) {
+                if (oldEmailNormalized && oldEmailNormalized !== normalizedEmail) {
                     const oldEmailKey = oldEmailNormalized.replace(/\./g, '_');
                     await deleteDoc(doc(db, 'student_access', oldEmailKey));
                 }
 
+                // Update or Create access record
                 await setDoc(doc(db, 'student_access', emailKey), {
                     email: data.email,
-                    password: data.password,
+                    password: data.password || oldData.password || null,
                     name: data.name,
                     tenantId: tenantId,
                     studentId: id
-                });
-            } else if (oldData.email && !data.password) {
-                // If password removed, maybe remove access? Or keep old?
-                // For safety, if no password, they can't log in anyway.
+                }, { merge: true });
+            } else if (oldEmailNormalized) {
+                // Email was removed
+                const oldEmailKey = oldEmailNormalized.replace(/\./g, '_');
+                await deleteDoc(doc(db, 'student_access', oldEmailKey));
             }
         } catch (error) {
             console.error("Error updating student:", error);
