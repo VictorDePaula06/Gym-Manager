@@ -12,6 +12,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
       manifestFilename: 'manifest.json',
+      workbox: {
+        // O bundle passou de 2 MB (SDK do Gemini); sobe o limite de pré-cache do PWA.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+      },
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         id: '/',

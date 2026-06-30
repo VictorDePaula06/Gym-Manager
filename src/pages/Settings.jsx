@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle, User, Plus, CreditCard, Calendar, Star, Shield } from 'lucide-react';
+import { Save, Upload, Sun, Moon, Check, Loader2, CheckCircle, Database, AlertCircle, User, Plus, CreditCard, Calendar, Star, Shield, Sparkles, KeyRound, Trash2, ExternalLink } from 'lucide-react';
 import { storage, db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, getDoc, doc, setDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
+import { validateApiKey } from '../services/gemini';
 
 export default function Settings() {
-    const { settings, updateSettings } = useGym();
+    const { settings, updateSettings, aiConfig, updateAiConfig } = useGym();
     const { user } = useAuth();
     const { addToast } = useToast();
     const navigate = useNavigate();
@@ -18,6 +19,8 @@ export default function Settings() {
         whatsapp: '',
         theme: 'dark'
     });
+    const [apiKeyInput, setApiKeyInput] = useState('');
+    const [isSavingKey, setIsSavingKey] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isMigrating, setIsMigrating] = useState(false);
     const [isDeletingInactive, setIsDeletingInactive] = useState(false);
@@ -111,6 +114,39 @@ export default function Settings() {
             addToast("Erro ao salvar configurações.", 'error');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleSaveApiKey = async () => {
+        const key = apiKeyInput.trim();
+        if (!key) return;
+        setIsSavingKey(true);
+        try {
+            const valid = await validateApiKey(key);
+            if (!valid) {
+                addToast("Chave inválida. Verifique e tente novamente.", 'error');
+                return;
+            }
+            await updateAiConfig(key);
+            setApiKeyInput('');
+            addToast("Chave de IA validada e salva!", 'success');
+        } catch (error) {
+            console.error("Erro ao salvar chave de IA:", error);
+            addToast("Erro ao salvar a chave.", 'error');
+        } finally {
+            setIsSavingKey(false);
+        }
+    };
+
+    const handleRemoveApiKey = async () => {
+        if (!confirm("Remover a chave de IA? Os recursos de inteligência artificial deixarão de funcionar.")) return;
+        try {
+            await updateAiConfig(null);
+            setApiKeyInput('');
+            addToast("Chave de IA removida.", 'success');
+        } catch (error) {
+            console.error("Erro ao remover chave de IA:", error);
+            addToast("Erro ao remover a chave.", 'error');
         }
     };
 
@@ -551,6 +587,86 @@ export default function Settings() {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* Inteligência Artificial */}
+                    <div className="glass-panel" style={{ padding: '2rem', marginTop: '2rem' }}>
+                        <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <Sparkles size={22} color="#a855f7" /> Inteligência Artificial
+                        </h2>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+                            Conecte sua chave do Google Gemini para ativar a geração de treinos por IA e os recursos inteligentes do sistema.
+                        </p>
+
+                        {/* Status atual */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '0.6rem',
+                            padding: '0.75rem 1rem', borderRadius: '10px', marginBottom: '1.5rem',
+                            background: aiConfig?.configured ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            border: `1px solid ${aiConfig?.configured ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`
+                        }}>
+                            {aiConfig?.configured
+                                ? <><CheckCircle size={18} color="#10b981" /><span style={{ color: '#10b981', fontWeight: 600 }}>IA configurada e ativa</span></>
+                                : <><AlertCircle size={18} color="#f59e0b" /><span style={{ color: '#f59e0b', fontWeight: 600 }}>IA não configurada</span></>}
+                        </div>
+
+                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+                            Chave de API do Gemini
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <div style={{ position: 'relative', flex: '1 1 280px' }}>
+                                <KeyRound size={18} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input
+                                    type="password"
+                                    value={apiKeyInput}
+                                    onChange={(e) => setApiKeyInput(e.target.value)}
+                                    placeholder={aiConfig?.configured ? '•••••••••••• (cole uma nova para substituir)' : 'Cole sua chave aqui (AIza...)'}
+                                    autoComplete="off"
+                                    style={{
+                                        width: '100%', padding: '0.75rem 0.75rem 0.75rem 2.6rem',
+                                        background: 'var(--card-bg)', border: '1px solid var(--border-glass)',
+                                        borderRadius: '8px', color: 'var(--text-main)', fontSize: '1rem'
+                                    }}
+                                />
+                            </div>
+                            <button
+                                onClick={handleSaveApiKey}
+                                disabled={isSavingKey || !apiKeyInput.trim()}
+                                style={{
+                                    background: 'var(--primary)', color: 'white',
+                                    padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none',
+                                    fontWeight: 600, cursor: (isSavingKey || !apiKeyInput.trim()) ? 'not-allowed' : 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                    opacity: (isSavingKey || !apiKeyInput.trim()) ? 0.6 : 1
+                                }}
+                            >
+                                {isSavingKey ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                                {isSavingKey ? 'Validando...' : 'Validar e Salvar'}
+                            </button>
+                            {aiConfig?.configured && (
+                                <button
+                                    onClick={handleRemoveApiKey}
+                                    style={{
+                                        background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
+                                        padding: '0.75rem 1rem', borderRadius: '8px',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600
+                                    }}
+                                >
+                                    <Trash2 size={18} /> Remover
+                                </button>
+                            )}
+                        </div>
+
+                        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                            marginTop: '1rem', fontSize: '0.85rem', color: '#60a5fa', textDecoration: 'none'
+                        }}>
+                            <ExternalLink size={14} /> Não tem uma chave? Gere grátis no Google AI Studio
+                        </a>
+                        <p style={{ marginTop: '0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                            🔒 Sua chave é validada antes de salvar e guardada de forma privada — não fica visível para seus alunos.
+                        </p>
                     </div>
 
                     {/* Advanced / Maintenance Section */}

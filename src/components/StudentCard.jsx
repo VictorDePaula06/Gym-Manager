@@ -35,6 +35,36 @@ const StudentCard = ({ student, settings, className = '', style = {} }) => {
 
     const userImage = student.profilePictureUrl || student.photoUrl;
 
+    // Normaliza altura para metros (aceita cm "165" ou metros "1.65"/"1,65")
+    const formatHeight = (raw) => {
+        if (!raw && raw !== 0) return null;
+        let h = parseFloat(raw.toString().replace(',', '.'));
+        if (isNaN(h)) return null;
+        if (h > 3) h = h / 100; // veio em cm
+        return h.toFixed(2).replace('.', ',');
+    };
+
+    // IMC + faixa de cor (OMS)
+    const getBmi = () => {
+        if (!student.weight || !student.height) return null;
+        const weight = parseFloat(student.weight.toString().replace(',', '.'));
+        let height = parseFloat(student.height.toString().replace(',', '.'));
+        if (height > 3) height = height / 100;
+        if (!weight || !height) return null;
+        return weight / (height * height);
+    };
+
+    const bmi = getBmi();
+    const getBmiColor = (v) => {
+        if (v == null) return 'var(--text-main)';
+        if (v < 18.5) return '#60a5fa'; // abaixo do peso
+        if (v < 25) return '#10b981';   // normal
+        if (v < 30) return '#fbbf24';   // sobrepeso
+        return '#ef4444';               // obesidade
+    };
+
+    const heightFmt = formatHeight(student.height);
+
     return (
         <div className={`member-card ${className}`} style={{ border: `2px solid ${color}`, ...style }}>
             <div className="member-card-header">
@@ -88,24 +118,12 @@ const StudentCard = ({ student, settings, className = '', style = {} }) => {
                 </div>
                 <div className="stat-item">
                     <span className="stat-label">ALTURA</span>
-                    <span className="stat-value">{student.height || '--'} <small>m</small></span>
+                    <span className="stat-value">{heightFmt || '--'} <small>m</small></span>
                 </div>
                 <div className="stat-item">
                     <span className="stat-label">IMC</span>
-                    <span className="stat-value">
-                        {(() => {
-                            if (!student.weight || !student.height) return '--';
-                            const weight = parseFloat(student.weight.toString().replace(',', '.'));
-                            let height = parseFloat(student.height.toString().replace(',', '.'));
-
-                            // Handle cm vs m (if > 3, assume cm)
-                            if (height > 3) height = height / 100;
-
-                            if (!weight || !height) return '--';
-
-                            const bmi = weight / (height * height);
-                            return bmi.toFixed(1);
-                        })()}
+                    <span className="stat-value" style={{ color: getBmiColor(bmi) }}>
+                        {bmi != null ? bmi.toFixed(1) : '--'}
                     </span>
                 </div>
             </div>

@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2 } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -15,14 +15,29 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import BodyMeasurementMap from '../components/BodyMeasurementMap';
 import StudentCard from '../components/StudentCard';
 import { generateWorkout } from '../utils/workoutRecommendations';
+import { generateWorkoutAI } from '../utils/aiWorkout';
 import { compressImage } from '../utils/imageOptimizer';
 import OptimizedImage from '../components/OptimizedImage';
+
+// Considera "vazio" também os termos que o usuário digita pra dizer que não há nada
+const hasContent = (value) => {
+    const t = (value || '').toString().trim().toLowerCase();
+    return t !== '' && !['nenhuma', 'nenhum', 'não se aplica', 'nao se aplica', 'n/a', 'na', '-', '--'].includes(t);
+};
+
+const GEN_MESSAGES = [
+    'Analisando o perfil do aluno...',
+    'Definindo a melhor divisão...',
+    'Selecionando os exercícios ideais...',
+    'Ajustando séries, repetições e descanso...',
+    'Aplicando progressão e segurança...',
+];
 
 export default function StudentDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { students, updateStudent, settings } = useGym();
+    const { students, updateStudent, settings, aiConfig } = useGym();
     const { user } = useAuth();
     const { addToast } = useToast();
     const { confirm } = useDialog();
@@ -40,6 +55,15 @@ export default function StudentDetails() {
     const [newSheetName, setNewSheetName] = useState('');
     const [useRecommendation, setUseRecommendation] = useState(false); // New state for AI gen
     const [selectedLevel, setSelectedLevel] = useState('Iniciante'); // Manual override
+    const [aiInstruction, setAiInstruction] = useState(''); // Instrução livre para a IA
+    const [isGeneratingSheet, setIsGeneratingSheet] = useState(false);
+    const [genStep, setGenStep] = useState(0);
+
+    useEffect(() => {
+        if (!isGeneratingSheet) { setGenStep(0); return; }
+        const t = setInterval(() => setGenStep(s => (s + 1) % GEN_MESSAGES.length), 1800);
+        return () => clearInterval(t);
+    }, [isGeneratingSheet]);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
 
@@ -316,7 +340,21 @@ export default function StudentDetails() {
             let generated = null;
 
             if (useRecommendation) {
-                generated = generateWorkout(student, selectedLevel);
+                const useAI = aiConfig?.configured;
+                if (useAI) {
+                    setIsGeneratingSheet(true);
+                    try {
+                        generated = await generateWorkoutAI(student, aiInstruction, trainingLogs);
+                    } catch (err) {
+                        console.error('Falha na geração por IA, usando gerador padrão:', err);
+                        addToast('IA indisponível agora — usei o gerador padrão.', 'info');
+                        generated = generateWorkout(student, selectedLevel);
+                    } finally {
+                        setIsGeneratingSheet(false);
+                    }
+                } else {
+                    generated = generateWorkout(student, selectedLevel);
+                }
                 initialWorkouts = generated.workouts;
                 if (!finalName) finalName = generated.name;
 
@@ -371,6 +409,7 @@ export default function StudentDetails() {
 
             setNewSheetName('');
             setUseRecommendation(false);
+            setAiInstruction('');
             setIsCreatingSheet(false);
             setSelectedSheetId(sheetId);
             addToast(useRecommendation ? "Ficha gerada com sucesso!" : "Ficha criada com sucesso!", 'success');
@@ -1034,6 +1073,9 @@ export default function StudentDetails() {
 
     const currentSheet = getCurrentSheet();
     const isLegacy = currentSheet?.type === 'legacy';
+    // Aluno tem alguma ficha de verdade? (evita mostrar a "Ficha Principal" legada vazia em aluno novo)
+    const hasRealSheet = (student.workoutSheets && Object.keys(student.workoutSheets).length > 0)
+        || (student.workouts && Object.keys(student.workouts).length > 0);
 
     // Sort legacy vs new (Newest First)
     const availableSheets = student.workoutSheets
@@ -1670,6 +1712,35 @@ export default function StudentDetails() {
 
     return (
         <div style={{ paddingBottom: '4rem' }}>
+            {isGeneratingSheet && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 9999,
+                    background: 'rgba(8, 12, 20, 0.78)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                    <style>{`
+                        @keyframes vgh-lift { 0%, 100% { transform: translateY(4px) rotate(-10deg); } 50% { transform: translateY(-12px) rotate(10deg); } }
+                        @keyframes vgh-pulse { 0% { transform: scale(0.85); opacity: 0.6; } 100% { transform: scale(1.6); opacity: 0; } }
+                        @keyframes vgh-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+                    `}</style>
+                    <div style={{ textAlign: 'center', padding: '2.5rem' }}>
+                        <div style={{ position: 'relative', width: '110px', height: '110px', margin: '0 auto 2rem' }}>
+                            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(16,185,129,0.25)', animation: 'vgh-pulse 1.6s ease-out infinite' }} />
+                            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(16,185,129,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ animation: 'vgh-lift 1.1s ease-in-out infinite' }}>
+                                    <Dumbbell size={48} color="var(--primary)" />
+                                </div>
+                            </div>
+                        </div>
+                        <h2 style={{ margin: '0 0 0.6rem', fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                            <Sparkles size={20} color="#a855f7" /> Montando o treino com IA
+                        </h2>
+                        <p key={genStep} style={{ color: 'var(--text-muted)', minHeight: '1.4em', margin: 0, animation: 'vgh-fade 0.4s ease' }}>
+                            {GEN_MESSAGES[genStep]}
+                        </p>
+                    </div>
+                </div>
+            )}
             <style>{`
                 .student-header {
                     display: flex;
@@ -1956,24 +2027,34 @@ export default function StudentDetails() {
                                 </div>
 
                                 {/* Limitations */}
+                                {(() => {
+                                    const hasLimitations = hasContent(student.limitations);
+                                    return (
                                 <div className="glass-panel" style={{
                                     padding: '1.5rem',
-                                    background: student.limitations ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
-                                    border: student.limitations ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-glass)'
+                                    background: hasLimitations ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
+                                    border: hasLimitations ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-glass)'
                                 }}>
-                                    <label style={{ fontSize: '0.75rem', color: student.limitations ? '#b91c1c' : 'var(--text-muted)', textTransform: 'uppercase' }}>Limitações</label>
-                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: student.limitations ? '#b91c1c' : 'var(--text-main)' }}>{student.limitations || 'Nenhuma'}</p>
+                                    <label style={{ fontSize: '0.75rem', color: hasLimitations ? '#b91c1c' : 'var(--text-muted)', textTransform: 'uppercase' }}>Limitações</label>
+                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: hasLimitations ? '#b91c1c' : 'var(--text-main)' }}>{hasLimitations ? student.limitations : 'Nenhuma'}</p>
                                 </div>
+                                    );
+                                })()}
 
                                 {/* Diseases */}
+                                {(() => {
+                                    const hasDiseases = hasContent(student.diseases);
+                                    return (
                                 <div className="glass-panel" style={{
                                     padding: '1.5rem',
-                                    background: student.diseases ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
-                                    border: student.diseases ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid var(--border-glass)'
+                                    background: hasDiseases ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
+                                    border: hasDiseases ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid var(--border-glass)'
                                 }}>
-                                    <label style={{ fontSize: '0.75rem', color: student.diseases ? '#b45309' : 'var(--text-muted)', textTransform: 'uppercase' }}>Histórico Médico</label>
-                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: student.diseases ? '#b45309' : 'var(--text-main)' }}>{student.diseases || 'Nenhum'}</p>
+                                    <label style={{ fontSize: '0.75rem', color: hasDiseases ? '#b45309' : 'var(--text-muted)', textTransform: 'uppercase' }}>Histórico Médico</label>
+                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: hasDiseases ? '#b45309' : 'var(--text-main)' }}>{hasDiseases ? student.diseases : 'Nenhum'}</p>
                                 </div>
+                                    );
+                                })()}
                             </div>
 
                             {/* ZERO ASSESSMENTS PLACEHOLDER */}
@@ -2031,7 +2112,27 @@ export default function StudentDetails() {
                             {/* CPF Deleted from here */}
 
                             {/* Progress Chart Section - Moved here for Dashboard Layout */}
-                            {assessments.length > 0 && (
+                            {assessments.length > 0 && (() => {
+                                const chartData = [...assessments].reverse().map(a => {
+                                    let dateObj = new Date();
+                                    if (a.date?.seconds) dateObj = new Date(a.date.seconds * 1000);
+                                    else if (a.date instanceof Date) dateObj = a.date;
+                                    else if (a.date) dateObj = new Date(a.date);
+                                    const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '??/??';
+                                    return {
+                                        name: dateStr,
+                                        weight: parseFloat((a.weight || 0).toString().replace(',', '.')),
+                                        bodyFat: parseFloat((a.bodyFat || 0).toString().replace(',', '.'))
+                                    };
+                                });
+                                const lastW = chartData[chartData.length - 1]?.weight;
+                                const firstW = chartData[0]?.weight;
+                                const lastF = chartData[chartData.length - 1]?.bodyFat;
+                                const firstF = chartData[0]?.bodyFat;
+                                const deltaW = (lastW || lastW === 0) && (firstW || firstW === 0) ? lastW - firstW : null;
+                                const deltaF = (lastF || lastF === 0) && (firstF || firstF === 0) ? lastF - firstF : null;
+                                const fmtDelta = (d) => (d > 0 ? '+' : '') + d.toFixed(1).replace('.', ',');
+                                return (
                                 <div className="glass-panel hide-mobile-chart" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                                         <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Progresso (Peso & Gordura)</h3>
@@ -2046,22 +2147,37 @@ export default function StudentDetails() {
                                             </div>
                                         </div>
                                     </div>
+                                    {chartData.length >= 2 && (
+                                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                            {(lastW || lastW === 0) && (
+                                                <div style={{ flex: '1 1 160px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '1rem 1.25rem' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Peso atual</div>
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
+                                                        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{lastW}<small style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}> kg</small></span>
+                                                        {deltaW != null && deltaW !== 0 && (
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>{deltaW < 0 ? '▼' : '▲'} {fmtDelta(deltaW)} kg</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>desde a 1ª avaliação</div>
+                                                </div>
+                                            )}
+                                            {(lastF || lastF === 0) && (
+                                                <div style={{ flex: '1 1 160px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '1rem 1.25rem' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gordura corporal</div>
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
+                                                        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{lastF}<small style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}> %</small></span>
+                                                        {deltaF != null && deltaF !== 0 && (
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: deltaF < 0 ? '#10b981' : '#ef4444' }}>{deltaF < 0 ? '▼' : '▲'} {fmtDelta(deltaF)} %</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>desde a 1ª avaliação</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     <div style={{ height: '400px', width: '100%' }}>
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={[...assessments].reverse().map(a => {
-                                                let dateObj = new Date();
-                                                if (a.date?.seconds) dateObj = new Date(a.date.seconds * 1000);
-                                                else if (a.date instanceof Date) dateObj = a.date;
-                                                else if (a.date) dateObj = new Date(a.date);
-
-                                                const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '??/??';
-
-                                                return {
-                                                    name: dateStr,
-                                                    weight: parseFloat((a.weight || 0).toString().replace(',', '.')),
-                                                    bodyFat: parseFloat((a.bodyFat || 0).toString().replace(',', '.'))
-                                                };
-                                            })}>
+                                            <AreaChart data={chartData}>
                                                 <defs>
                                                     <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
                                                         <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
@@ -2112,6 +2228,8 @@ export default function StudentDetails() {
                                                     fillOpacity={1}
                                                     fill="url(#colorWeight)"
                                                     name="Peso (kg)"
+                                                    dot={{ r: 4, strokeWidth: 2, stroke: 'var(--card-bg)', fill: 'var(--accent)' }}
+                                                    activeDot={{ r: 6 }}
                                                 />
                                                 <Area
                                                     yAxisId="right"
@@ -2122,12 +2240,15 @@ export default function StudentDetails() {
                                                     fillOpacity={1}
                                                     fill="url(#colorFat)"
                                                     name="Gordura (%)"
+                                                    dot={{ r: 4, strokeWidth: 2, stroke: 'var(--card-bg)', fill: '#10b981' }}
+                                                    activeDot={{ r: 6 }}
                                                 />
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </div>
                                 </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Body Map removed from here */}
                         </div>
@@ -2429,12 +2550,46 @@ export default function StudentDetails() {
                 {
                     activeTab === 'workouts' && (
                         <div>
+                            {/* Painel de Aderência ao Treino */}
+                            {(() => {
+                                const total = trainingLogs.length;
+                                const now = Date.now();
+                                const last30 = trainingLogs.filter(l => l.timestamp && (now - new Date(l.timestamp).getTime()) <= 30 * 24 * 3600 * 1000).length;
+                                const lastLog = trainingLogs[0];
+                                let lastLabel = '—';
+                                if (lastLog?.timestamp) {
+                                    const days = Math.floor((now - new Date(lastLog.timestamp).getTime()) / (24 * 3600 * 1000));
+                                    lastLabel = days <= 0 ? 'Hoje' : days === 1 ? 'Ontem' : `Há ${days} dias`;
+                                }
+                                const stale = lastLog?.timestamp && (now - new Date(lastLog.timestamp).getTime()) > 14 * 24 * 3600 * 1000;
+                                const stats = [
+                                    { icon: CheckCircle, color: '#10b981', value: total, label: 'Treinos realizados' },
+                                    { icon: Activity, color: '#3b82f6', value: last30, label: 'Nos últimos 30 dias' },
+                                    { icon: Clock, color: stale ? '#ef4444' : '#a855f7', value: lastLabel, label: 'Último treino' },
+                                ];
+                                return (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                                        {stats.map((s, i) => (
+                                            <div key={i} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: `${s.color}1a`, color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                    <s.icon size={22} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-main)', lineHeight: 1.1 }}>{s.value}</div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{s.label}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+
                             {/* Header: Sheet Selector */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '2rem' }}>
                                 <div>
                                     <h3 style={{ margin: 0, marginBottom: '0.5rem' }}>Fichas de Treino</h3>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        {isLegacy && (
+                                        {isLegacy && hasRealSheet && (
                                             <button
                                                 onClick={() => setSelectedSheetId('legacy')}
                                                 style={{
@@ -2513,12 +2668,40 @@ export default function StudentDetails() {
                                             onChange={(e) => setUseRecommendation(e.target.checked)}
                                             style={{ accentColor: 'var(--primary)', width: '18px', height: '18px', cursor: 'pointer' }}
                                         />
-                                        <label htmlFor="useRecommendation" style={{ cursor: 'pointer', color: useRecommendation ? 'var(--primary)' : 'var(--text-muted)', fontWeight: useRecommendation ? 'bold' : 'normal', fontSize: '0.95rem' }}>
-                                            Gerar Recomendação Inteligente
+                                        <label htmlFor="useRecommendation" style={{ cursor: 'pointer', color: useRecommendation ? 'var(--primary)' : 'var(--text-muted)', fontWeight: useRecommendation ? 'bold' : 'normal', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            {aiConfig?.configured && <Sparkles size={16} color="#a855f7" />}
+                                            {aiConfig?.configured ? 'Gerar Ficha com IA' : 'Gerar Recomendação Inteligente'}
                                         </label>
                                     </div>
 
-                                    {useRecommendation && (
+                                    {useRecommendation && aiConfig?.configured && (
+                                        <div style={{ marginBottom: '1.25rem' }}>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', lineHeight: 1.5, background: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+                                                A IA já vai usar o perfil do aluno: <strong>{student.objective || 'objetivo não definido'}</strong>, nível <strong>{student.level || 'iniciante'}</strong>, {student.trainingFrequency || 'freq. não def.'}{hasContent(student.limitations) ? `, limitações: ${student.limitations}` : ''}.
+                                            </div>
+                                            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', marginLeft: '0.2rem' }}>Instruções para a IA (opcional)</label>
+                                            <textarea
+                                                value={aiInstruction}
+                                                onChange={e => setAiInstruction(e.target.value)}
+                                                rows={3}
+                                                placeholder="Ex: foco em glúteo e posterior, evitar agachamento livre por dor no joelho, 4x na semana"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.875rem',
+                                                    borderRadius: '12px',
+                                                    border: '1px solid var(--border-glass)',
+                                                    background: 'var(--input-bg)',
+                                                    color: 'var(--text-main)',
+                                                    fontSize: '0.95rem',
+                                                    outline: 'none',
+                                                    resize: 'vertical',
+                                                    fontFamily: 'inherit'
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {useRecommendation && !aiConfig?.configured && (
                                         <div style={{ marginBottom: '1.25rem' }}>
                                             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', marginLeft: '0.2rem' }}>Nível do Treino</label>
                                             <select
@@ -2540,6 +2723,9 @@ export default function StudentDetails() {
                                                 <option value="Intermediário">Intermediário (Divisão ABC/ABCD)</option>
                                                 <option value="Avançado">Avançado (Volume Maior)</option>
                                             </select>
+                                            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                                                💡 Configure a chave de IA em <Link to="/app/settings" style={{ color: '#60a5fa' }}>Configurações</Link> para gerar fichas com inteligência artificial.
+                                            </p>
                                         </div>
                                     )}
 
@@ -2575,7 +2761,7 @@ export default function StudentDetails() {
                                         <div className="sheet-form-actions" style={{ display: 'flex', gap: '0.75rem', flex: 1 }}>
                                             <button
                                                 onClick={handleCreateSheet}
-                                                disabled={!useRecommendation && !newSheetName.trim()}
+                                                disabled={isGeneratingSheet || (!useRecommendation && !newSheetName.trim())}
                                                 style={{
                                                     flex: 1,
                                                     padding: '0 1.5rem',
@@ -2583,13 +2769,19 @@ export default function StudentDetails() {
                                                     color: 'white',
                                                     border: 'none',
                                                     borderRadius: '12px',
-                                                    cursor: 'pointer',
+                                                    cursor: isGeneratingSheet ? 'not-allowed' : 'pointer',
                                                     fontWeight: '600',
                                                     minHeight: '48px',
-                                                    whiteSpace: 'nowrap'
+                                                    whiteSpace: 'nowrap',
+                                                    opacity: isGeneratingSheet ? 0.7 : 1,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
                                                 }}
                                             >
-                                                Criar
+                                                {isGeneratingSheet
+                                                    ? <><Loader2 size={18} className="animate-spin" /> Gerando...</>
+                                                    : (useRecommendation && aiConfig?.configured)
+                                                        ? <><Sparkles size={18} /> Gerar com IA</>
+                                                        : 'Criar'}
                                             </button>
                                             <button
                                                 onClick={() => setIsCreatingSheet(false)}
@@ -2611,7 +2803,8 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {/* Single "Ficha" Container */}
+                            {/* Single "Ficha" Container — só quando há ficha real */}
+                            {hasRealSheet ? (
                             <div className="glass-panel" style={{ padding: '2rem', border: '1px solid var(--primary)', position: 'relative' }}>
                                 <style>{`
                                     .sheet-header {
@@ -2813,9 +3006,23 @@ export default function StudentDetails() {
                                                     Divisão {variation}
                                                 </span>
                                             )}
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600, marginBottom: '0.6rem' }}>
                                                 {currentSheet?.workouts[variation]?.exercises?.length || 0} exercícios
                                             </span>
+                                            {(currentSheet?.workouts[variation]?.exercises?.length > 0) && (
+                                                <div style={{ width: '100%', borderTop: '1px solid var(--border-glass)', paddingTop: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                    {currentSheet.workouts[variation].exercises.slice(0, 3).map((ex, i) => (
+                                                        <span key={i} style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                                                            {ex.name}
+                                                        </span>
+                                                    ))}
+                                                    {currentSheet.workouts[variation].exercises.length > 3 && (
+                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', opacity: 0.7 }}>
+                                                            +{currentSheet.workouts[variation].exercises.length - 3} mais
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
 
@@ -2861,7 +3068,36 @@ export default function StudentDetails() {
                                     </button>
                                 </div>
                             </div>
-                            
+                            ) : !isCreatingSheet ? (
+                                <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', border: '2px dashed var(--border-glass)', background: 'rgba(255,255,255,0.02)' }}>
+                                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+                                        <Dumbbell size={30} color="var(--primary)" />
+                                    </div>
+                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.25rem' }}>Nenhuma ficha de treino ainda</h3>
+                                    <p style={{ color: 'var(--text-muted)', maxWidth: '440px', margin: '0 auto 1.75rem' }}>
+                                        {aiConfig?.configured
+                                            ? 'Crie a primeira ficha deste aluno do zero ou deixe a IA montar com base no perfil dele.'
+                                            : 'Crie a primeira ficha de treino deste aluno.'}
+                                    </p>
+                                    <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                        {aiConfig?.configured && (
+                                            <button
+                                                onClick={() => { setUseRecommendation(true); setIsCreatingSheet(true); }}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--primary)', color: 'white', border: 'none', padding: '0.85rem 1.5rem', borderRadius: '12px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 4px 15px rgba(16,185,129,0.3)' }}
+                                            >
+                                                <Sparkles size={18} /> Gerar com IA
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => { setUseRecommendation(false); setIsCreatingSheet(true); }}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--border-glass)', padding: '0.85rem 1.5rem', borderRadius: '12px', fontWeight: 600, cursor: 'pointer' }}
+                                        >
+                                            <Plus size={18} /> Criar manualmente
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
+
                             {/* NEW: Workout History integrated at the bottom of the Workouts tab */}
                             <div style={{ marginTop: '3rem' }}>
                                 {renderTrainingLogs()}

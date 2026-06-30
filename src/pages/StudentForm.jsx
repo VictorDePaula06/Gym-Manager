@@ -33,10 +33,15 @@ export default function StudentForm() {
         limitations: '', // Will treat as comma-separated string for compatibility
         diseases: '',    // Will treat as comma-separated string for compatibility
         trainingFrequency: '',
+        level: '',
+        trainingLocation: '',
+        sessionTime: '',
         objective: '',
         teacherId: '', // Optional link to a teacher
         password: '' // New password field
     });
+
+    const [objectiveOther, setObjectiveOther] = useState(false);
 
     const ROUTINE_OPTIONS = [
         "Sedentário (Escritório)",
@@ -45,6 +50,30 @@ export default function StudentForm() {
         "Estudante",
         "Outro"
     ];
+
+    const OBJECTIVE_OPTIONS = [
+        "Emagrecimento",
+        "Hipertrofia",
+        "Condicionamento Físico",
+        "Ganho de Massa Muscular",
+        "Definição Muscular",
+        "Força",
+        "Saúde / Qualidade de Vida",
+        "Outro"
+    ];
+
+    const LEVEL_OPTIONS = ["Iniciante", "Intermediário", "Avançado"];
+
+    const LOCATION_OPTIONS = [
+        "Academia completa",
+        "Casa (halteres/elásticos)",
+        "Apenas peso do corpo",
+        "Ar livre",
+    ];
+
+    const SESSION_OPTIONS = ["30 min", "45 min", "60 min", "90 min", "90+ min"];
+
+    const FREQUENCY_OPTIONS = ["1x", "2x", "3x", "4x", "5x", "6x"];
 
     const LIMITATION_OPTIONS = [
         "Joelho",
@@ -64,6 +93,7 @@ export default function StudentForm() {
         "Cardiopatia",
         "Labirintite",
         "Hérnia de Disco",
+        "Gestante",
         "Nenhuma"
     ];
 
@@ -530,15 +560,58 @@ export default function StudentForm() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                         <div>
                             <label style={labelStyle}>Objetivo Principal</label>
-                            <input
-                                name="objective"
-                                value={formData.objective || ''}
-                                onChange={handleChange}
-                                style={inputStyle}
-                                placeholder="ex: Hipertrofia, Emagrecimento, Condicionamento..."
-                            />
+                            {(() => {
+                                const presets = OBJECTIVE_OPTIONS.slice(0, -1); // sem o "Outro"
+                                const isCustom = objectiveOther || (!!formData.objective && !presets.includes(formData.objective));
+                                return (
+                                    <>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                            {OBJECTIVE_OPTIONS.map(opt => {
+                                                const selected = opt === 'Outro' ? isCustom : (!isCustom && formData.objective === opt);
+                                                return (
+                                                    <button
+                                                        key={opt}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (opt === 'Outro') {
+                                                                setObjectiveOther(true);
+                                                                if (presets.includes(formData.objective)) setSingleSelection('objective', '');
+                                                            } else {
+                                                                setObjectiveOther(false);
+                                                                setSingleSelection('objective', opt);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '20px',
+                                                            border: '1px solid var(--primary)',
+                                                            background: selected ? 'var(--primary)' : 'transparent',
+                                                            color: selected ? 'white' : 'var(--text-main)',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.85rem',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        {opt}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {isCustom && (
+                                            <input
+                                                name="objective"
+                                                value={formData.objective || ''}
+                                                onChange={handleChange}
+                                                style={{ ...inputStyle, marginTop: '0.75rem' }}
+                                                placeholder="Descreva o objetivo do aluno"
+                                            />
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid var(--border-glass)', paddingTop: '1.25rem' }}>Perfil de Treino</div>
                             <div>
                                 <label style={labelStyle}>Rotina / Trabalho</label>
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
@@ -565,22 +638,57 @@ export default function StudentForm() {
                             </div>
                             <div className="responsive-grid">
                                 <div>
-                                    <label style={labelStyle}>Frequência Semanal Desejada</label>
-                                    <input
-                                        name="trainingFrequency"
-                                        value={formData.trainingFrequency || ''}
-                                        onChange={handleChange}
-                                        style={inputStyle}
-                                        placeholder="ex: 3x na semana"
-                                    />
+                                    <label style={labelStyle}>Frequência Semanal</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                        {FREQUENCY_OPTIONS.map(opt => (
+                                            <button key={opt} type="button" onClick={() => setSingleSelection('trainingFrequency', opt)}
+                                                style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: formData.trainingFrequency === opt ? 'var(--primary)' : 'transparent', color: formData.trainingFrequency === opt ? 'white' : 'var(--text-main)', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s' }}>
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                                 <div>
-                                    {/* Spacer or another field if needed */}
+                                    <label style={labelStyle}>Nível / Experiência</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                        {LEVEL_OPTIONS.map(opt => (
+                                            <button key={opt} type="button" onClick={() => setSingleSelection('level', opt)}
+                                                style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: formData.level === opt ? 'var(--primary)' : 'transparent', color: formData.level === opt ? 'white' : 'var(--text-main)', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s' }}>
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="responsive-grid">
+                                <div>
+                                    <label style={labelStyle}>Local de Treino / Equipamentos</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                        {LOCATION_OPTIONS.map(opt => (
+                                            <button key={opt} type="button" onClick={() => setSingleSelection('trainingLocation', opt)}
+                                                style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: formData.trainingLocation === opt ? 'var(--primary)' : 'transparent', color: formData.trainingLocation === opt ? 'white' : 'var(--text-main)', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s' }}>
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={labelStyle}>Tempo por Sessão</label>
+                                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                        {SESSION_OPTIONS.map(opt => (
+                                            <button key={opt} type="button" onClick={() => setSingleSelection('sessionTime', opt)}
+                                                style={{ padding: '0.5rem 1rem', borderRadius: '20px', border: '1px solid var(--primary)', background: formData.sessionTime === opt ? 'var(--primary)' : 'transparent', color: formData.sessionTime === opt ? 'white' : 'var(--text-main)', cursor: 'pointer', fontSize: '0.85rem', transition: 'all 0.2s' }}>
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid var(--border-glass)', paddingTop: '1.25rem' }}>Saúde</div>
                             <div>
                                 <label style={labelStyle}>Limitações Articulares</label>
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
@@ -608,7 +716,7 @@ export default function StudentForm() {
                                 </div>
                             </div>
                             <div>
-                                <label style={labelStyle}>Histórico de Doenças / Lesões</label>
+                                <label style={labelStyle}>Histórico de Doenças / Lesões / Condições</label>
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                     {DISEASE_OPTIONS.map(opt => {
                                         const isSelected = formData.diseases && formData.diseases.split(', ').includes(opt);

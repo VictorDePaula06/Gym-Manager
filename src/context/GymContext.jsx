@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy } from 'firebase/firestore';
+import { setGeminiKey, clearGeminiKey } from '../services/gemini';
 
 const GymContext = createContext();
 
@@ -24,6 +25,7 @@ export const GymProvider = ({ children }) => {
     const [teachers, setTeachers] = useState([]);
     const [teacherPayments, setTeacherPayments] = useState([]);
     const [exerciseLibrary, setExerciseLibrary] = useState([]);
+    const [aiConfig, setAiConfig] = useState({ configured: false });
 
     useEffect(() => {
         // If no user, reset state
@@ -33,6 +35,8 @@ export const GymProvider = ({ children }) => {
             setTeachers([]);
             setTeacherPayments([]);
             setSettings({ gymName: 'Vector GymHub', logoUrl: null, theme: 'dark' });
+            setAiConfig({ configured: false });
+            clearGeminiKey(); // remove a chave de IA da memória ao deslogar
 
             // RESET LOADING STATES to prevent flash on next login
             setLoadingStudents(true);
@@ -88,8 +92,17 @@ export const GymProvider = ({ children }) => {
         let unsubscribeExpenses = () => {};
         let unsubscribeTeachers = () => {};
         let unsubscribeTeacherPayments = () => {};
+        let unsubscribeAiConfig = () => {};
 
         if (user.role !== 'student') {
+            // Chave de IA: doc separado do settings/global (que o aluno lê) para
+            // a chave do personal NÃO ser carregada na sessão do aluno.
+            unsubscribeAiConfig = onSnapshot(doc(db, `${userBasePath}/settings`, 'ai_config'), (docSnap) => {
+                const key = docSnap.exists() ? docSnap.data().geminiApiKey : null;
+                setGeminiKey(key);
+                setAiConfig({ configured: !!key });
+            }, (error) => { console.error("Error fetching AI config:", error); });
+
             // ... (keep expenses, teachers, payments logic as is from previous correct edit)
             unsubscribeExpenses = onSnapshot(collection(db, `${userBasePath}/expenses`), (snapshot) => {
                 const expensesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -134,6 +147,7 @@ export const GymProvider = ({ children }) => {
             unsubscribeTeachers();
             unsubscribeSettings();
             unsubscribeTeacherPayments();
+            unsubscribeAiConfig();
         };
     }, [user]);
 
@@ -165,6 +179,20 @@ export const GymProvider = ({ children }) => {
             await setDoc(doc(db, `${basePath}/settings`, 'global'), newSettings, { merge: true });
         } catch (error) {
             console.error("Error updating settings:", error);
+            throw error;
+        }
+    };
+
+    // Salva/remove a chave Gemini num doc separado (não exposto à sessão do aluno).
+    const updateAiConfig = async (geminiApiKey) => {
+        try {
+            const basePath = getUserBasePath();
+            const key = (geminiApiKey || '').trim() || null;
+            await setDoc(doc(db, `${basePath}/settings`, 'ai_config'), { geminiApiKey: key }, { merge: true });
+            setGeminiKey(key);
+            setAiConfig({ configured: !!key });
+        } catch (error) {
+            console.error("Error updating AI config:", error);
             throw error;
         }
     };
@@ -386,6 +414,8 @@ export const GymProvider = ({ children }) => {
         loading,
         settings,
         updateSettings,
+        aiConfig,
+        updateAiConfig,
         addStudent,
         updateStudent,
         deleteStudent,
