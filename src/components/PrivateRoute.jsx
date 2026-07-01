@@ -8,7 +8,7 @@ export default function PrivateRoute({ children, roleRequired }) {
 
     if (loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: '#0f172a', color: 'white' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', background: 'var(--bg-app)', color: 'var(--text-main)' }}>
                 <Loader2 className="animate-spin" size={32} />
             </div>
         );

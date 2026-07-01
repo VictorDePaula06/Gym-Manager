@@ -328,7 +328,7 @@ export const AuthProvider = ({ children }) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     minHeight: '100vh',
-                    backgroundColor: '#0f172a',
+                    backgroundColor: 'var(--bg-app)',
                     color: 'white'
                 }}>
                     <Loader2 size={48} className="animate-spin" color="#10b981" />

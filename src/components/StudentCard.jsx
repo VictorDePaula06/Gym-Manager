@@ -23,7 +23,7 @@ const StudentCard = ({ student, settings, className = '', style = {} }) => {
             return { label: 'TRIMESTRAL', color: '#c084fc' }; // Purple 400
         }
         // Default Monthly
-        return { label: 'MENSAL', color: '#60a5fa' }; // Blue 400
+        return { label: 'MENSAL', color: '#10b981' }; // Emerald (verde do sistema)
     };
 
     let { label, color } = getPlanConfig(student.plan);

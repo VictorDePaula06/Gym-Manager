@@ -3,30 +3,30 @@
 @tailwind utilities;
 
 :root {
-    /* Colors - Modern Dark Glass Theme (Default) */
-    --bg-app: #0f172a;
-    /* Slate 900 */
-    --bg-card: rgba(30, 41, 59, 0.7);
-    /* Slate 800 with opacity */
-    --bg-sidebar: rgba(15, 23, 42, 0.8);
+    /* Colors - Graphite Dark Theme (Default) — neutro, sem tom azulado */
+    --bg-app: #121214;
+    /* Graphite / near-black neutral */
+    --bg-card: rgba(28, 28, 32, 0.88);
+    /* Zinc 800 neutro, mais opaco */
+    --bg-sidebar: rgba(18, 18, 20, 0.92);
 
     --primary: #10b981;
     /* Emerald 500 */
     --primary-glow: rgba(16, 185, 129, 0.5);
     --accent: #3b82f6;
-    /* Blue 500 */
+    /* Blue 500 (accent funcional em gráficos/ícones) */
 
-    --text-main: #f8fafc;
-    /* Slate 50 */
-    --text-muted: #94a3b8;
-    /* Slate 400 */
+    --text-main: #fafafa;
+    /* Neutral 50 */
+    --text-muted: #a1a1aa;
+    /* Zinc 400 (neutro, sem tom azul) */
 
-    --border-glass: rgba(255, 255, 255, 0.1);
-    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
 
-    /* Refactored Variables for Components */
-    --card-bg: rgba(30, 41, 59, 0.4);
-    --input-bg: rgba(30, 41, 59, 0.4);
+    /* Refactored Variables for Components — mais opacos p/ reduzir custo de blur */
+    --card-bg: rgba(28, 28, 32, 0.8);
+    --input-bg: rgba(40, 40, 45, 0.6);
 
     /* Spacing */
     --spacing-sm: 0.5rem;
@@ -40,47 +40,28 @@
     color-scheme: dark;
 }
 
-/* Light Theme Overrides */
+/* Light Theme Overrides — neutro claro com accent verde */
 :root[data-theme="light"] {
-    --bg-app: #e0f2fe;
-    /* Light Blue (Sky 100) */
-    --bg-card: rgba(255, 255, 255, 0.9);
-    --bg-sidebar: rgba(255, 255, 255, 0.95);
+    --bg-app: #f4f4f5;
+    /* Zinc 100 - fundo claro neutro */
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --card-bg: #ffffff;
+    --input-bg: #f4f4f5;
 
     --primary: #059669;
-    /* Emerald 600 (Darker for contrast) */
+    /* Emerald 600 (contraste no claro) */
     --primary-glow: rgba(5, 150, 105, 0.3);
-    --accent: #3b82f6;
+    --accent: #2563eb;
+    /* Blue 600 */
 
-    --text-main: #0c4a6e;
-    /* Sky 900 */
-    --text-muted: #334155;
-    /* Slate 700 */
+    --text-main: #18181b;
+    /* Zinc 900 */
+    --text-muted: #52525b;
+    /* Zinc 600 */
 
     --border-glass: rgba(0, 0, 0, 0.1);
-    --shadow-glass: 0 4px 6px -1px rgba(0, 78, 112, 0.1), 0 2px 4px -1px rgba(0, 78, 112, 0.06);
-
-    /* "Standard Dark" but Light Blue: Monochromatic Blue */
-    --bg-app: #bae6fd;
-    /* Sky 200 - Distinct Blue Background */
-    --bg-sidebar: #e0f2fe;
-    /* Sky 100 - Lighter Blue Sidebar */
-    --bg-card: #e0f2fe;
-    /* Sky 100 - Lighter Blue Cards */
-
-
-    /* Card Backgrounds - Also Sky 100 to match "Dark Mode" all-one-color feel */
-    --card-bg: #e0f2fe;
-    --input-bg: #f0f9ff;
-    /* Sky 50 - Very light for inputs */
-
-    /* Text Colors - Deep Blue/Slate for readability on blue */
-    --text-main: #0c4a6e;
-    /* Sky 900 */
-    --text-muted: #334155;
-    /* Slate 700 */
-    --primary: #0284c7;
-    /* Sky 600 - Adjusted primary */
+    --shadow-glass: 0 4px 12px -2px rgba(0, 0, 0, 0.1);
 
     color-scheme: light;
 }
@@ -95,8 +76,8 @@ body {
     font-family: 'Inter', system-ui, sans-serif;
     background-color: var(--bg-app);
     background-image:
-        radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.1) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 40%);
+        radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 42%),
+        radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 42%);
     color: var(--text-main);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
@@ -105,16 +86,16 @@ body {
 /* Glassmorphism Utilities */
 .glass-panel {
     background: var(--bg-card);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     border: 1px solid var(--border-glass);
     box-shadow: var(--shadow-glass);
     border-radius: var(--radius-md);
 }
 
 .glass-header {
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(8px);
+    background: rgba(18, 18, 20, 0.85);
+    backdrop-filter: blur(4px);
     border-bottom: 1px solid var(--border-glass);
 }
 
@@ -159,8 +140,8 @@ button {
 
 .glass-card {
     background: var(--bg-card);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     border: 1px solid var(--border-glass);
     box-shadow: var(--shadow-glass);
     border-radius: var(--radius-md);
@@ -170,7 +151,7 @@ button {
 .glass-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
-    background: rgba(30, 41, 59, 0.9);
+    background: rgba(32, 32, 36, 0.9);
 }
 
 .btn-primary {

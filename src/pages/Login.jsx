@@ -76,7 +76,7 @@ const Login = () => {
             padding: '1rem',
             position: 'relative',
             overflow: 'hidden',
-            backgroundColor: '#020617', // slate-950 fallback
+            backgroundColor: '#0a0a0c', // slate-950 fallback
             fontFamily: "'Outfit', sans-serif"
         }}>
             {/* Background Image with Overlay */}
@@ -99,7 +99,7 @@ const Login = () => {
                 left: 0,
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(to bottom right, rgba(2, 6, 23, 0.85), rgba(2, 6, 23, 0.7))',
+                background: 'linear-gradient(to bottom right, rgba(12, 12, 14, 0.9), rgba(12, 12, 14, 0.8))',
                 zIndex: 2,
                 backdropFilter: 'blur(3px)' // Subtle blur on BG
             }}></div>
@@ -124,7 +124,7 @@ const Login = () => {
             <div style={{
                 maxWidth: '26rem', // Somewhat narrower for elegance
                 width: '100%',
-                backgroundColor: 'rgba(15, 23, 42, 0.65)', // More transparent
+                backgroundColor: 'rgba(24, 24, 27, 0.72)', // More transparent
                 backdropFilter: 'blur(16px)',
                 WebkitBackdropFilter: 'blur(16px)',
                 borderRadius: '1.5rem',
@@ -165,7 +165,7 @@ const Login = () => {
 
                 <div style={{
                     display: 'flex',
-                    background: 'rgba(2, 6, 23, 0.4)',
+                    background: 'rgba(12, 12, 14, 0.5)',
                     padding: '4px',
                     borderRadius: '0.75rem',
                     marginBottom: '2rem',
@@ -242,7 +242,7 @@ const Login = () => {
                             style={{
                                 width: '100%',
                                 padding: '1rem 1rem 1rem 3rem',
-                                backgroundColor: 'rgba(2, 6, 23, 0.4)',
+                                backgroundColor: 'rgba(12, 12, 14, 0.5)',
                                 border: '1px solid rgba(148, 163, 184, 0.2)',
                                 borderRadius: '0.75rem',
                                 outline: 'none',
@@ -254,13 +254,13 @@ const Login = () => {
                             }}
                             onFocus={(e) => {
                                 e.target.style.borderColor = '#10b981';
-                                e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.6)';
+                                e.target.style.backgroundColor = 'rgba(12, 12, 14, 0.65)';
                                 e.target.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)';
                                 e.target.previousSibling.style.color = '#10b981';
                             }}
                             onBlur={(e) => {
                                 e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-                                e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.4)';
+                                e.target.style.backgroundColor = 'rgba(12, 12, 14, 0.5)';
                                 e.target.style.boxShadow = 'none';
                                 e.target.previousSibling.style.color = '#94a3b8';
                             }}
@@ -282,7 +282,7 @@ const Login = () => {
                                 style={{
                                     width: '100%',
                                     padding: '1rem 1rem 1rem 3rem',
-                                    backgroundColor: 'rgba(2, 6, 23, 0.4)',
+                                    backgroundColor: 'rgba(12, 12, 14, 0.5)',
                                     border: '1px solid rgba(148, 163, 184, 0.2)',
                                     borderRadius: '0.75rem',
                                     outline: 'none',
@@ -294,13 +294,13 @@ const Login = () => {
                                 }}
                                 onFocus={(e) => {
                                     e.target.style.borderColor = '#10b981';
-                                    e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.6)';
+                                    e.target.style.backgroundColor = 'rgba(12, 12, 14, 0.65)';
                                     e.target.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)';
                                     e.target.previousSibling.style.color = '#10b981';
                                 }}
                                 onBlur={(e) => {
                                     e.target.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-                                    e.target.style.backgroundColor = 'rgba(2, 6, 23, 0.4)';
+                                    e.target.style.backgroundColor = 'rgba(12, 12, 14, 0.5)';
                                     e.target.style.boxShadow = 'none';
                                     e.target.previousSibling.style.color = '#94a3b8';
                                 }}

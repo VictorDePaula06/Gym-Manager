@@ -556,11 +556,11 @@ export default function Dashboard() {
 
                 {/* Financial Chart - FOR OWNERS AND ADMINS */}
                 {(user?.role === 'owner' || user?.role === 'admin') && (
-                    <div className="glass-panel" style={{ padding: "2rem", height: "400px" }}>
+                    <div className="glass-panel" style={{ padding: "2rem" }}>
                         <h3 style={{ marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <DollarSign size={18} color="#10b981" /> Faturamento (Últimos 6 Meses)
                         </h3>
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={financialData.chartData}>
                                 <defs>
                                     <linearGradient id="barRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -595,11 +595,11 @@ export default function Dashboard() {
                 )}
 
                 {/* Gender Distribution */}
-                <div className="glass-panel" style={{ padding: '2rem', height: '400px' }}>
+                <div className="glass-panel" style={{ padding: '2rem' }}>
                     <h3 style={{ marginBottom: "1rem", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                         <Users size={18} color="#3b82f6" /> Distribuição por Gênero
                     </h3>
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie
                                 data={studentCharts.genderData}
