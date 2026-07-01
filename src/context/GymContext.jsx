@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy } from 'firebase/firestore';
 import { setGeminiKey, clearGeminiKey } from '../services/gemini';
+import { computeFirstDueDate } from '../utils/payments';
 
 const GymContext = createContext();
 
@@ -218,6 +219,13 @@ export const GymProvider = ({ children }) => {
                 if (accessSnap.exists()) {
                     throw new Error("EMAIL_EXISTS");
                 }
+            }
+
+            // Define o primeiro vencimento já no cadastro (destrava alerta e evita
+            // status indefinido para aluno novo). Não sobrescreve se já vier definido.
+            if (!studentData.nextPaymentDate) {
+                const firstDue = computeFirstDueDate(studentData.startDate, studentData.paymentDay);
+                if (firstDue) studentData = { ...studentData, nextPaymentDate: firstDue.toISOString() };
             }
 
             // 1. Add to main students collection

@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { Save, ChevronLeft, User, Briefcase, Mail, Phone, Calendar, DollarSign, Camera, Trash2 } from 'lucide-react';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { todayISO } from '../utils/date';
 
 export default function TeacherForm() {
     const { id } = useParams();
@@ -18,7 +19,7 @@ export default function TeacherForm() {
         specialty: '',
         phone: '',
         email: '',
-        admissionDate: new Date().toISOString().split('T')[0],
+        admissionDate: todayISO(),
         status: 'Active',
         commissionType: 'Percentage', // 'Percentage' or 'Fixed'
         commissionValue: '',

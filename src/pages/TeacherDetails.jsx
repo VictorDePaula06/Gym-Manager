@@ -4,6 +4,7 @@ import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { ChevronLeft, User, DollarSign, Calendar, Trash2, Plus, ArrowRight } from 'lucide-react';
+import { todayISO } from '../utils/date';
 import StudentCard from '../components/StudentCard';
 
 export default function TeacherDetails() {
@@ -20,7 +21,7 @@ export default function TeacherDetails() {
     // Payment Form State
     const [showPaymentForm, setShowPaymentForm] = useState(false);
     const [paymentAmount, setPaymentAmount] = useState('');
-    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [paymentDate, setPaymentDate] = useState(todayISO());
     const [paymentReference, setPaymentReference] = useState(''); // e.g., 'Referente a Janeiro'
 
     useEffect(() => {

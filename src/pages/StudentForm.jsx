@@ -6,6 +6,7 @@ import { Save, ChevronLeft, User, CreditCard, MapPin, Activity, Camera, Trash2 }
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../utils/imageOptimizer';
+import { todayISO } from '../utils/date';
 
 export default function StudentForm() {
     const { id } = useParams();
@@ -26,7 +27,7 @@ export default function StudentForm() {
         plan: 'Monthly',
         paymentDay: '10',
         address: '',
-        startDate: new Date().toISOString().split('T')[0],
+        startDate: todayISO(),
         price: '',
         // Anamnesis
         routine: '',

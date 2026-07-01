@@ -16,6 +16,7 @@ import BodyMeasurementMap from '../components/BodyMeasurementMap';
 import StudentCard from '../components/StudentCard';
 import { generateWorkout } from '../utils/workoutRecommendations';
 import { generateWorkoutAI } from '../utils/aiWorkout';
+import { todayISO } from '../utils/date';
 import { compressImage } from '../utils/imageOptimizer';
 import OptimizedImage from '../components/OptimizedImage';
 
@@ -89,7 +90,7 @@ export default function StudentDetails() {
     const [paymentForm, setPaymentForm] = useState({
         value: '',
         method: 'Cartão de Crédito',
-        date: new Date().toISOString().split('T')[0]
+        date: todayISO()
     });
 
     // --- Photo Gallery Logic ---
@@ -927,7 +928,7 @@ export default function StudentDetails() {
         setPaymentForm({
             value: student.price || '89.90',
             method: 'Cartão de Crédito',
-            date: new Date().toISOString().split('T')[0]
+            date: todayISO()
         });
         setShowPaymentModal(true);
     };
@@ -1001,7 +1002,9 @@ export default function StudentDetails() {
 
             // Proteção de Receita: Usar o vencimento atual como base para o próximo
             // Isso evita que o aluno "pule" meses em atraso e garante que pagamentos antecipados estendam a data corretamente.
-            let baseDate = paymentDateObj;
+            // IMPORTANTE: cópia (new Date) para NUNCA mutar paymentDateObj — senão o setDate(targetDay)
+            // abaixo alteraria a própria data do pagamento quando o aluno não tem nextPaymentDate salvo.
+            let baseDate = new Date(paymentDateObj);
             const targetDay = parseInt(student.paymentDay);
 
             if (student.nextPaymentDate) {

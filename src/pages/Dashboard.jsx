@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import StatsCard from '../components/StatsCard';
 import { useGym } from '../context/GymContext';
 import { useAuth } from '../context/AuthContext';
+import { getPaymentStatus } from '../utils/payments';
 import {
     BarChart,
     Bar,
@@ -56,20 +57,8 @@ export default function Dashboard() {
 
     // Pending Payments Logic
     const pendingStudents = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return students.filter(student => {
-            if (!student.nextPaymentDate) return false;
-            
-            // Suporte para Timestamps do Firebase ou strings ISO
-            const dueDate = student.nextPaymentDate.seconds 
-                ? new Date(student.nextPaymentDate.seconds * 1000) 
-                : new Date(student.nextPaymentDate);
-                
-            dueDate.setHours(0, 0, 0, 0);
-            return dueDate < today; // Vencimento no passado
-        });
+        // Usa a lógica central (com fallback p/ aluno sem nextPaymentDate salvo).
+        return students.filter(student => getPaymentStatus(student).isOverdue);
     }, [students]);
 
 
@@ -150,6 +139,26 @@ export default function Dashboard() {
 
     const monthlyRevenueFormatted = formatCurrency(financialData.currentMonthRevenue);
 
+    // Últimos pagamentos recebidos (de todos os alunos), do mais recente ao mais antigo.
+    const recentPayments = useMemo(() => {
+        const events = [];
+        students.forEach(s => {
+            (s.paymentHistory || []).forEach((p, i) => {
+                if (!p || !p.date) return;
+                events.push({
+                    id: `${s.id}-${i}`,
+                    name: s.name,
+                    photo: s.profilePictureUrl,
+                    value: parseFloat(p.value || p.amount || 0),
+                    method: p.method || '—',
+                    date: p.date,
+                });
+            });
+        });
+        events.sort((a, b) => new Date(b.date) - new Date(a.date));
+        return events.slice(0, 6);
+    }, [students]);
+
 
     return (
         <div>
@@ -229,14 +238,17 @@ export default function Dashboard() {
                                             </div>
                                             <div>
                                                 <span style={{ fontWeight: '500', display: 'block' }}>{student.name}</span>
-                                                <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>
-                                                    Venceu em: {(() => {
-                                                        const date = student.nextPaymentDate.seconds 
-                                                            ? new Date(student.nextPaymentDate.seconds * 1000) 
-                                                            : new Date(student.nextPaymentDate);
-                                                        return date.toLocaleDateString('pt-BR');
-                                                    })()}
-                                                </span>
+                                                {(() => {
+                                                    const st = getPaymentStatus(student);
+                                                    return (
+                                                        <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>
+                                                            {st.cyclesOverdue > 1
+                                                                ? `${st.cyclesOverdue} mensalidades vencidas`
+                                                                : 'Vencida'}
+                                                            {st.next ? ` · desde ${st.next.toLocaleDateString('pt-BR')}` : ''}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
 
@@ -249,11 +261,10 @@ export default function Dashboard() {
                                                     return;
                                                 }
                                                 const firstName = student.name.split(' ')[0];
-                                                const dateObj = student.nextPaymentDate.seconds 
-                                                    ? new Date(student.nextPaymentDate.seconds * 1000) 
-                                                    : new Date(student.nextPaymentDate);
-                                                const dueDate = dateObj.toLocaleDateString('pt-BR');
-                                                const message = `Olá ${firstName}, notamos que sua mensalidade venceu em ${dueDate}. Gostaria de renovar seu plano agora?`;
+                                                const st = getPaymentStatus(student);
+                                                const dueDate = st.next ? st.next.toLocaleDateString('pt-BR') : '';
+                                                const qtdTxt = st.cyclesOverdue > 1 ? `${st.cyclesOverdue} mensalidades em atraso` : 'sua mensalidade venceu';
+                                                const message = `Olá ${firstName}, notamos que ${qtdTxt}${dueDate ? ` (desde ${dueDate})` : ''}. Gostaria de regularizar agora?`;
                                                 window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
                                             }}
                                             style={{
@@ -546,9 +557,17 @@ export default function Dashboard() {
                 {/* Financial Chart - FOR OWNERS AND ADMINS */}
                 {(user?.role === 'owner' || user?.role === 'admin') && (
                     <div className="glass-panel" style={{ padding: "2rem", height: "400px" }}>
-                        <h3 style={{ marginBottom: "1.5rem" }}>Faturamento (Últimos 6 Meses)</h3>
+                        <h3 style={{ marginBottom: "1.5rem", display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <DollarSign size={18} color="#10b981" /> Faturamento (Últimos 6 Meses)
+                        </h3>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={financialData.chartData}>
+                                <defs>
+                                    <linearGradient id="barRevenue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.95} />
+                                        <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.3} />
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
                                 <XAxis
                                     dataKey="name"
@@ -569,7 +588,7 @@ export default function Dashboard() {
                                     contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
                                     formatter={(val) => formatCurrency(val)}
                                 />
-                                <Bar dataKey="amount" fill="var(--primary)" radius={[4, 4, 0, 0]} name="Receita" />
+                                <Bar dataKey="amount" fill="url(#barRevenue)" radius={[6, 6, 0, 0]} name="Receita" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -577,7 +596,9 @@ export default function Dashboard() {
 
                 {/* Gender Distribution */}
                 <div className="glass-panel" style={{ padding: '2rem', height: '400px' }}>
-                    <h3 style={{ marginBottom: "1rem", textAlign: 'center' }}>Distribuição por Gênero</h3>
+                    <h3 style={{ marginBottom: "1rem", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        <Users size={18} color="#3b82f6" /> Distribuição por Gênero
+                    </h3>
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
@@ -610,7 +631,7 @@ export default function Dashboard() {
             {/* Recent Activity Section */}
             <div className="glass-panel" style={{ padding: '2rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                    <h3>Atividade Recente</h3>
+                    <h3>Últimos Pagamentos</h3>
                     <button style={{
                         background: 'rgba(255,255,255,0.05)',
                         padding: '0.5rem 1rem',
@@ -658,54 +679,42 @@ export default function Dashboard() {
                     }
                 `}</style>
 
-                {students.length === 0 ? (
+                {recentPayments.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                        <p>Nenhuma atividade ainda. Comece adicionando um aluno.</p>
+                        <p>Nenhum pagamento registrado ainda.</p>
                     </div>
                 ) : (
                     <table className="recent-activity-table">
                         <thead>
                             <tr style={{ textAlign: 'left', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-glass)' }}>
                                 <th style={{ padding: '1rem 0' }}>Aluno</th>
-                                <th>Status</th>
-                                <th>Plano</th>
-                                <th>Último Pagto.</th>
+                                <th>Valor</th>
+                                <th>Método</th>
+                                <th>Data</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {students.slice(0, 5).map(student => {
-                                const lastPayment = student.paymentHistory?.length > 0
-                                    ? student.paymentHistory[student.paymentHistory.length - 1]
-                                    : null;
-
-                                const planMap = {
-                                    'Monthly': 'Mensal', 'monthly': 'Mensal',
-                                    'Quarterly': 'Trimestral', 'quarterly': 'Trimestral',
-                                    'Semiannual': 'Semestral', 'semiannual': 'Semestral',
-                                    'Annual': 'Anual', 'annual': 'Anual'
-                                };
-
-                                return (
-                                    <tr key={student.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
-                                        <td data-label="Aluno" style={{ padding: '1rem 0', fontWeight: '500' }}>{student.name}</td>
-                                        <td data-label="Status">
-                                            <span style={{
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '20px',
-                                                fontSize: '0.85rem',
-                                                background: (student.status || 'Active').toLowerCase() === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                                                color: (student.status || 'Active').toLowerCase() === 'active' ? '#10b981' : '#ef4444'
+                            {recentPayments.map(pay => (
+                                <tr key={pay.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                                    <td data-label="Aluno" style={{ padding: '0.85rem 0' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            <div style={{
+                                                width: '38px', height: '38px', borderRadius: '50%', overflow: 'hidden', flexShrink: 0,
+                                                background: 'var(--input-bg)', border: '1px solid var(--border-glass)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }}>
-                                                {(student.status || 'Active') === 'Active' ? 'Ativo' : 'Inativo'}
-                                            </span>
-                                        </td>
-                                        <td data-label="Plano" style={{ color: 'var(--text-muted)' }}>{planMap[student.plan] || student.plan || 'Mensal'}</td>
-                                        <td data-label="Último Pagto." style={{ color: 'var(--text-muted)' }}>
-                                            {lastPayment ? new Date(lastPayment.date).toLocaleDateString('pt-BR') : 'Nunca'}
-                                        </td>
-                                    </tr>
-                                )
-                            })}
+                                                {pay.photo
+                                                    ? <img src={pay.photo} alt={pay.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    : <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{(pay.name || '?').charAt(0).toUpperCase()}</span>}
+                                            </div>
+                                            <span style={{ fontWeight: 500 }}>{pay.name}</span>
+                                        </div>
+                                    </td>
+                                    <td data-label="Valor" style={{ fontWeight: 600, color: '#10b981' }}>{formatCurrency(pay.value)}</td>
+                                    <td data-label="Método" style={{ color: 'var(--text-muted)' }}>{pay.method}</td>
+                                    <td data-label="Data" style={{ color: 'var(--text-muted)' }}>{new Date(pay.date).toLocaleDateString('pt-BR')}</td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 )}

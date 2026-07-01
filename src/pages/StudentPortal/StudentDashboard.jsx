@@ -5,6 +5,7 @@ import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle
 import { Link } from 'react-router-dom';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { getPaymentStatus } from '../../utils/payments';
 
 export default function StudentDashboard() {
     const { user } = useAuth();
@@ -147,22 +148,11 @@ export default function StudentDashboard() {
 
             {/* Payment Status Bar */}
             {(() => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                
-                let nextPaymentDate = null;
-                const targetDay = parseInt(studentData.paymentDay);
-                
-                // Reliance on Database source of truth for payment status
-                if (studentData.nextPaymentDate) {
-                    nextPaymentDate = studentData.nextPaymentDate.seconds 
-                        ? new Date(studentData.nextPaymentDate.seconds * 1000) 
-                        : new Date(studentData.nextPaymentDate);
-                }
-
-                if (nextPaymentDate) nextPaymentDate.setHours(0, 0, 0, 0);
                 const isActive = studentData.status?.toLowerCase() === 'active';
-                const isOverdue = isActive && nextPaymentDate && nextPaymentDate < today;
+                const payStatus = getPaymentStatus(studentData);
+                const nextPaymentDate = payStatus.next;
+                const isOverdue = isActive && payStatus.isOverdue;
+                const cyclesOverdue = payStatus.cyclesOverdue;
                 const statusColor = isOverdue ? '#ef4444' : isActive ? '#10b981' : '#f59e0b';
 
                 return (
@@ -189,17 +179,17 @@ export default function StudentDashboard() {
                                     fontSize: '0.65rem', 
                                     fontWeight: '900',
                                     letterSpacing: '0.05em'
-                                }}>PENDENTE</span>
+                                }}>{cyclesOverdue > 1 ? `${cyclesOverdue} VENCIDAS` : 'PENDENTE'}</span>
                             )}
                         </div>
 
                         {/* Status Message */}
                         <div>
                             <p style={{ margin: 0, fontSize: '0.8rem', color: isOverdue ? 'var(--text-main)' : 'var(--text-muted)' }}>
-                                {isOverdue 
-                                    ? `Atraso detectado desde ${nextPaymentDate.toLocaleDateString('pt-BR')}.` 
-                                    : isActive 
-                                        ? `Tudo certo! Próximo vencimento em ${nextPaymentDate.toLocaleDateString('pt-BR')}.` 
+                                {isOverdue
+                                    ? `${cyclesOverdue > 1 ? `${cyclesOverdue} mensalidades em atraso` : 'Mensalidade vencida'}${nextPaymentDate ? ` desde ${nextPaymentDate.toLocaleDateString('pt-BR')}` : ''}.`
+                                    : isActive
+                                        ? `Tudo certo!${nextPaymentDate ? ` Próximo vencimento em ${nextPaymentDate.toLocaleDateString('pt-BR')}.` : ''}`
                                         : 'Sua assinatura não está ativa no momento.'}
                             </p>
                         </div>

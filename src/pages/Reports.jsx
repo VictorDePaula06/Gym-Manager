@@ -5,6 +5,14 @@ import { useToast } from "../context/ToastContext";
 import { Calendar, Users, DollarSign, TrendingUp, TrendingDown, Filter, FileText, Download, AlertCircle, Briefcase } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { todayISO } from "../utils/date";
+
+// Formata "YYYY-MM-DD" como "DD/MM/YYYY" sem passar por new Date() (evita shift de fuso).
+const formatYMD = (ymd) => {
+    if (!ymd) return '';
+    const [y, m, d] = ymd.split('-');
+    return `${d}/${m}/${y}`;
+};
 
 // Helper to format currency
 const formatCurrency = (value) => {
@@ -61,11 +69,10 @@ const Reports = () => {
 
     // Default to 'students' if not owner or admin
     const [activeTab, setActiveTab] = useState((user?.role === 'owner' || user?.role === 'admin') ? "financial" : "students");
-    const [dateRange, setDateRange] = useState({
-        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-            .toISOString()
-            .split("T")[0],
-        end: new Date().toISOString().split("T")[0],
+    const [dateRange, setDateRange] = useState(() => {
+        const now = new Date();
+        const firstOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+        return { start: firstOfMonth, end: todayISO() };
     });
 
     // --- Financial Data Construction ---
@@ -79,7 +86,7 @@ const Reports = () => {
 
         const activeStartDateStr = dateRange.start;
         const activeEndDateStr = dateRange.end;
-        const todayStr = new Date().toISOString().split("T")[0];
+        const todayStr = todayISO();
 
         // 1. Process Income (Students)
         students.forEach((student) => {
@@ -227,7 +234,7 @@ const Reports = () => {
         try {
             const doc = new jsPDF();
             const gymName = settings?.gymName || "GymManager";
-            const periodStr = `${new Date(dateRange.start).toLocaleDateString('pt-BR')} a ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`;
+            const periodStr = `${formatYMD(dateRange.start)} a ${formatYMD(dateRange.end)}`;
 
             // Header Layer (Professional Dark Theme)
             doc.setFillColor(15, 23, 42); // Dark Slate/Blue

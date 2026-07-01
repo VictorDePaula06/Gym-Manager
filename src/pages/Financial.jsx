@@ -3,6 +3,8 @@ import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { DollarSign, CheckCircle, XCircle, AlertCircle, TrendingUp, TrendingDown, Plus, Trash2, Calendar, Clock, Info } from 'lucide-react';
+import { getPaymentStatus } from '../utils/payments';
+import { todayISO } from '../utils/date';
 
 export default function Financial() {
     const { students, expenses, addExpense, deleteExpense } = useGym();
@@ -17,11 +19,11 @@ export default function Financial() {
         description: '',
         category: 'Fixo',
         value: '',
-        date: new Date().toISOString().split('T')[0]
+        date: todayISO()
     });
 
     const currentDate = new Date();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = todayISO();
     const currentMonthIdx = currentDate.getMonth();
     const currentYear = currentDate.getFullYear();
     const currentMonthName = currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
@@ -149,7 +151,7 @@ export default function Financial() {
                 ...newExpense,
                 createdAt: new Date().toISOString()
             });
-            setNewExpense({ description: '', category: 'Fixo', value: '', date: new Date().toISOString().split('T')[0] });
+            setNewExpense({ description: '', category: 'Fixo', value: '', date: todayISO() });
             setShowExpenseForm(false);
             addToast("Despesa adicionada com sucesso!", 'success');
         } catch (error) {
@@ -509,15 +511,21 @@ export default function Financial() {
                                         ) : '-'}
                                     </td>
                                     <td data-label="Status">
-                                        <span style={{
-                                            padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem',
-                                            background: student.currentMonthStatus === 'Paid' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                            color: student.currentMonthStatus === 'Paid' ? '#10b981' : '#ef4444',
-                                            display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
-                                        }}>
-                                            {student.currentMonthStatus === 'Paid' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-                                            {student.currentMonthStatus === 'Paid' ? 'Em dia' : 'Pendente'}
-                                        </span>
+                                        {(() => {
+                                            const cycles = getPaymentStatus(student).cyclesOverdue;
+                                            const paid = student.currentMonthStatus === 'Paid';
+                                            return (
+                                                <span style={{
+                                                    padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem',
+                                                    background: paid ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                                                    color: paid ? '#10b981' : '#ef4444',
+                                                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
+                                                }}>
+                                                    {paid ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                                                    {paid ? 'Em dia' : (cycles > 1 ? `${cycles} vencidas` : 'Pendente')}
+                                                </span>
+                                            );
+                                        })()}
                                     </td>
                                 </tr>
                             ))}
