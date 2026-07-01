@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Dumbbell, Activity, LogOut } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, Activity, LogOut, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
 
@@ -114,6 +114,10 @@ export default function StudentLayout() {
                 <Link to="/student/workouts" style={navItemStyle('/student/workouts')}>
                     <Dumbbell size={24} />
                     <span>Treinos</span>
+                </Link>
+                <Link to="/student/community" style={navItemStyle('/student/community')}>
+                    <Users size={24} />
+                    <span>Comunidade</span>
                 </Link>
                 <Link to="/student/assessments" style={navItemStyle('/student/assessments')}>
                     <Activity size={24} />

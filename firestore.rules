@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Permite login dos alunos (leitura pública para conferir e-mail e senha)
+    match /student_access/{emailKey} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // 2. Regras para os dados do Ginásio (Alunos, Treinos, Vídeos, Professores, Feed, etc)
+    match /users/{tenantId} {
+
+      // Permite que o GESTOR (dono do tenant ou super admin) faça TUDO
+      allow read, write: if request.auth != null && (
+        request.auth.uid == tenantId ||
+        request.auth.token.email == 'j.17jvictor@gmail.com'
+      );
+      // Tudo abaixo de /users/{tenantId} acessível pelo Gestor
+      match /{allPaths=**} {
+        allow read, write: if request.auth != null && (
+          request.auth.uid == tenantId ||
+          request.auth.token.email == 'j.17jvictor@gmail.com'
+        );
+      }
+
+      // PORTAL DO ALUNO: ler dados do aluno e histórico
+      match /students/{studentId} {
+        allow read: if true;
+        // Aluno salva seus próprios logs de treino no banco do professor
+        match /training_logs/{logId} {
+          allow read, write: if request.auth != null;
+        }
+        match /{subDoc=**} {
+          allow read: if true;
+        }
+      }
+
+      // Leitura pública das configurações básicas
+      // (a chave de IA fica em settings/ai_config e NÃO é pública)
+      match /settings/global {
+        allow read: if true;
+      }
+
+      // COMUNIDADE (rede social dos alunos do personal)
+      // Leitura pública (alunos veem os posts uns dos outros);
+      // escrita exige estar logado (aluno anônimo ou gestor).
+      match /feed/{postId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+
+        match /comments/{commentId} {
+          allow read: if true;
+          allow write: if request.auth != null;
+        }
+      }
+    }
+
+    // 3. Regras para a coleção de Tenants (Assinatura do Gestor)
+    match /tenants/{tenantId} {
+      allow read, write: if request.auth != null && request.auth.uid == tenantId;
+    }
+  }
+}

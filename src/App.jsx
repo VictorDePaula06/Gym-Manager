@@ -40,6 +40,7 @@ import StudentLayout from './components/StudentLayout';
 import StudentDashboard from './pages/StudentPortal/StudentDashboard';
 import StudentWorkouts from './pages/StudentPortal/StudentWorkouts';
 import StudentAssessments from './pages/StudentPortal/StudentAssessments';
+import Community from './pages/StudentPortal/Community';
 
 
 import { useAuth } from './context/AuthContext';
@@ -121,6 +122,7 @@ function App() {
                 }>
                   <Route index element={<StudentDashboard />} />
                   <Route path="workouts" element={<StudentWorkouts />} />
+                  <Route path="community" element={<Community />} />
                   <Route path="assessments" element={<StudentAssessments />} />
                 </Route>
 
