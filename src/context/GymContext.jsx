@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy, increment } from 'firebase/firestore';
 import { setGeminiKey, clearGeminiKey } from '../services/gemini';
 import { computeFirstDueDate } from '../utils/payments';
 
@@ -465,6 +465,25 @@ export const GymProvider = ({ children }) => {
             } catch (error) {
                 console.error("Error logging workout completion:", error);
                 throw error;
+            }
+        },
+        // Ranking do desafio: soma +1 treino concluído no placar do mês (por aluno).
+        addWorkoutToLeaderboard: async (studentId, name, photo) => {
+            try {
+                const basePath = getUserBasePath();
+                const now = new Date();
+                const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const ref = doc(db, `${basePath}/leaderboard`, monthKey);
+                // Garante que o doc existe e incrementa o campo aninhado via dot-path.
+                await setDoc(ref, { month: monthKey }, { merge: true });
+                await updateDoc(ref, {
+                    [`entries.${studentId}.name`]: name || 'Aluno',
+                    [`entries.${studentId}.photo`]: photo || null,
+                    [`entries.${studentId}.count`]: increment(1),
+                });
+                console.log('[Ranking] +1 treino registrado para', studentId);
+            } catch (error) {
+                console.error("Erro ao atualizar ranking (leaderboard):", error);
             }
         }
     };

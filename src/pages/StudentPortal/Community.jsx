@@ -2,8 +2,11 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
 import { useToast } from '../../context/ToastContext';
-import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost } from '../../services/community';
+import { useDialog } from '../../context/DialogContext';
+import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check } from 'lucide-react';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus } from '../../services/community';
+import { auth } from '../../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -31,9 +34,12 @@ const Avatar = ({ name, photo, size = 40 }) => (
 
 function PostCard({ tenantId, post, me }) {
     const { addToast } = useToast();
+    const { confirm } = useDialog();
     const [showComments, setShowComments] = useState(false);
     const [comments, setComments] = useState([]);
     const [commentText, setCommentText] = useState('');
+    const [editing, setEditing] = useState(false);
+    const [editText, setEditText] = useState(post.text || '');
 
     const liked = Array.isArray(post.likes) && post.likes.includes(me.id);
     const likeCount = Array.isArray(post.likes) ? post.likes.length : 0;
@@ -45,6 +51,25 @@ function PostCard({ tenantId, post, me }) {
     }, [showComments, tenantId, post.id]);
 
     const handleLike = () => toggleLike(tenantId, post.id, me.id, liked).catch(() => addToast('Erro ao curtir.', 'error'));
+
+    const handleDelete = async () => {
+        const ok = await confirm({
+            title: 'Excluir post',
+            message: 'Tem certeza que deseja excluir esta publicação? Essa ação não pode ser desfeita.',
+            confirmText: 'Excluir',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+        if (ok) deletePost(tenantId, post.id).catch(() => addToast('Erro ao excluir.', 'error'));
+    };
+
+    const handleSaveEdit = async () => {
+        try {
+            await updatePost(tenantId, post.id, { text: editText.trim() });
+            setEditing(false);
+            addToast('Post atualizado.', 'success');
+        } catch { addToast('Erro ao editar.', 'error'); }
+    };
 
     const handleComment = async () => {
         if (!commentText.trim()) return;
@@ -62,18 +87,35 @@ function PostCard({ tenantId, post, me }) {
                     <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{post.authorName}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{timeAgo(post.createdAt)}</div>
                 </div>
-                {post.authorId === me.id && (
-                    <button onClick={() => deletePost(tenantId, post.id).catch(() => {})}
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                        <Trash2 size={16} />
-                    </button>
+                {post.authorId === me.id && !editing && (
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button onClick={() => { setEditText(post.text || ''); setEditing(true); }} title="Editar"
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.15rem' }}>
+                            <Pencil size={16} />
+                        </button>
+                        <button onClick={handleDelete} title="Excluir"
+                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.15rem' }}>
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
                 )}
             </div>
 
-            {post.text && <p style={{ margin: '0 0 0.75rem 0', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{post.text}</p>}
+            {editing ? (
+                <div style={{ marginBottom: '0.75rem' }}>
+                    <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={2}
+                        style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                        <button onClick={handleSaveEdit} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: 'var(--primary)', color: '#fff', border: 'none', padding: '0.4rem 0.9rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}><Check size={14} /> Salvar</button>
+                        <button onClick={() => setEditing(false)} style={{ background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', padding: '0.4rem 0.9rem', borderRadius: '8px', cursor: 'pointer' }}>Cancelar</button>
+                    </div>
+                </div>
+            ) : (
+                post.text && <p style={{ margin: '0 0 0.75rem 0', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{post.text}{post.editedAt && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}> (editado)</span>}</p>
+            )}
 
             {post.imageUrl && (
-                <img src={post.imageUrl} alt="post" style={{ width: '100%', borderRadius: '14px', marginBottom: '0.75rem', display: 'block' }} />
+                <img src={post.imageUrl} alt="post" style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', borderRadius: '14px', marginBottom: '0.75rem', display: 'block' }} />
             )}
 
             <div style={{ display: 'flex', gap: '1.5rem', paddingTop: '0.25rem' }}>
@@ -130,27 +172,46 @@ export default function Community() {
     const myPhoto = students?.[0]?.profilePictureUrl || null;
     const me = useMemo(() => ({ id: user?.studentId, name: user?.name || 'Aluno', photo: myPhoto }), [user, myPhoto]);
 
+    const [board, setBoard] = useState({});
+    const [challengeCfg, setChallengeCfg] = useState(null);
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
     useEffect(() => {
         if (!tenantId) return;
-        const unsub = subscribeFeed(tenantId, setPosts);
-        return () => unsub();
-    }, [tenantId]);
+        let unsubFeed = () => {};
+        let unsubBoard = () => {};
+        let unsubChallenge = () => {};
+        // Só assina depois que o login anônimo do aluno estiver pronto
+        // (evita permission-denied transitório no F5).
+        const start = () => {
+            unsubFeed(); unsubBoard(); unsubChallenge();
+            unsubFeed = subscribeFeed(tenantId, setPosts);
+            unsubBoard = subscribeLeaderboard(tenantId, monthKey, setBoard);
+            unsubChallenge = subscribeChallenge(tenantId, monthKey, setChallengeCfg);
+        };
+        if (auth.currentUser) start();
+        const unsubAuth = onAuthStateChanged(auth, (fbUser) => { if (fbUser) start(); });
+        return () => { unsubAuth(); unsubFeed(); unsubBoard(); unsubChallenge(); };
+    }, [tenantId, monthKey]);
 
-    // Desafio do mês: ranking simples por nº de posts no mês corrente
+    // Desafio do mês: ranking por TREINOS CONCLUÍDOS (placar), não por posts.
     const challenge = useMemo(() => {
-        const now = new Date();
-        const month = now.toLocaleDateString('pt-BR', { month: 'long' });
-        const counts = {};
-        posts.forEach(p => {
-            const d = new Date(p.createdAt);
-            if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
-                counts[p.authorId] = counts[p.authorId] || { name: p.authorName, photo: p.authorPhoto, n: 0 };
-                counts[p.authorId].n++;
-            }
-        });
-        const top = Object.values(counts).sort((a, b) => b.n - a.n).slice(0, 3);
-        return { month, top };
-    }, [posts]);
+        const month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+        const all = Object.entries(board || {})
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 }))
+            .filter(e => e.n > 0)
+            .sort((a, b) => b.n - a.n);
+        const myIndex = all.findIndex(e => e.id === me.id);
+        return {
+            month,
+            top: all.slice(0, 3),
+            total: all.length,
+            myRank: myIndex >= 0 ? { pos: myIndex + 1, n: all[myIndex].n } : null,
+        };
+    }, [board, me.id]);
+
+    const chStatus = getChallengeStatus(challengeCfg);
 
     const pickImage = (e) => {
         const f = e.target.files?.[0];
@@ -177,31 +238,81 @@ export default function Community() {
     };
 
     return (
-        <div>
+        <div className="student-feed">
             <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Comunidade</h1>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Compartilhe seus treinos com a galera da {settings?.gymName || 'academia'}.</p>
 
             {/* Desafio do mês */}
-            <div className="glass-panel" style={{ padding: '1.1rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(168,85,247,0.12), rgba(59,130,246,0.10))', border: '1px solid rgba(168,85,247,0.3)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.5rem' }}>
-                    <Trophy size={20} color="#a855f7" />
-                    <strong style={{ textTransform: 'capitalize' }}>Desafio de {challenge.month}</strong>
+            <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(168,85,247,0.35)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'rgba(168,85,247,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Trophy size={20} color="#a855f7" />
+                        </div>
+                        <div>
+                            <strong style={{ textTransform: 'capitalize', display: 'block', lineHeight: 1.2 }}>{challengeCfg?.title || `Desafio de ${challenge.month}`}</strong>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{challengeCfg?.description || 'Quem mais treina lidera 🏆'}</span>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+                        {chStatus && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.7rem', fontWeight: 700, color: chStatus.color, background: `${chStatus.color}22`, padding: '0.25rem 0.55rem', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: chStatus.color }} />
+                                {chStatus.label}{chStatus.daysLeft != null && chStatus.daysLeft >= 0 ? ` · ${chStatus.daysLeft}d` : ''}
+                            </span>
+                        )}
+                        {challenge.total > 0 && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.55rem', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+                                {challenge.total} participante{challenge.total > 1 ? 's' : ''}
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0' }}>Quem mais posta treinos no mês lidera o ranking. Bora?</p>
+
+                {challengeCfg?.prize && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: '10px', padding: '0.5rem 0.75rem', marginBottom: '0.9rem', fontSize: '0.82rem' }}>
+                        <span>🏆</span><span><strong>Prêmio:</strong> {challengeCfg.prize}</span>
+                    </div>
+                )}
+
                 {challenge.top.length === 0 ? (
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Ninguém postou este mês ainda. Seja o primeiro! 🏆</p>
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', padding: '0.5rem 0' }}>
+                        Ninguém concluiu treino este mês ainda.<br />Seja o primeiro! 💪
+                    </p>
                 ) : (
-                    <div style={{ display: 'flex', gap: '1.25rem' }}>
-                        {challenge.top.map((t, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{ fontWeight: 800, color: ['#fbbf24', '#94a3b8', '#b45309'][i] }}>{i + 1}º</span>
-                                <Avatar name={t.name} photo={t.photo} size={30} />
-                                <div>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>{t.name}</div>
-                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.n} post{t.n > 1 ? 's' : ''}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {challenge.top.map((t, i) => {
+                            const isMe = t.id === me.id;
+                            return (
+                                <div key={t.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                    padding: '0.5rem 0.6rem', borderRadius: '12px',
+                                    background: isMe ? 'rgba(168,85,247,0.18)' : 'rgba(255,255,255,0.03)',
+                                    border: isMe ? '1px solid rgba(168,85,247,0.4)' : '1px solid transparent'
+                                }}>
+                                    <span style={{ fontSize: '1.2rem', width: '26px', textAlign: 'center' }}>{['🥇', '🥈', '🥉'][i]}</span>
+                                    <Avatar name={t.name} photo={t.photo} size={34} />
+                                    <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {t.name}{isMe && <span style={{ color: '#a855f7', fontWeight: 700 }}> (você)</span>}
+                                    </span>
+                                    <span style={{ fontWeight: 800, color: '#a855f7', fontSize: '0.95rem' }}>
+                                        {t.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{t.n > 1 ? 's' : ''}</span>
+                                    </span>
                                 </div>
+                            );
+                        })}
+
+                        {/* Sua posição, se estiver fora do top 3 */}
+                        {challenge.myRank && challenge.myRank.pos > 3 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: '12px', background: 'rgba(168,85,247,0.18)', border: '1px solid rgba(168,85,247,0.4)', marginTop: '0.2rem' }}>
+                                <span style={{ fontWeight: 800, width: '26px', textAlign: 'center', color: '#a855f7' }}>{challenge.myRank.pos}º</span>
+                                <Avatar name={me.name} photo={me.photo} size={34} />
+                                <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem' }}>Você</span>
+                                <span style={{ fontWeight: 800, color: '#a855f7', fontSize: '0.95rem' }}>
+                                    {challenge.myRank.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{challenge.myRank.n > 1 ? 's' : ''}</span>
+                                </span>
                             </div>
-                        ))}
+                        )}
                     </div>
                 )}
             </div>

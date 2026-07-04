@@ -80,14 +80,10 @@ export default function StudentLayout() {
             </header>
 
             {/* Main Content Area */}
-            <main style={{ 
-                flex: 1, 
-                padding: isTrainingMode ? '0' : '1.5rem', 
-                paddingBottom: isTrainingMode ? '0' : 'calc(80px + env(safe-area-inset-bottom))',
-                maxWidth: '600px',
-                margin: '0 auto',
-                width: '100%',
-                boxSizing: 'border-box'
+            <main className="student-main" style={{
+                flex: 1,
+                padding: isTrainingMode ? '0' : '1.5rem',
+                paddingBottom: isTrainingMode ? '0' : 'calc(80px + env(safe-area-inset-bottom))'
             }}>
                 <Outlet />
             </main>

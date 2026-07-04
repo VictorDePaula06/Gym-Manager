@@ -154,40 +154,40 @@
     /* Slate 500 */
 }
 
-/* LIGHT MODE OVERRIDES */
+/* LIGHT MODE OVERRIDES — neutro (grafite/verde), sem azul */
 :root[data-theme="light"] .member-card {
-    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-    color: #1e293b;
-    border-color: rgba(255, 255, 255, 0.5);
-    box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.2), 0 4px 6px -2px rgba(14, 165, 233, 0.1);
+    background: #ffffff;
+    color: #18181b;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
 }
 
 :root[data-theme="light"] .member-name {
-    color: #0f172a;
+    color: #18181b;
     text-shadow: none;
 }
 
 :root[data-theme="light"] .member-status {
-    color: #64748b;
+    color: #52525b;
 }
 
 :root[data-theme="light"] .stat-label {
-    color: #64748b;
+    color: #52525b;
 }
 
 :root[data-theme="light"] .stat-value {
-    color: #0f172a;
+    color: #18181b;
 }
 
 :root[data-theme="light"] .stat-value small {
-    color: #94a3b8;
+    color: #71717a;
 }
 
 :root[data-theme="light"] .member-stats {
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 :root[data-theme="light"] .member-avatar {
-    background: #f8fafc;
+    background: #f4f4f5;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }

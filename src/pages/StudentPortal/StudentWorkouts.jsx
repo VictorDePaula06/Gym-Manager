@@ -5,6 +5,7 @@ import { Dumbbell, ChevronRight, Play, X, Info, ChevronLeft, CheckCircle2, Clock
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
 import RestTimer from '../../components/RestTimer';
+import { createPost, uploadPostImage } from '../../services/community';
 
 export default function StudentWorkouts() {
     const { user } = useAuth();
@@ -16,7 +17,14 @@ export default function StudentWorkouts() {
     const [activeExercise, setActiveExercise] = useState(null);
     
     // Active Workout States
-    const { logWorkoutCompletion, setIsTrainingMode } = useGym();
+    const { logWorkoutCompletion, setIsTrainingMode, addWorkoutToLeaderboard } = useGym();
+    const [finishedInfo, setFinishedInfo] = useState(null);
+    const [isSharing, setIsSharing] = useState(false);
+    const [shared, setShared] = useState(false);
+    const [sharePhoto, setSharePhoto] = useState(null);
+    const [sharePhotoPreview, setSharePhotoPreview] = useState(null);
+    const [shareDesc, setShareDesc] = useState('');
+    const shareFileRef = useRef(null);
     const [isWorkoutActive, setIsWorkoutActive] = useState(false);
     const [workoutStartTime, setWorkoutStartTime] = useState(null);
     const [currentExIndex, setCurrentExIndex] = useState(0);
@@ -137,11 +145,52 @@ export default function StudentWorkouts() {
 
         try {
             await logWorkoutCompletion(user.studentId, logData);
+            // Concluir já soma no ranking do desafio (independente de postar)
+            await addWorkoutToLeaderboard(user.studentId, studentData?.name || user.name, studentData?.profilePictureUrl || null);
+            setFinishedInfo(logData);
+            setShared(false);
             setIsFinished(true);
             setIsWorkoutActive(false);
             setIsTrainingMode(false);
         } catch (error) {
             alert("Erro ao salvar treino. Tente novamente.");
+        }
+    };
+
+    // Passo 1: escolher a foto (câmera/biblioteca) e pré-preencher a descrição.
+    const handlePickPhoto = (e) => {
+        const file = e.target.files?.[0];
+        if (e.target) e.target.value = ''; // permite reescolher a mesma foto
+        if (!file) return;
+        const nome = finishedInfo?.sheetName || 'meu treino';
+        const div = finishedInfo?.variation ? `Treino ${finishedInfo.variation} — ` : '';
+        setSharePhoto(file);
+        setSharePhotoPreview(URL.createObjectURL(file));
+        setShareDesc(`✅ ${div}${nome} concluído! 💪`);
+    };
+
+    // Passo 2: publicar com a descrição escrita.
+    const handlePublishShare = async () => {
+        if (!sharePhoto || !user?.tenantId) return;
+        setIsSharing(true);
+        try {
+            const imageUrl = await uploadPostImage(user.tenantId, sharePhoto);
+            await createPost(user.tenantId, {
+                authorId: user.studentId,
+                authorName: studentData?.name || user.name,
+                authorPhoto: studentData?.profilePictureUrl || null,
+                text: shareDesc,
+                imageUrl,
+            });
+            setShared(true);
+            setSharePhoto(null);
+            setSharePhotoPreview(null);
+            addToast('Compartilhado na comunidade! 🎉', 'success');
+        } catch (err) {
+            console.error(err);
+            addToast('Erro ao compartilhar.', 'error');
+        } finally {
+            setIsSharing(false);
         }
     };
 
@@ -425,10 +474,53 @@ export default function StudentWorkouts() {
                             <Trophy size={40} color="#10b981" />
                         </div>
                         <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Treino Concluído!</h2>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Parabéns! Seu professor já foi notificado da sua dedicação hoje.</p>
-                        <button onClick={() => setIsFinished(false)} className="btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold' }}>
-                            Voltar ao Início
-                        </button>
+                        <input ref={shareFileRef} type="file" accept="image/*" onChange={handlePickPhoto} style={{ display: 'none' }} />
+
+                        {!sharePhotoPreview ? (
+                            <>
+                                <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Boa! Já contou pro <strong style={{ color: '#a855f7' }}>desafio do mês</strong> 🏆. Quer compartilhar com a galera?</p>
+                                <button
+                                    onClick={() => shareFileRef.current?.click()}
+                                    disabled={shared}
+                                    className="btn-primary"
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: shared ? 0.75 : 1 }}
+                                >
+                                    {shared ? '✓ Compartilhado!' : '📸 Postar foto do treino'}
+                                </button>
+                                <button
+                                    onClick={() => setIsFinished(false)}
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', cursor: 'pointer' }}
+                                >
+                                    {shared ? 'Fechar' : 'Voltar ao Início'}
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <img src={sharePhotoPreview} alt="preview" style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', borderRadius: '16px', marginBottom: '1rem' }} />
+                                <textarea
+                                    value={shareDesc}
+                                    onChange={e => setShareDesc(e.target.value)}
+                                    rows={2}
+                                    placeholder="Escreva uma legenda..."
+                                    style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem', resize: 'none', fontFamily: 'inherit', marginBottom: '1rem', boxSizing: 'border-box' }}
+                                />
+                                <button
+                                    onClick={handlePublishShare}
+                                    disabled={isSharing}
+                                    className="btn-primary"
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: isSharing ? 0.75 : 1 }}
+                                >
+                                    {isSharing ? 'Publicando...' : 'Publicar na comunidade'}
+                                </button>
+                                <button
+                                    onClick={() => { setSharePhoto(null); setSharePhotoPreview(null); }}
+                                    disabled={isSharing}
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', cursor: 'pointer' }}
+                                >
+                                    Trocar foto
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

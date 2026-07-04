@@ -31,6 +31,7 @@ import AccessDenied from './pages/AccessDenied';
 import SuperAdmin from './pages/SuperAdmin';
 import PrivateRoute from './components/PrivateRoute';
 import LandingPage from './pages/LandingPage';
+import CommunityManager from './pages/CommunityManager';
 import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
 import Subscription from './pages/Subscription';
@@ -109,6 +110,7 @@ function App() {
                   } />
                   <Route path="workouts" element={<Workouts />} />
                   <Route path="workouts/:id" element={<WorkoutBuilder />} />
+                  <Route path="community" element={<CommunityManager />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="subscription" element={<Subscription />} />
                   <Route path="settings" element={<Settings />} />

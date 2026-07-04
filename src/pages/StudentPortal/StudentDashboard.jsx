@@ -76,8 +76,9 @@ export default function StudentDashboard() {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Pronto para o treino de hoje?</p>
             </div>
 
+            <div className="student-home-grid">
             {/* Weekly Activity Tracker */}
-            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem', gridColumn: '1 / -1' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <TrendingUp size={18} className="text-primary" />
@@ -238,7 +239,7 @@ export default function StudentDashboard() {
                     <Link to="/student/workouts" style={{ color: 'var(--primary)', fontSize: '0.85rem', textDecoration: 'none' }}>Ver todos</Link>
                 </div>
                 <Link to="/student/workouts" style={{ textDecoration: 'none' }}>
-                    <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="glass-panel ficha-cta-card" style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                             <p style={{ margin: '0 0 0.5rem 0', color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase' }}>Treino atual</p>
                             <h4 style={{ margin: 0, fontSize: '1.25rem', color: 'white' }}>Acesse sua ficha completa</h4>
@@ -268,6 +269,7 @@ export default function StudentDashboard() {
                         Ver Evolução
                     </Link>
                 </div>
+            </div>
             </div>
         </div>
     );

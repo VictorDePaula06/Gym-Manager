@@ -315,3 +315,52 @@ button {
     grid-template-columns: 1fr 1fr;
     gap: 1.5rem;
 }
+
+/* Portal do Aluno — container responsivo (app no mobile, mais largo no desktop) */
+.student-main {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.student-feed {
+    max-width: 620px;
+    margin: 0 auto;
+}
+
+.student-home-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    column-gap: 1.5rem;
+}
+
+/* Comunidade do gestor: feed largo + ranking estreito no desktop */
+.community-mgr-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+@media (min-width: 1000px) {
+    .community-mgr-grid {
+        grid-template-columns: minmax(0, 640px) 1fr;
+    }
+}
+
+@media (min-width: 900px) {
+    .student-main {
+        max-width: 1040px;
+    }
+
+    .student-home-grid {
+        grid-template-columns: 1fr 1fr;
+        align-items: start;
+    }
+
+    /* Iguala a altura do card da ficha ao "Seu Progresso" ao lado (só no desktop) */
+    .ficha-cta-card {
+        min-height: 168px;
+    }
+}

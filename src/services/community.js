@@ -66,3 +66,51 @@ export const addComment = async (tenantId, postId, comment) => {
 export const deletePost = async (tenantId, postId) => {
     await deleteDoc(postDoc(tenantId, postId));
 };
+
+export const updatePost = async (tenantId, postId, data) => {
+    await updateDoc(postDoc(tenantId, postId), { ...data, editedAt: new Date().toISOString() });
+};
+
+// Placar do desafio mensal (treinos concluídos por aluno).
+export const subscribeLeaderboard = (tenantId, monthKey, cb) => {
+    return onSnapshot(
+        doc(db, `users/${tenantId}/leaderboard`, monthKey),
+        (snap) => cb(snap.exists() ? (snap.data().entries || {}) : {}),
+        (err) => { console.error('Erro no ranking:', err); cb({}); }
+    );
+};
+
+// Configuração do desafio do mês (definida pelo professor, lida pelo aluno).
+export const subscribeChallenge = (tenantId, monthKey, cb) => {
+    return onSnapshot(
+        doc(db, `users/${tenantId}/challenges`, monthKey),
+        (snap) => cb(snap.exists() ? snap.data() : null),
+        (err) => { console.error('Erro no desafio:', err); cb(null); }
+    );
+};
+
+export const saveChallenge = async (tenantId, monthKey, data) => {
+    await setDoc(doc(db, `users/${tenantId}/challenges`, monthKey), {
+        title: data.title || '',
+        description: data.description || '',
+        prize: data.prize || '',
+        startDate: data.startDate || '',
+        endDate: data.endDate || '',
+        updatedAt: new Date().toISOString(),
+    }, { merge: true });
+};
+
+// Status do desafio a partir das datas (YYYY-MM-DD).
+export const getChallengeStatus = (ch) => {
+    if (!ch || (!ch.startDate && !ch.endDate)) return null;
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (ch.startDate && today < ch.startDate) return { label: 'Agendado', color: '#94a3b8', daysLeft: null };
+    if (ch.endDate && today > ch.endDate) return { label: 'Encerrado', color: '#ef4444', daysLeft: null };
+    let daysLeft = null;
+    if (ch.endDate) {
+        const [y, m, dd] = ch.endDate.split('-').map(Number);
+        daysLeft = Math.ceil((new Date(y, m - 1, dd, 23, 59) - d) / 86400000);
+    }
+    return { label: 'Em andamento', color: '#10b981', daysLeft };
+};

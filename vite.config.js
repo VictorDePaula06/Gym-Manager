@@ -47,7 +47,9 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: true,
+        // Desligado em DEV: o service worker cacheava e mostrava versão antiga
+        // no F5. Em produção o PWA continua normal.
+        enabled: false,
         type: 'module'
       }
     })
