@@ -376,25 +376,6 @@ const Login = () => {
                                 placeholder="Sua senha secreta"
                             />
                         </div>
-                        <div style={{ textAlign: 'right', marginTop: '0.75rem' }}>
-                            <button
-                                type="button"
-                                onClick={handleResetPassword}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#94a3b8',
-                                    fontSize: '0.85rem',
-                                    cursor: 'pointer',
-                                    padding: '4px',
-                                    transition: 'color 0.2s'
-                                }}
-                                onMouseOver={(e) => e.target.style.color = '#10b981'}
-                                onMouseOut={(e) => e.target.style.color = '#94a3b8'}
-                            >
-                                Esqueceu a senha?
-                            </button>
-                        </div>
                     </div>
 
                     <button
