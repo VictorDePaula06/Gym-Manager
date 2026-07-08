@@ -1984,12 +1984,15 @@ export default function StudentDetails() {
 
                                                 <button
                                                     onClick={() => updateStudent(id, { accessBlocked: !student.accessBlocked })}
+                                                    title={student.accessBlocked
+                                                        ? 'O aluno só vê a tela inicial até regularizar. Clique para liberar.'
+                                                        : 'Deixa só a tela inicial liberada até o pagamento (trava treinos, comunidade e evolução).'}
                                                     style={{
                                                         marginTop: '0.6rem',
                                                         width: '100%',
-                                                        background: student.accessBlocked ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                                                        color: student.accessBlocked ? '#10b981' : '#ef4444',
-                                                        border: `1px solid ${student.accessBlocked ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                                                        background: student.accessBlocked ? '#10b981' : '#ef4444',
+                                                        color: 'white',
+                                                        border: 'none',
                                                         padding: '0.6rem',
                                                         borderRadius: '8px',
                                                         fontWeight: '600',
@@ -2001,13 +2004,8 @@ export default function StudentDetails() {
                                                     }}
                                                 >
                                                     {student.accessBlocked ? <Unlock size={18} /> : <Lock size={18} />}
-                                                    {student.accessBlocked ? 'Desbloquear acesso ao app' : 'Bloquear acesso ao app'}
+                                                    {student.accessBlocked ? 'Desbloquear app do aluno' : 'Bloquear app do aluno'}
                                                 </button>
-                                                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.5rem 0 0', textAlign: 'center', lineHeight: 1.4 }}>
-                                                    {student.accessBlocked
-                                                        ? 'O aluno só vê a tela inicial. Desbloqueia sozinho quando a mensalidade for regularizada.'
-                                                        : 'Deixa só a tela inicial liberada até o pagamento. Treinos, comunidade e evolução ficam travados.'}
-                                                </p>
                                             </>
                                         )}
                                     </div>
