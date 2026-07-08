@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2, Lock, Unlock } from 'lucide-react';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1959,27 +1959,56 @@ export default function StudentDetails() {
                                         </p>
 
                                         {isOverdue && (
-                                            <button
-                                                onClick={handleWhatsApp}
-                                                style={{
-                                                    marginTop: '1rem',
-                                                    width: '100%',
-                                                    background: '#25D366',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    padding: '0.6rem',
-                                                    borderRadius: '8px',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '0.5rem'
-                                                }}
-                                            >
-                                                <MessageCircle size={18} />
-                                                Cobrar no WhatsApp
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={handleWhatsApp}
+                                                    style={{
+                                                        marginTop: '1rem',
+                                                        width: '100%',
+                                                        background: '#25D366',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        padding: '0.6rem',
+                                                        borderRadius: '8px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                >
+                                                    <MessageCircle size={18} />
+                                                    Cobrar no WhatsApp
+                                                </button>
+
+                                                <button
+                                                    onClick={() => updateStudent(id, { accessBlocked: !student.accessBlocked })}
+                                                    style={{
+                                                        marginTop: '0.6rem',
+                                                        width: '100%',
+                                                        background: student.accessBlocked ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                                                        color: student.accessBlocked ? '#10b981' : '#ef4444',
+                                                        border: `1px solid ${student.accessBlocked ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
+                                                        padding: '0.6rem',
+                                                        borderRadius: '8px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                >
+                                                    {student.accessBlocked ? <Unlock size={18} /> : <Lock size={18} />}
+                                                    {student.accessBlocked ? 'Desbloquear acesso ao app' : 'Bloquear acesso ao app'}
+                                                </button>
+                                                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.5rem 0 0', textAlign: 'center', lineHeight: 1.4 }}>
+                                                    {student.accessBlocked
+                                                        ? 'O aluno só vê a tela inicial. Desbloqueia sozinho quando a mensalidade for regularizada.'
+                                                        : 'Deixa só a tela inicial liberada até o pagamento. Treinos, comunidade e evolução ficam travados.'}
+                                                </p>
+                                            </>
                                         )}
                                     </div>
                                 );

@@ -1,13 +1,22 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Dumbbell, Activity, LogOut, Users } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, Activity, LogOut, Users, Lock, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
+import { getPaymentStatus } from '../utils/payments';
 
 export default function StudentLayout() {
     const location = useLocation();
     const { logout, user } = useAuth();
-    const { settings, isTrainingMode } = useGym();
+    const { students, settings, isTrainingMode } = useGym();
     const navigate = useNavigate();
+
+    // Bloqueio por inadimplência: só vale se o personal ligou (accessBlocked)
+    // E o aluno está de fato pendente. Se ele pagar, desbloqueia sozinho.
+    const studentData = students.find(s => s.id === user?.studentId);
+    const studentActive = studentData?.status?.toLowerCase() === 'active';
+    const isOverdue = studentData ? (studentActive && getPaymentStatus(studentData).isOverdue) : false;
+    const isBlocked = !!studentData?.accessBlocked && isOverdue;
+    const onHome = location.pathname === '/student' || location.pathname === '/student/';
 
     const handleLogout = async () => {
         await logout();
@@ -85,7 +94,52 @@ export default function StudentLayout() {
                 padding: isTrainingMode ? '0' : '1.5rem',
                 paddingBottom: isTrainingMode ? '0' : 'calc(80px + env(safe-area-inset-bottom))'
             }}>
-                <Outlet />
+                {isBlocked && !onHome ? (
+                    <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        textAlign: 'center', minHeight: '60vh', gap: '1.25rem', padding: '1rem'
+                    }}>
+                        <div style={{
+                            width: '72px', height: '72px', borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.12)', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center'
+                        }}>
+                            <Lock size={34} color="#ef4444" />
+                        </div>
+                        <div>
+                            <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem' }}>Acesso bloqueado</h2>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '320px', lineHeight: 1.5, margin: 0 }}>
+                                Sua mensalidade está pendente. Regularize com seu personal para liberar os treinos, a comunidade e a evolução.
+                            </p>
+                        </div>
+                        {settings?.whatsapp && (
+                            <a
+                                href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}?text=Olá,%20gostaria%20de%20regularizar%20minha%20mensalidade.`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                                    padding: '0.85rem 1.5rem', background: '#25d366', color: '#fff',
+                                    borderRadius: '12px', fontWeight: 'bold', fontSize: '0.9rem',
+                                    textDecoration: 'none', boxShadow: '0 4px 12px rgba(37, 211, 102, 0.25)'
+                                }}
+                            >
+                                <MessageCircle size={18} /> Falar com o personal
+                            </a>
+                        )}
+                        <button
+                            onClick={() => navigate('/student')}
+                            style={{
+                                background: 'none', border: 'none', color: 'var(--text-muted)',
+                                fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline'
+                            }}
+                        >
+                            Voltar ao início
+                        </button>
+                    </div>
+                ) : (
+                    <Outlet />
+                )}
             </main>
 
             {/* Bottom Navigation (Mobile Native Feel) */}
