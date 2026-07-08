@@ -45,31 +45,13 @@ export const AuthProvider = ({ children }) => {
                     const ownTenantRef = doc(db, 'tenants', currentUser.uid);
                     const ownTenantSnap = await getDoc(ownTenantRef);
 
+                    // Modelo atual: TODO login com Google é DONO da própria conta.
+                    // O roteamento de "Equipe" (staff/admin de outra academia via
+                    // staff_access) foi DESATIVADO — era pro cenário futuro de vender
+                    // pra academias (separar dono de administradores). Enquanto isso,
+                    // ninguém é sequestrado como Equipe: role = 'owner', tenantId = uid.
                     if (ownTenantSnap.exists()) {
-                        console.log('User is an Owner (Tenant found). Skipping staff check.');
-                        // role stays 'owner'
-                        // tenantId stays currentUser.uid
-                    } else {
-                        // 2. Not an owner, check if is STAFF
-                        const emailKey = currentUser.email.toLowerCase().replace(/\./g, '_');
-                        const staffRef = doc(db, 'staff_access', emailKey);
-                        const staffSnap = await getDoc(staffRef);
-
-                        if (staffSnap.exists()) {
-                            const staffData = staffSnap.data();
-                            console.log('Staff Access Found:', staffData);
-
-                            if (staffData.blocked) {
-                                setAccessDenied(true);
-                                setLoading(false);
-                                return;
-                            }
-
-                            if (staffData.gymOwnerId) {
-                                tenantId = staffData.gymOwnerId;
-                                role = staffData.role || 'staff';
-                            }
-                        }
+                        console.log('Owner (tenant encontrado).');
                     }
 
                     // 2. Load Tenant Data (using tenantId)
@@ -202,22 +184,26 @@ export const AuthProvider = ({ children }) => {
 
                         }
                     } else {
-                        // If tenant doc doesn't exist AND I am the owner, create it.
-                        if (role === 'owner') {
-                            await setDoc(tenantRef, {
-                                active: true,
-                                email: currentUser.email,
-                                createdAt: new Date().toISOString(),
-                                subscriptionStatus: 'trial',
-                                termsAccepted: false // New owners must accept terms
-                            });
-                            setTrialInfo({ isTrial: true, daysRemaining: 7, totalDays: 7 }); // Corrected initial trial
-                            setAccessDenied(false);
-                            setTrialExpired(false);
-                            setTermsAccepted(false);
-                            resolvedPlan = 'ouro'; // teste de 7 dias começa com tudo liberado
-                            setPlan('ouro');
-                        }
+                        // Tenant não existe. Dois casos caem aqui:
+                        //  - conta nova (role já era 'owner')
+                        //  - staff de uma academia que foi apagada (staff órfão)
+                        // Em ambos, a pessoa vira DONA de uma conta nova — nunca
+                        // fica presa como "Equipe" de um gym inexistente.
+                        tenantId = currentUser.uid;
+                        role = 'owner';
+                        await setDoc(doc(db, 'tenants', currentUser.uid), {
+                            active: true,
+                            email: currentUser.email,
+                            createdAt: new Date().toISOString(),
+                            subscriptionStatus: 'trial',
+                            termsAccepted: false // New owners must accept terms
+                        });
+                        setTrialInfo({ isTrial: true, daysRemaining: 7, totalDays: 7 }); // Corrected initial trial
+                        setAccessDenied(false);
+                        setTrialExpired(false);
+                        setTermsAccepted(false);
+                        resolvedPlan = 'ouro'; // teste de 7 dias começa com tudo liberado
+                        setPlan('ouro');
                     }
 
                     // Attach role and tenantId to user object for easy access
