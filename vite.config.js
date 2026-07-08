@@ -5,6 +5,14 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    host: true,
+    headers: {
+      // Permite que o Firebase detecte o fechamento do popup do Google
+      // (senão o signInWithPopup fica travado carregando por causa do COOP).
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

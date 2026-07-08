@@ -3,6 +3,7 @@ import { auth, db } from '../firebase';
 import { onAuthStateChanged, signOut, signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
+import { resolvePlan, DEFAULT_PLAN } from '../config/plans';
 
 const AuthContext = createContext();
 
@@ -18,6 +19,7 @@ export const AuthProvider = ({ children }) => {
     const [trialInfo, setTrialInfo] = useState({ isTrial: false, daysRemaining: 0, totalDays: 0 });
     const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(true); // Default true to avoid flash, but check logic below
+    const [plan, setPlan] = useState(DEFAULT_PLAN); // Plano efetivo do personal (bronze/prata/ouro)
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -36,6 +38,7 @@ export const AuthProvider = ({ children }) => {
 
                     let tenantId = currentUser.uid;
                     let role = 'owner';
+                    let resolvedPlan = DEFAULT_PLAN; // recalculado abaixo com base no tenant
 
                     // 1. Check if this user IS an Owner (has a tenant doc)
                     // This takes precedence over being a staff member elsewhere.
@@ -90,6 +93,7 @@ export const AuthProvider = ({ children }) => {
                             // Check Trial Status of the GYM
                             const subscriptionStatus = data.subscriptionStatus;
                             let isSubscriber = false;
+                            let trialIsActive = false;
 
                             // 1. LIFETIME ACCESS CHECK (Prioridade Máxima)
                             // Se tiver acesso vitalício, ignora status do stripe, atrasos, etc.
@@ -162,6 +166,7 @@ export const AuthProvider = ({ children }) => {
                                 } else {
                                     setTrialExpired(false);
                                     setAccessDenied(false);
+                                    trialIsActive = true;
                                 }
                             } else if (isSubscriber) {
                                 // If subscriber, clear all blocks
@@ -171,6 +176,15 @@ export const AuthProvider = ({ children }) => {
                                 setPaymentOverdue(false);
                                 setGracePeriodDaysRemaining(null);
                             }
+
+                            // Resolve o plano efetivo (bronze/prata/ouro)
+                            resolvedPlan = resolvePlan({
+                                tier: data.tier,
+                                lifetimeAccess: data.lifetimeAccess === true,
+                                paidSubscriber: isSubscriber && !trialIsActive,
+                                trialActive: trialIsActive,
+                            });
+                            setPlan(resolvedPlan);
 
                             // Check Password Change Requirement
                             if (data.requiresPasswordChange) {
@@ -201,12 +215,15 @@ export const AuthProvider = ({ children }) => {
                             setAccessDenied(false);
                             setTrialExpired(false);
                             setTermsAccepted(false);
+                            resolvedPlan = 'ouro'; // teste de 7 dias começa com tudo liberado
+                            setPlan('ouro');
                         }
                     }
 
                     // Attach role and tenantId to user object for easy access
                     currentUser.role = role;
                     currentUser.tenantId = tenantId;
+                    currentUser.plan = resolvedPlan;
 
                 } catch (error) {
                     console.error("Error checking tenant status:", error);
@@ -247,6 +264,7 @@ export const AuthProvider = ({ children }) => {
                 setTrialExpired(false);
                 setRequiresPasswordChange(false);
                 setTermsAccepted(true);
+                setPlan(DEFAULT_PLAN);
                 setLoading(false);
             }
         });
@@ -316,6 +334,7 @@ export const AuthProvider = ({ children }) => {
         trialInfo,
         requiresPasswordChange,
         termsAccepted,
+        plan,
         loginAsStudent,
         logout
     };

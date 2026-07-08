@@ -293,6 +293,8 @@ export default function StudentForm() {
         } catch (error) {
             if (error.message === 'EMAIL_EXISTS') {
                 addToast('Este e-mail já está em uso por outro aluno.', 'error');
+            } else if (error.message === 'PLAN_LIMIT_REACHED') {
+                addToast(`Limite do plano ${error.planName} atingido (${error.maxStudents} alunos). Faça upgrade para cadastrar mais.`, 'error');
             } else {
                 addToast('Erro ao salvar aluno. Tente novamente.', 'error');
             }

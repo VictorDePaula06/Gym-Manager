@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Mail, Loader2, Dumbbell } from 'lucide-react';
@@ -14,7 +14,7 @@ const Login = () => {
     const navigate = useNavigate();
     const { addToast } = useToast();
     const { user, loading: authLoading, accessDenied, loginAsStudent } = useAuth(); // Get accessDenied
-    const [loginType, setLoginType] = useState('gestor'); // 'gestor' or 'aluno'
+    const [loginType, setLoginType] = useState('personal'); // 'personal' or 'aluno'
 
     useEffect(() => {
         if (user) {
@@ -28,23 +28,18 @@ const Login = () => {
         }
     }, [user, accessDenied, navigate]);
 
+    // Login do ALUNO (email/senha custom). O personal entra só com Google.
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
         setLoadingLocal(true);
 
         try {
-            if (loginType === 'gestor') {
-                await signInWithEmailAndPassword(auth, email, password);
-            } else {
-                await loginAsStudent(email, password);
-            }
+            await loginAsStudent(email, password);
         } catch (err) {
             console.error("Login Error:", err);
             setLoadingLocal(false);
-            if (err.code === 'auth/user-disabled') {
-                setError('Sua conta foi suspensa.');
-            } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.message === 'Conta não encontrada.' || err.message === 'Senha incorreta.') {
+            if (err.message === 'Conta não encontrada.' || err.message === 'Senha incorreta.') {
                 setError('E-mail ou senha incorretos.');
             } else {
                 setError(err.message || 'Falha ao fazer login.');
@@ -52,18 +47,36 @@ const Login = () => {
         }
     };
 
-    const handleResetPassword = async () => {
-        if (!email) {
-            setError('Digite seu e-mail para redefinir a senha.');
-            return;
-        }
+    // Login do GESTOR (personal) via Google. O tenant é criado no 1º acesso
+    // (AuthContext) já em teste de 7 dias.
+    const handleGoogleLogin = async () => {
+        setError('');
+        setLoadingLocal(true);
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         try {
-            await sendPasswordResetEmail(auth, email);
-            setError('');
-            addToast('E-mail de redefinição enviado! Verifique sua caixa de entrada.', 'success');
+            await signInWithPopup(auth, provider);
+            // onAuthStateChanged cuida do redirect
         } catch (err) {
-            console.error(err);
-            setError('Erro ao enviar e-mail. Verifique se o endereço está correto.');
+            console.error("Google Login Error:", err);
+            if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+                setLoadingLocal(false);
+                setError('');
+                return;
+            }
+            if (err.code === 'auth/user-disabled') {
+                setLoadingLocal(false);
+                setError('Sua conta foi suspensa.');
+                return;
+            }
+            // Popup bloqueado/COOP/ambiente sem popup → cai pro redirect (mobile inclusive)
+            try {
+                await signInWithRedirect(auth, provider);
+            } catch (err2) {
+                console.error("Google Redirect Error:", err2);
+                setLoadingLocal(false);
+                setError('Não foi possível entrar com o Google. Tente novamente.');
+            }
         }
     };
 
@@ -172,7 +185,7 @@ const Login = () => {
                     border: '1px solid rgba(148, 163, 184, 0.1)'
                 }}>
                     <button
-                        onClick={() => setLoginType('gestor')}
+                        onClick={() => setLoginType('personal')}
                         style={{
                             flex: 1,
                             padding: '0.75rem',
@@ -182,11 +195,11 @@ const Login = () => {
                             fontWeight: '600',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
-                            backgroundColor: loginType === 'gestor' ? '#10b981' : 'transparent',
-                            color: loginType === 'gestor' ? 'white' : '#94a3b8'
+                            backgroundColor: loginType === 'personal' ? '#10b981' : 'transparent',
+                            color: loginType === 'personal' ? 'white' : '#94a3b8'
                         }}
                     >
-                        Sou Gestor
+                        Sou Personal
                     </button>
                     <button
                         onClick={() => setLoginType('aluno')}
@@ -229,6 +242,62 @@ const Login = () => {
 
                 <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
+                    {loginType === 'personal' && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleGoogleLogin}
+                                disabled={loadingLocal}
+                                style={{
+                                    width: '100%',
+                                    backgroundColor: 'rgba(12, 12, 14, 0.5)',
+                                    color: 'white',
+                                    padding: '1rem',
+                                    borderRadius: '0.75rem',
+                                    border: '1px solid rgba(148, 163, 184, 0.2)',
+                                    fontWeight: '600',
+                                    fontSize: '1rem',
+                                    cursor: loadingLocal ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    opacity: loadingLocal ? 0.8 : 1,
+                                    transition: 'all 0.2s',
+                                    fontFamily: 'inherit'
+                                }}
+                                onMouseOver={(e) => {
+                                    if (loadingLocal) return;
+                                    e.currentTarget.style.borderColor = '#10b981';
+                                    e.currentTarget.style.backgroundColor = 'rgba(12, 12, 14, 0.65)';
+                                    e.currentTarget.style.boxShadow = '0 0 0 4px rgba(16, 185, 129, 0.1)';
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                                    e.currentTarget.style.backgroundColor = 'rgba(12, 12, 14, 0.5)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                {loadingLocal ? <Loader2 size={20} className="animate-spin" /> : (
+                                    <>
+                                        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                                            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                                            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                                            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                                            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                                        </svg>
+                                        Entrar com Google
+                                    </>
+                                )}
+                            </button>
+                            <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', lineHeight: 1.5 }}>
+                                Personais entram com a conta Google. Novo por aqui? Seu acesso é criado na hora, com <strong style={{ color: '#cbd5e1' }}>7 dias grátis</strong>.
+                            </p>
+                        </>
+                    )}
+
+                    {loginType === 'aluno' && (
+                    <>
                     <div style={{ position: 'relative' }}>
                         <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', transition: 'color 0.2s', zIndex: 20 }}>
                             <Mail size={18} />
@@ -356,12 +425,10 @@ const Login = () => {
                     >
                         {loadingLocal ? <Loader2 size={20} className="animate-spin" /> : 'Acessar Plataforma'}
                     </button>
+                    </>
+                    )}
 
                     <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <Link to="/register" style={{ color: '#94a3b8', fontSize: '0.95rem', textDecoration: 'none' }}>
-                            Possui um convite? <span style={{ color: '#10b981', fontWeight: '600' }}>Resgatar acesso</span>
-                        </Link>
-
                         <Link to="/" style={{ color: '#64748b', fontSize: '0.85rem', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                             <span>←</span> Voltar para o site
                         </Link>

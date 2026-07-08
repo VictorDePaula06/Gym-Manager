@@ -166,6 +166,23 @@ const SuperAdmin = () => {
         }
     };
 
+    // Define manualmente o tier (bronze/prata/ouro) do personal.
+    // '' = automático (segue teste/pagamento). Serve pra dar Ouro de brinde etc.
+    const handleUpdateTier = async (tenantId, newTier) => {
+        try {
+            const tenantRef = doc(db, 'tenants', tenantId);
+            // tier vazio => remove o override e volta ao automático
+            const value = newTier || null;
+            await updateDoc(tenantRef, { tier: value });
+            setTenants(prev => prev.map(t =>
+                t.id === tenantId ? { ...t, tier: value } : t
+            ));
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao definir o plano.");
+        }
+    };
+
     const handleSimulateTrialExpiration = async (tenantId) => {
         if (!confirm("Isso expirará imediatamente o período de teste deste usuário. Continuar?")) return;
 
@@ -440,6 +457,20 @@ const SuperAdmin = () => {
                                                 <Star size={10} fill="currentColor" /> VITALÍCIO
                                             </span>
                                         )}
+                                        {tenant.tier && (
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '2px 8px',
+                                                borderRadius: '999px',
+                                                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                                                color: '#93c5fd',
+                                                border: '1px solid #3b82f6',
+                                                fontWeight: 'bold',
+                                                textTransform: 'uppercase'
+                                            }}>
+                                                {tenant.tier}
+                                            </span>
+                                        )}
                                     </div>
                                     <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
                                         ID: <span style={{ fontFamily: 'monospace' }}>{tenant.id}</span>
@@ -580,6 +611,26 @@ const SuperAdmin = () => {
                                             <CheckCircle size={16} /> Voltar p/ Trial
                                         </button>
                                     )}
+
+                                    <select
+                                        value={tenant.tier || ''}
+                                        onChange={(e) => handleUpdateTier(tenant.id, e.target.value)}
+                                        title="Definir plano (tier) manualmente"
+                                        style={{
+                                            backgroundColor: '#1e293b',
+                                            color: 'white',
+                                            border: '1px solid #334155',
+                                            padding: '0.5rem 0.75rem',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            fontSize: '0.85rem'
+                                        }}
+                                    >
+                                        <option value="">Plano: Auto (teste/pago)</option>
+                                        <option value="bronze">Plano: Bronze</option>
+                                        <option value="prata">Plano: Prata</option>
+                                        <option value="ouro">Plano: Ouro</option>
+                                    </select>
 
                                     <button
                                         onClick={() => handleToggleLifetime(tenant.id, tenant.lifetimeAccess)}

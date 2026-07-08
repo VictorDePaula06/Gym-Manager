@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy, increment } from 'firebase/firestore';
 import { setGeminiKey, clearGeminiKey } from '../services/gemini';
 import { computeFirstDueDate } from '../utils/payments';
+import { planLimits } from '../config/plans';
 
 const GymContext = createContext();
 
@@ -10,7 +11,7 @@ export const useGym = () => useContext(GymContext);
 import { useAuth } from './AuthContext';
 
 export const GymProvider = ({ children }) => {
-    const { user } = useAuth();
+    const { user, plan } = useAuth();
     const [students, setStudents] = useState([]);
     const [loadingStudents, setLoadingStudents] = useState(true);
     const [loadingSettings, setLoadingSettings] = useState(true);
@@ -200,6 +201,15 @@ export const GymProvider = ({ children }) => {
 
     const addStudent = async (studentData) => {
         try {
+            // Trava por plano: bloqueia ao atingir o limite de alunos do tier.
+            const { maxStudents, name: planName } = planLimits(plan);
+            if (students.length >= maxStudents) {
+                const err = new Error("PLAN_LIMIT_REACHED");
+                err.planName = planName;
+                err.maxStudents = maxStudents;
+                throw err;
+            }
+
             const basePath = getUserBasePath();
             const tenantId = user.tenantId || user.uid;
             const normalizedEmail = (studentData.email || '').toLowerCase().trim();
@@ -420,9 +430,13 @@ export const GymProvider = ({ children }) => {
     const value = {
         students,
         loading,
+        plan,                        // 'bronze' | 'prata' | 'ouro'
+        planInfo: planLimits(plan),  // { name, maxStudents, ai, ... }
         settings,
         updateSettings,
-        aiConfig,
+        // IA só vale se o plano permitir (Bronze = sem IA, mesmo com chave salva)
+        aiConfig: { ...aiConfig, configured: aiConfig.configured && planLimits(plan).ai },
+        aiPlanBlocked: !planLimits(plan).ai,   // true no Bronze → mostrar upsell
         updateAiConfig,
         addStudent,
         updateStudent,

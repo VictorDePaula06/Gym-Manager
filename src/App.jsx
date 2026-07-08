@@ -68,7 +68,8 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/vector" element={<VectorGymHub />} />
                 <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+                {/* Cadastro por email/senha desativado — personais entram só com Google */}
+                <Route path="/register" element={<Navigate to="/login" />} />
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/trial-expired" element={<TrialExpired />} />
                 <Route path="/terms" element={<TermsOfService />} />

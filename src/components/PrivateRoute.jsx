@@ -18,9 +18,8 @@ export default function PrivateRoute({ children, roleRequired }) {
         return <Navigate to="/payment-required" />;
     }
 
-    if (trialExpired && location.pathname !== '/app/subscription') {
-        return <Navigate to="/trial-expired" />;
-    }
+    // Fim do teste NÃO tranca mais: o personal cai pro plano Bronze (grátis,
+    // limitado) e segue usando. O upsell aparece nas telas, não bloqueia o app.
 
     if (accessDenied) {
         return <Navigate to="/access-denied" />;

@@ -10,7 +10,7 @@ import { collection, getDocs, getDoc, doc, setDoc, deleteDoc, query, where, upda
 import { validateApiKey } from '../services/gemini';
 
 export default function Settings() {
-    const { settings, updateSettings, aiConfig, updateAiConfig } = useGym();
+    const { settings, updateSettings, aiConfig, updateAiConfig, aiPlanBlocked, planInfo, plan, students } = useGym();
     const { user } = useAuth();
     const { addToast } = useToast();
     const navigate = useNavigate();
@@ -323,6 +323,38 @@ export default function Settings() {
                             Assinatura
                         </h2>
 
+                        {/* Banner do plano (tier) — o cliente vê claramente o que usa */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap',
+                            padding: '1.25rem', borderRadius: '14px', marginBottom: '1.5rem',
+                            background: `linear-gradient(135deg, ${planInfo?.color}22, transparent)`,
+                            border: `1px solid ${planInfo?.color}55`
+                        }}>
+                            <div style={{
+                                width: '48px', height: '48px', borderRadius: '12px', flexShrink: 0,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                background: `${planInfo?.color}22`, border: `1px solid ${planInfo?.color}`
+                            }}>
+                                <Star size={24} color={planInfo?.color} fill={planInfo?.color} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: '180px' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Seu plano</div>
+                                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: planInfo?.color, lineHeight: 1.1 }}>
+                                    {planInfo?.name}
+                                </div>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                                    {students?.length ?? 0}/{planInfo?.maxStudents === Infinity ? '∞' : planInfo?.maxStudents} alunos
+                                    {' · '}
+                                    {planInfo?.ai ? 'IA incluída' : 'sem IA'}
+                                </div>
+                            </div>
+                            {plan !== 'ouro' && (
+                                <button onClick={() => navigate('/app/subscription')} className="btn-primary" style={{ padding: '0.6rem 1.25rem' }}>
+                                    Fazer upgrade
+                                </button>
+                            )}
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                             {/* Status */}
                             <div>
@@ -597,6 +629,22 @@ export default function Settings() {
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
                             Conecte sua chave do Google Gemini para ativar a geração de treinos por IA e os recursos inteligentes do sistema.
                         </p>
+
+                        {aiPlanBlocked && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+                                padding: '1rem 1.25rem', borderRadius: '12px', marginBottom: '1.5rem',
+                                background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.3)'
+                            }}>
+                                <Sparkles size={20} color="#a855f7" />
+                                <span style={{ flex: 1, minWidth: '200px', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                                    A IA não está incluída no plano <strong>{planInfo?.name}</strong>. Faça upgrade para o <strong>Prata</strong> ou <strong>Ouro</strong> para gerar fichas com inteligência artificial.
+                                </span>
+                                <button onClick={() => navigate('/app/subscription')} className="btn-primary" style={{ padding: '0.55rem 1.1rem', fontSize: '0.9rem' }}>
+                                    Ver planos
+                                </button>
+                            </div>
+                        )}
 
                         {/* Status atual */}
                         <div style={{

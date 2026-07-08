@@ -69,8 +69,13 @@ service cloud.firestore {
     }
 
     // 3. Regras para a coleção de Tenants (Assinatura do Gestor)
+    // Cada gestor lê/escreve o próprio tenant; o super admin lê/escreve TODOS
+    // (necessário para o painel Super Admin listar e gerenciar as academias).
     match /tenants/{tenantId} {
-      allow read, write: if request.auth != null && request.auth.uid == tenantId;
+      allow read, write: if request.auth != null && (
+        request.auth.uid == tenantId ||
+        request.auth.token.email == 'j.17jvictor@gmail.com'
+      );
     }
   }
 }
