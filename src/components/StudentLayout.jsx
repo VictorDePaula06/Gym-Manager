@@ -10,12 +10,13 @@ export default function StudentLayout() {
     const { students, settings, isTrainingMode } = useGym();
     const navigate = useNavigate();
 
-    // Bloqueio por inadimplência: só vale se o personal ligou (accessBlocked)
-    // E o aluno está de fato pendente. Se ele pagar, desbloqueia sozinho.
+    // Bloqueio por inadimplência: aluno pendente é bloqueado AUTOMATICAMENTE.
+    // O personal pode liberar um aluno específico (accessException) — ex: quando
+    // o aluno entra em contato negociando. Se ele pagar, desbloqueia sozinho.
     const studentData = students.find(s => s.id === user?.studentId);
     const studentActive = studentData?.status?.toLowerCase() === 'active';
     const isOverdue = studentData ? (studentActive && getPaymentStatus(studentData).isOverdue) : false;
-    const isBlocked = !!studentData?.accessBlocked && isOverdue;
+    const isBlocked = isOverdue && !studentData?.accessException;
     const onHome = location.pathname === '/student' || location.pathname === '/student/';
 
     const handleLogout = async () => {

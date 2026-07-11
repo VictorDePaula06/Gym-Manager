@@ -1983,14 +1983,14 @@ export default function StudentDetails() {
                                                 </button>
 
                                                 <button
-                                                    onClick={() => updateStudent(id, { accessBlocked: !student.accessBlocked })}
-                                                    title={student.accessBlocked
-                                                        ? 'O aluno só vê a tela inicial até regularizar. Clique para liberar.'
-                                                        : 'Deixa só a tela inicial liberada até o pagamento (trava treinos, comunidade e evolução).'}
+                                                    onClick={() => updateStudent(id, { accessException: !student.accessException })}
+                                                    title={student.accessException
+                                                        ? 'Este aluno está liberado mesmo pendente. Clique para bloquear novamente.'
+                                                        : 'Aluno pendente é bloqueado automaticamente. Clique para liberar o acesso deste aluno.'}
                                                     style={{
                                                         marginTop: '0.6rem',
                                                         width: '100%',
-                                                        background: student.accessBlocked ? '#10b981' : '#ef4444',
+                                                        background: student.accessException ? '#ef4444' : '#10b981',
                                                         color: 'white',
                                                         border: 'none',
                                                         padding: '0.6rem',
@@ -2003,8 +2003,8 @@ export default function StudentDetails() {
                                                         gap: '0.5rem'
                                                     }}
                                                 >
-                                                    {student.accessBlocked ? <Unlock size={18} /> : <Lock size={18} />}
-                                                    {student.accessBlocked ? 'Desbloquear app do aluno' : 'Bloquear app do aluno'}
+                                                    {student.accessException ? <Lock size={18} /> : <Unlock size={18} />}
+                                                    {student.accessException ? 'Bloquear app novamente' : 'Liberar app do aluno'}
                                                 </button>
                                             </>
                                         )}
