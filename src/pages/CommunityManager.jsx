@@ -4,7 +4,7 @@ import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3 } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus } from '../services/community';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange } from '../services/community';
 
 const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -145,8 +145,21 @@ export default function CommunityManager() {
         return () => { u1(); u2(); u3(); };
     }, [tenantId, monthKey]);
 
-    const ranking = useMemo(() => (
-        Object.entries(board || {}).map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 })).filter(e => e.n > 0).sort((a, b) => b.n - a.n)
+    // Só participantes do desafio entram no ranking (modelo de convite).
+    const ranking = useMemo(() => {
+        const parts = challenge?.participants || [];
+        return Object.entries(board || {})
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, challenge?.startDate, challenge?.endDate) }))
+            .filter(e => e.n > 0 && parts.includes(e.id))
+            .sort((a, b) => b.n - a.n);
+    }, [board, challenge]);
+
+    // Ranking GERAL: todos os alunos por treinos no mês (sempre ligado).
+    const generalRanking = useMemo(() => (
+        Object.entries(board || {})
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 }))
+            .filter(e => e.n > 0)
+            .sort((a, b) => b.n - a.n)
     ), [board]);
 
     const totalTreinos = useMemo(() => Object.values(board || {}).reduce((s, e) => s + (e.count || 0), 0), [board]);
@@ -194,15 +207,15 @@ export default function CommunityManager() {
         <button onClick={() => setTab(key)} style={{ padding: '0.6rem 1rem', background: 'none', border: 'none', borderBottom: `2px solid ${tab === key ? 'var(--primary)' : 'transparent'}`, color: tab === key ? 'var(--text-main)' : 'var(--text-muted)', fontWeight: tab === key ? 700 : 500, cursor: 'pointer', fontSize: '0.9rem' }}>{label}</button>
     );
 
-    const rankingCard = (top) => (
+    const rankingCard = (list, top, title = 'Ranking') => (
         <div className="glass-panel" style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '1rem' }}><Trophy size={18} color="#fbbf24" /> Ranking{top ? ' (Top 5)' : ''}</h3>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0, fontSize: '1rem' }}><Trophy size={18} color="#fbbf24" /> {title}{top ? ' (Top 5)' : ''}</h3>
                 {top && <button onClick={() => setTab('ranking')} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>Ver completo</button>}
             </div>
-            {ranking.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nenhum treino concluído ainda.</p> : (
+            {list.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nenhum treino concluído ainda.</p> : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {(top ? ranking.slice(0, 5) : ranking).map((t, i) => (
+                    {(top ? list.slice(0, 5) : list).map((t, i) => (
                         <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.5rem 0.4rem' }}>
                             <span style={{ width: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', color: i < 3 ? '#111' : 'var(--text-muted)', background: ['#fbbf24', '#cbd5e1', '#d19a5c'][i] || 'var(--input-bg)' }}>{i + 1}</span>
                             <Avatar name={t.name} photo={t.photo} size={32} />
@@ -269,7 +282,7 @@ export default function CommunityManager() {
                 <div className="community-mgr-grid">
                     {/* Ranking + Resumo (sidebar) — direita estreita */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', order: 2 }}>
-                        {rankingCard(true)}
+                        {rankingCard(generalRanking, true, 'Ranking Geral')}
                         <div className="glass-panel" style={{ padding: '1.25rem' }}>
                             <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 0.5rem', fontSize: '1rem' }}><BarChart3 size={18} color="#3b82f6" /> Resumo da comunidade</h3>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }}>
@@ -325,16 +338,23 @@ export default function CommunityManager() {
                 </div>
             )}
 
-            {tab === 'ranking' && rankingCard(false)}
+            {tab === 'ranking' && rankingCard(generalRanking, false, 'Ranking Geral')}
 
             {tab === 'desafios' && (
-                <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 style={{ margin: 0 }}>Desafio atual</h3>
-                        <button onClick={openEditor} className="btn-primary" style={{ padding: '0.5rem 1rem' }}><Pencil size={16} /> Editar</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                            <h3 style={{ margin: 0 }}>Desafio atual</h3>
+                            <button onClick={openEditor} className="btn-primary" style={{ padding: '0.5rem 1rem' }}><Pencil size={16} /> Editar</button>
+                        </div>
+                        <p style={{ color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text-main)' }}>{challengeTitle}</strong>{challenge?.startDate && challenge?.endDate ? ` · ${fmtDay(challenge.startDate)} a ${fmtDay(challenge.endDate)}` : ''}{challenge?.prize ? ` · Prêmio: ${challenge.prize}` : ''}</p>
+                        <p style={{ color: 'var(--text-muted)', margin: 0 }}>{challenge?.description || 'Sem descrição.'}</p>
                     </div>
-                    <p style={{ color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text-main)' }}>{challengeTitle}</strong>{challenge?.startDate && challenge?.endDate ? ` · ${fmtDay(challenge.startDate)} a ${fmtDay(challenge.endDate)}` : ''}{challenge?.prize ? ` · Prêmio: ${challenge.prize}` : ''}</p>
-                    <p style={{ color: 'var(--text-muted)' }}>{challenge?.description || 'Sem descrição.'}</p>
+                    {/* Ranking só dos participantes, dentro das datas do desafio */}
+                    {rankingCard(ranking, false, 'Ranking do desafio')}
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', margin: 0 }}>
+                        Conta só quem aceitou participar e os treinos dentro do período do desafio.
+                    </p>
                 </div>
             )}
 

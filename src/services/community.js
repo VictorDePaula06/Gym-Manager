@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
+import { collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../utils/imageOptimizer';
 
@@ -98,6 +98,35 @@ export const saveChallenge = async (tenantId, monthKey, data) => {
         endDate: data.endDate || '',
         updatedAt: new Date().toISOString(),
     }, { merge: true });
+};
+
+// Aluno aceita o convite do desafio (entra no ranking).
+export const joinChallenge = async (tenantId, monthKey, studentId) => {
+    await setDoc(doc(db, `users/${tenantId}/challenges`, monthKey), {
+        participants: arrayUnion(studentId),
+        declined: arrayRemove(studentId),
+    }, { merge: true });
+};
+
+// Aluno recusa o convite (não aparece no ranking; para de perguntar).
+export const declineChallenge = async (tenantId, monthKey, studentId) => {
+    await setDoc(doc(db, `users/${tenantId}/challenges`, monthKey), {
+        declined: arrayUnion(studentId),
+        participants: arrayRemove(studentId),
+    }, { merge: true });
+};
+
+// Conta quantos treinos (datas ISO) caem dentro da janela do desafio.
+// Se o desafio não tem datas, conta todos (comportamento do mês inteiro).
+export const countWorkoutsInRange = (dates, startDate, endDate) => {
+    if (!Array.isArray(dates)) return 0;
+    return dates.filter((iso) => {
+        if (!iso) return false;
+        const day = String(iso).slice(0, 10); // YYYY-MM-DD
+        if (startDate && day < startDate) return false;
+        if (endDate && day > endDate) return false;
+        return true;
+    }).length;
 };
 
 // Status do desafio a partir das datas (YYYY-MM-DD).

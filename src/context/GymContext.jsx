@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy, increment } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy, increment, arrayUnion } from 'firebase/firestore';
 import { setGeminiKey, clearGeminiKey } from '../services/gemini';
 import { computeFirstDueDate } from '../utils/payments';
 import { planLimits } from '../config/plans';
@@ -481,21 +481,25 @@ export const GymProvider = ({ children }) => {
                 throw error;
             }
         },
-        // Ranking do desafio: soma +1 treino concluído no placar do mês (por aluno).
-        addWorkoutToLeaderboard: async (studentId, name, photo) => {
+        // Ranking do desafio: registra o treino no placar do mês (por aluno).
+        // Guarda a DATA de cada treino (dates[]) pra dar pra contar só os que
+        // caem dentro da janela do desafio. Mantém 'count' (total do mês).
+        addWorkoutToLeaderboard: async (studentId, name, photo, completedAt) => {
             try {
                 const basePath = getUserBasePath();
                 const now = new Date();
                 const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                const when = completedAt || now.toISOString();
                 const ref = doc(db, `${basePath}/leaderboard`, monthKey);
-                // Garante que o doc existe e incrementa o campo aninhado via dot-path.
+                // Garante que o doc existe e atualiza o campo aninhado via dot-path.
                 await setDoc(ref, { month: monthKey }, { merge: true });
                 await updateDoc(ref, {
                     [`entries.${studentId}.name`]: name || 'Aluno',
                     [`entries.${studentId}.photo`]: photo || null,
                     [`entries.${studentId}.count`]: increment(1),
+                    [`entries.${studentId}.dates`]: arrayUnion(when),
                 });
-                console.log('[Ranking] +1 treino registrado para', studentId);
+                console.log('[Ranking] treino registrado para', studentId, when);
             } catch (error) {
                 console.error("Erro ao atualizar ranking (leaderboard):", error);
             }

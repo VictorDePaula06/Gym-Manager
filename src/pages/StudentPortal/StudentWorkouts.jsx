@@ -145,8 +145,9 @@ export default function StudentWorkouts() {
 
         try {
             await logWorkoutCompletion(user.studentId, logData);
-            // Concluir já soma no ranking do desafio (independente de postar)
-            await addWorkoutToLeaderboard(user.studentId, studentData?.name || user.name, studentData?.profilePictureUrl || null);
+            // Concluir já soma no ranking do desafio (independente de postar).
+            // Passa a data do treino pra contar só dentro da janela do desafio.
+            await addWorkoutToLeaderboard(user.studentId, studentData?.name || user.name, studentData?.profilePictureUrl || null, logData.completedAt);
             setFinishedInfo(logData);
             setShared(false);
             setIsFinished(true);

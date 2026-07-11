@@ -4,7 +4,7 @@ import { useGym } from '../../context/GymContext';
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
 import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus } from '../../services/community';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange } from '../../services/community';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -195,12 +195,21 @@ export default function Community() {
         return () => { unsubAuth(); unsubFeed(); unsubBoard(); unsubChallenge(); };
     }, [tenantId, monthKey]);
 
-    // Desafio do mês: ranking por TREINOS CONCLUÍDOS (placar), não por posts.
+    // Participação no desafio (convite): só quem aceitou entra no ranking.
+    const participants = challengeCfg?.participants || [];
+    const declined = challengeCfg?.declined || [];
+    const isParticipant = participants.includes(me.id);
+    const hasDeclined = declined.includes(me.id);
+    const chStatus = getChallengeStatus(challengeCfg);
+    // Dá pra entrar enquanto o desafio existe e não está encerrado.
+    const canJoin = !!challengeCfg && (!chStatus || chStatus.label !== 'Encerrado');
+
+    // Desafio do mês: ranking por TREINOS CONCLUÍDOS, apenas dos participantes.
     const challenge = useMemo(() => {
         const month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
         const all = Object.entries(board || {})
-            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 }))
-            .filter(e => e.n > 0)
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, challengeCfg?.startDate, challengeCfg?.endDate) }))
+            .filter(e => e.n > 0 && participants.includes(e.id))
             .sort((a, b) => b.n - a.n);
         const myIndex = all.findIndex(e => e.id === me.id);
         return {
@@ -209,9 +218,42 @@ export default function Community() {
             total: all.length,
             myRank: myIndex >= 0 ? { pos: myIndex + 1, n: all[myIndex].n } : null,
         };
+    }, [board, me.id, challengeCfg]);
+
+    // Ranking GERAL: todos os alunos por treinos no mês (sempre ligado, sem convite).
+    const general = useMemo(() => {
+        const month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+        const all = Object.entries(board || {})
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 }))
+            .filter(e => e.n > 0)
+            .sort((a, b) => b.n - a.n);
+        const myIndex = all.findIndex(e => e.id === me.id);
+        return {
+            month,
+            top: all.slice(0, 5),
+            total: all.length,
+            myRank: myIndex >= 0 ? { pos: myIndex + 1, n: all[myIndex].n } : null,
+        };
     }, [board, me.id]);
 
-    const chStatus = getChallengeStatus(challengeCfg);
+    const handleJoin = async () => {
+        try {
+            await joinChallenge(tenantId, monthKey, me.id);
+            addToast('Você entrou no desafio! 🔥', 'success');
+        } catch (e) {
+            console.error(e);
+            addToast('Erro ao entrar no desafio.', 'error');
+        }
+    };
+
+    const handleDecline = async () => {
+        try {
+            await declineChallenge(tenantId, monthKey, me.id);
+        } catch (e) {
+            console.error(e);
+            addToast('Erro. Tente de novo.', 'error');
+        }
+    };
 
     const pickImage = (e) => {
         const f = e.target.files?.[0];
@@ -275,6 +317,39 @@ export default function Community() {
                     </div>
                 )}
 
+                {/* Convite: aluno decide se entra no desafio */}
+                {canJoin && !isParticipant && !hasDeclined && (
+                    <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(168,85,247,0.35)', borderRadius: '12px', padding: '0.85rem', marginBottom: '0.9rem' }}>
+                        <p style={{ margin: '0 0 0.7rem', fontSize: '0.85rem', textAlign: 'center' }}>
+                            Você foi convidado pra esse desafio! Bora competir com a galera? 🔥
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.6rem' }}>
+                            <button onClick={handleJoin} style={{ flex: 1, padding: '0.6rem', background: '#a855f7', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>
+                                Participar
+                            </button>
+                            <button onClick={handleDecline} style={{ flex: 1, padding: '0.6rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
+                                Agora não
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {canJoin && hasDeclined && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '0.6rem 0.8rem', marginBottom: '0.9rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                        <span>Você não está no desafio.</span>
+                        <button onClick={handleJoin} style={{ background: 'none', border: 'none', color: '#a855f7', fontWeight: 700, cursor: 'pointer', padding: 0 }}>Participar</button>
+                    </div>
+                )}
+
+                {isParticipant && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.9rem', fontSize: '0.78rem' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#10b981', fontWeight: 700 }}>
+                            <Check size={14} /> Você está no desafio
+                        </span>
+                        <button onClick={handleDecline} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.75rem' }}>Sair</button>
+                    </div>
+                )}
+
                 {challenge.top.length === 0 ? (
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', padding: '0.5rem 0' }}>
                         Ninguém concluiu treino este mês ainda.<br />Seja o primeiro! 💪
@@ -310,6 +385,63 @@ export default function Community() {
                                 <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem' }}>Você</span>
                                 <span style={{ fontWeight: 800, color: '#a855f7', fontSize: '0.95rem' }}>
                                     {challenge.myRank.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{challenge.myRank.n > 1 ? 's' : ''}</span>
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Ranking Geral (todos os alunos, do mês) */}
+            <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Trophy size={18} color="#10b981" />
+                        <strong style={{ textTransform: 'capitalize' }}>Ranking Geral · {general.month}</strong>
+                    </div>
+                    {general.total > 0 && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.55rem', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+                            {general.total} no mês
+                        </span>
+                    )}
+                </div>
+
+                {general.top.length === 0 ? (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', padding: '0.5rem 0' }}>
+                        Ninguém treinou este mês ainda.<br />Comece agora! 💪
+                    </p>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {general.top.map((t, i) => {
+                            const isMe = t.id === me.id;
+                            return (
+                                <div key={t.id} style={{
+                                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                    padding: '0.5rem 0.6rem', borderRadius: '12px',
+                                    background: isMe ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.03)',
+                                    border: isMe ? '1px solid rgba(16,185,129,0.4)' : '1px solid transparent'
+                                }}>
+                                    <span style={{ fontSize: '1rem', width: '26px', textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>
+                                        {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}º`}
+                                    </span>
+                                    <Avatar name={t.name} photo={t.photo} size={34} />
+                                    <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {t.name}{isMe && <span style={{ color: '#10b981', fontWeight: 700 }}> (você)</span>}
+                                    </span>
+                                    <span style={{ fontWeight: 800, color: '#10b981', fontSize: '0.95rem' }}>
+                                        {t.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{t.n > 1 ? 's' : ''}</span>
+                                    </span>
+                                </div>
+                            );
+                        })}
+
+                        {general.myRank && general.myRank.pos > 5 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0.6rem', borderRadius: '12px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', marginTop: '0.2rem' }}>
+                                <span style={{ fontWeight: 800, width: '26px', textAlign: 'center', color: '#10b981' }}>{general.myRank.pos}º</span>
+                                <Avatar name={me.name} photo={me.photo} size={34} />
+                                <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem' }}>Você</span>
+                                <span style={{ fontWeight: 800, color: '#10b981', fontSize: '0.95rem' }}>
+                                    {general.myRank.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{general.myRank.n > 1 ? 's' : ''}</span>
                                 </span>
                             </div>
                         )}

@@ -62,9 +62,12 @@ service cloud.firestore {
       }
 
       // Configuração do desafio (professor define, aluno lê).
-      // Sem regra de write aqui: só o gestor grava (via a regra allPaths acima).
+      // O aluno pode entrar/sair do desafio, mas SÓ pode mexer nos campos de
+      // participação (participants/declined) — nunca no título/prêmio/datas.
       match /challenges/{monthId} {
         allow read: if true;
+        allow update: if request.auth != null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants', 'declined']);
       }
     }
 
