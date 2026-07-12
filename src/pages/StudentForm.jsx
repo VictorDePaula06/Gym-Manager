@@ -494,20 +494,23 @@ export default function StudentForm() {
                                 />
                             </div>
                             <div>
-                                <label style={labelStyle}>E-mail (Login do Aluno)</label>
+                                <label style={labelStyle}>E-mail / Gmail do aluno (opcional)</label>
                                 <input
                                     name="email"
                                     type="email"
                                     value={formData.email}
                                     onChange={handleChange}
                                     style={inputStyle}
-                                    placeholder="joao@exemplo.com"
+                                    placeholder="joao@gmail.com"
                                 />
+                                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.35rem 0 0', lineHeight: 1.4 }}>
+                                    Se for o <strong>Gmail</strong> do aluno, ele entra com <strong>Google sem código</strong>. Não sabe o Gmail? Deixe em branco e passe o código de acesso da ficha.
+                                </p>
                             </div>
                         </div>
                         <div className="responsive-grid">
                             <div>
-                                <label style={labelStyle}>Senha de Acesso (Portal do Aluno)</label>
+                                <label style={labelStyle}>Senha (só para quem não tem Gmail)</label>
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <input
                                         name="password"

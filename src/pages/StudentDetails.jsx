@@ -38,7 +38,7 @@ export default function StudentDetails() {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { students, updateStudent, settings, aiConfig } = useGym();
+    const { students, updateStudent, settings, aiConfig, generateStudentCode } = useGym();
     const { user } = useAuth();
     const { addToast } = useToast();
     const { confirm } = useDialog();
@@ -2031,6 +2031,41 @@ export default function StudentDetails() {
                                     <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>CPF</label>
                                     <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.cpf || '-'}</span>
                                 </div>
+                            </div>
+
+                            {/* Código de acesso do app (login com Google) */}
+                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Código de acesso ao app</h4>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+                                    O aluno usa este código no <strong>1º login com o Google</strong> pra vincular a conta.
+                                </p>
+                                {student.accessCode ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        <span style={{ fontFamily: 'monospace', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.25em', color: 'var(--primary)', background: 'var(--input-bg)', padding: '0.5rem 1rem', borderRadius: '10px' }}>
+                                            {student.accessCode}
+                                        </span>
+                                        <button
+                                            onClick={() => { navigator.clipboard?.writeText(student.accessCode); addToast('Código copiado!', 'success'); }}
+                                            style={{ padding: '0.5rem 0.9rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'transparent', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 600 }}
+                                        >
+                                            Copiar
+                                        </button>
+                                        <button
+                                            onClick={async () => { const c = await generateStudentCode(id); if (c) addToast('Novo código gerado.', 'success'); else addToast('Erro ao gerar.', 'error'); }}
+                                            style={{ padding: '0.5rem 0.9rem', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
+                                        >
+                                            Gerar novo
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={async () => { const c = await generateStudentCode(id); if (c) addToast('Código gerado!', 'success'); else addToast('Erro ao gerar.', 'error'); }}
+                                        className="btn-primary"
+                                        style={{ padding: '0.6rem 1.1rem' }}
+                                    >
+                                        Gerar código de acesso
+                                    </button>
+                                )}
                             </div>
                         </div>
 

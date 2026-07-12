@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebase';
 import { onAuthStateChanged, signOut, signInAnonymously } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { resolvePlan, DEFAULT_PLAN } from '../config/plans';
 
@@ -20,6 +20,7 @@ export const AuthProvider = ({ children }) => {
     const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(true); // Default true to avoid flash, but check logic below
     const [plan, setPlan] = useState(DEFAULT_PLAN); // Plano efetivo do personal (bronze/prata/ouro)
+    const [pendingStudentLink, setPendingStudentLink] = useState(null); // Aluno logou com Google mas ainda não vinculou (pede código)
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -35,6 +36,36 @@ export const AuthProvider = ({ children }) => {
                     } else {
                         console.log('User is NOT Super Admin');
                     }
+
+                    // Este login com Google é de um ALUNO? (superadmin nunca é aluno)
+                    if (!currentUser.isSuperAdmin && currentUser.email) {
+                        const emailKey = currentUser.email.toLowerCase().replace(/\./g, '_');
+                        const linkSnap = await getDoc(doc(db, 'student_access', emailKey));
+                        const link = linkSnap.exists() ? linkSnap.data() : null;
+
+                        if (link && link.studentId && link.tenantId) {
+                            // Aluno já vinculado → entra direto como aluno
+                            sessionStorage.removeItem('student_login_intent');
+                            currentUser.role = 'student';
+                            currentUser.tenantId = link.tenantId;
+                            currentUser.studentId = link.studentId;
+                            currentUser.name = link.name || currentUser.displayName || 'Aluno';
+                            setPendingStudentLink(null);
+                            setUser(currentUser);
+                            setLoading(false);
+                            return;
+                        }
+
+                        // Não vinculado, mas veio da intenção "Sou Aluno" → pede o código
+                        if (sessionStorage.getItem('student_login_intent')) {
+                            setPendingStudentLink({ uid: currentUser.uid, email: currentUser.email, name: currentUser.displayName || '', emailKey });
+                            setLoading(false);
+                            return;
+                        }
+                    }
+
+                    // Chegou aqui = é personal (dono). Limpa qualquer intenção de aluno sobrando.
+                    sessionStorage.removeItem('student_login_intent');
 
                     let tenantId = currentUser.uid;
                     let role = 'owner';
@@ -299,11 +330,58 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Vincula a conta Google logada a um aluno, usando o código de acesso.
+    const linkStudentByCode = async (code) => {
+        const norm = (code || '').trim().toUpperCase();
+        if (!norm) throw new Error('Digite o código.');
+        if (!pendingStudentLink) throw new Error('Sessão expirada. Entre de novo.');
+
+        const codeSnap = await getDoc(doc(db, 'student_codes', norm));
+        if (!codeSnap.exists()) throw new Error('Código inválido ou já utilizado.');
+        const { tenantId, studentId } = codeSnap.data();
+
+        // Pega o nome do aluno (leitura pública do doc do aluno)
+        let name = pendingStudentLink.name || 'Aluno';
+        try {
+            const stSnap = await getDoc(doc(db, `users/${tenantId}/students`, studentId));
+            if (stSnap.exists() && stSnap.data().name) name = stSnap.data().name;
+        } catch (e) { /* ignora */ }
+
+        // Grava o vínculo (sem senha — login é via Google)
+        await setDoc(doc(db, 'student_access', pendingStudentLink.emailKey), {
+            email: pendingStudentLink.email,
+            name, tenantId, studentId, viaGoogle: true,
+        });
+        // Consome o código (uso único)
+        await deleteDoc(doc(db, 'student_codes', norm)).catch(() => {});
+
+        sessionStorage.removeItem('student_login_intent');
+        const u = auth.currentUser;
+        if (u) {
+            u.role = 'student';
+            u.tenantId = tenantId;
+            u.studentId = studentId;
+            u.name = name;
+            setUser(u);
+        }
+        setPendingStudentLink(null);
+    };
+
+    // Cancela a vinculação (aluno desiste de digitar o código)
+    const cancelStudentLink = async () => {
+        sessionStorage.removeItem('student_login_intent');
+        setPendingStudentLink(null);
+        try { await signOut(auth); } catch (e) { /* ignora */ }
+        setUser(null);
+    };
+
     const logout = async () => {
         try {
             await signOut(auth);
             localStorage.removeItem('gym_student_session');
+            sessionStorage.removeItem('student_login_intent');
             setUser(null);
+            setPendingStudentLink(null);
             setAccessDenied(false);
         } catch (error) {
             console.error("Error logging out:", error);
@@ -322,6 +400,9 @@ export const AuthProvider = ({ children }) => {
         termsAccepted,
         plan,
         loginAsStudent,
+        pendingStudentLink,
+        linkStudentByCode,
+        cancelStudentLink,
         logout
     };
 
@@ -338,9 +419,64 @@ export const AuthProvider = ({ children }) => {
                 }}>
                     <Loader2 size={48} className="animate-spin" color="#10b981" />
                 </div>
+            ) : pendingStudentLink ? (
+                <StudentCodeScreen
+                    email={pendingStudentLink.email}
+                    onSubmit={linkStudentByCode}
+                    onCancel={cancelStudentLink}
+                />
             ) : (
                 children
             )}
         </AuthContext.Provider>
     );
 };
+
+// Tela pedida no 1º login do aluno com Google: digitar o código de acesso.
+function StudentCodeScreen({ email, onSubmit, onCancel }) {
+    const [code, setCode] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handle = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        try {
+            await onSubmit(code);
+        } catch (err) {
+            setError(err.message || 'Não foi possível vincular.');
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'var(--bg-app)' }}>
+            <div style={{ width: '100%', maxWidth: '380px', background: 'rgba(24,24,27,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '1.25rem', padding: '2rem' }}>
+                <h1 style={{ fontSize: '1.4rem', margin: '0 0 0.5rem', color: 'white' }}>Quase lá! 🔑</h1>
+                <p style={{ color: '#cbd5e1', fontSize: '0.9rem', margin: '0 0 1.5rem', lineHeight: 1.5 }}>
+                    Digite o <strong>código de acesso</strong> que seu personal te passou para vincular a conta <strong>{email}</strong>.
+                </p>
+                {error && (
+                    <div style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5', padding: '0.7rem', borderRadius: '0.6rem', marginBottom: '1rem', fontSize: '0.85rem', textAlign: 'center' }}>{error}</div>
+                )}
+                <form onSubmit={handle}>
+                    <input
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.toUpperCase())}
+                        placeholder="Ex: 4F9K2A"
+                        autoFocus
+                        maxLength={8}
+                        style={{ width: '100%', padding: '1rem', textAlign: 'center', fontSize: '1.4rem', fontFamily: 'monospace', letterSpacing: '0.25em', textTransform: 'uppercase', background: 'rgba(12,12,14,0.6)', border: '1px solid rgba(148,163,184,0.3)', borderRadius: '0.75rem', color: 'white', outline: 'none', boxSizing: 'border-box', marginBottom: '1rem' }}
+                    />
+                    <button type="submit" disabled={loading || !code.trim()} style={{ width: '100%', padding: '1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '0.75rem', fontWeight: 700, fontSize: '1rem', cursor: loading ? 'not-allowed' : 'pointer', opacity: (loading || !code.trim()) ? 0.7 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                        {loading ? <Loader2 size={20} className="animate-spin" /> : 'Vincular e entrar'}
+                    </button>
+                </form>
+                <button onClick={onCancel} style={{ width: '100%', marginTop: '0.75rem', background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    Cancelar / usar outra conta
+                </button>
+            </div>
+        </div>
+    );
+}

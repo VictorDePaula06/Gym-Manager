@@ -7,6 +7,12 @@ import { planLimits } from '../config/plans';
 
 const GymContext = createContext();
 
+// Código de acesso do aluno (pra vincular a conta Google no 1º login).
+// Alfabeto sem caracteres ambíguos (I, O, 0, 1).
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const generateAccessCode = () =>
+    Array.from({ length: 6 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
+
 export const useGym = () => useContext(GymContext);
 import { useAuth } from './AuthContext';
 
@@ -242,6 +248,19 @@ export const GymProvider = ({ children }) => {
             const docRef = await addDoc(collection(db, `${basePath}/students`), studentData);
             const studentId = docRef.id;
 
+            // 1b. Gera um CÓDIGO DE ACESSO único (o aluno usa pra vincular a conta
+            // Google no 1º login). Lookup global student_codes/{code} → aluno.
+            let accessCode = null;
+            for (let i = 0; i < 5; i++) {
+                const c = generateAccessCode();
+                const codeSnap = await getDoc(doc(db, 'student_codes', c));
+                if (!codeSnap.exists()) { accessCode = c; break; }
+            }
+            if (accessCode) {
+                await setDoc(doc(db, 'student_codes', accessCode), { tenantId, studentId });
+                await updateDoc(doc(db, `${basePath}/students`, studentId), { accessCode });
+            }
+
             // 2. Register in student_access if email is present
             if (normalizedEmail) {
                 const emailKey = normalizedEmail.replace(/\./g, '_');
@@ -441,6 +460,22 @@ export const GymProvider = ({ children }) => {
         addStudent,
         updateStudent,
         deleteStudent,
+        // Gera (ou regenera) o código de acesso de um aluno já existente.
+        generateStudentCode: async (studentId) => {
+            const basePath = `users/${user.tenantId || user.uid}`;
+            const tenantId = user.tenantId || user.uid;
+            let accessCode = null;
+            for (let i = 0; i < 5; i++) {
+                const c = generateAccessCode();
+                const codeSnap = await getDoc(doc(db, 'student_codes', c));
+                if (!codeSnap.exists()) { accessCode = c; break; }
+            }
+            if (accessCode) {
+                await setDoc(doc(db, 'student_codes', accessCode), { tenantId, studentId });
+                await updateDoc(doc(db, `${basePath}/students`, studentId), { accessCode });
+            }
+            return accessCode;
+        },
         expenses,
         addExpense,
         deleteExpense,
