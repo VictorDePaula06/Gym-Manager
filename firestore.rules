@@ -39,6 +39,10 @@ service cloud.firestore {
         match /training_logs/{logId} {
           allow read, write: if request.auth != null;
         }
+        // Aluno envia check-ins (feedback periódico)
+        match /checkins/{checkinId} {
+          allow read, write: if request.auth != null;
+        }
         match /{subDoc=**} {
           allow read: if true;
         }

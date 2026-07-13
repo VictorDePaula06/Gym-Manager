@@ -14,8 +14,10 @@ export default function StudentLayout() {
     // O personal pode liberar um aluno específico (accessException) — ex: quando
     // o aluno entra em contato negociando. Se ele pagar, desbloqueia sozinho.
     const studentData = students.find(s => s.id === user?.studentId);
-    const studentActive = studentData?.status?.toLowerCase() === 'active';
-    const isOverdue = studentData ? (studentActive && getPaymentStatus(studentData).isOverdue) : false;
+    // Bloqueia a menos que o aluno esteja EXPLICITAMENTE inativo.
+    const st = (studentData?.status || '').toLowerCase();
+    const studentInactive = st === 'inactive' || st === 'inativo';
+    const isOverdue = studentData ? (!studentInactive && getPaymentStatus(studentData).isOverdue) : false;
     const isBlocked = isOverdue && !studentData?.accessException;
     const onHome = location.pathname === '/student' || location.pathname === '/student/';
 

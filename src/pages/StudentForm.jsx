@@ -102,6 +102,9 @@ export default function StudentForm() {
     const [saving, setSaving] = useState(false);
     const [itemPhoto, setItemPhoto] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
+    // Cadastro: o aluno já pagou a 1ª mensalidade?
+    const [firstPaymentPaid, setFirstPaymentPaid] = useState(true);
+    const [firstPaymentMethod, setFirstPaymentMethod] = useState('Dinheiro');
     const fileInputRef = useRef(null);
 
     useEffect(() => {
@@ -202,6 +205,35 @@ export default function StudentForm() {
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Campos obrigatórios (tudo, exceto CPF, endereço e e-mail/senha)
+        const requiredFields = [
+            { key: 'name', label: 'Nome completo' },
+            { key: 'gender', label: 'Gênero' },
+            { key: 'birthDate', label: 'Data de nascimento' },
+            { key: 'phone', label: 'Telefone' },
+            { key: 'objective', label: 'Objetivo principal' },
+            { key: 'routine', label: 'Rotina / trabalho' },
+            { key: 'trainingFrequency', label: 'Frequência semanal' },
+            { key: 'level', label: 'Nível / experiência' },
+            { key: 'trainingLocation', label: 'Local de treino' },
+            { key: 'sessionTime', label: 'Tempo por sessão' },
+            { key: 'plan', label: 'Tipo de plano' },
+            { key: 'price', label: 'Valor da mensalidade' },
+            { key: 'startDate', label: 'Data de início' },
+        ];
+        for (const f of requiredFields) {
+            const v = formData[f.key];
+            if (v === undefined || v === null || String(v).trim() === '') {
+                addToast(`Preencha: ${f.label}.`, 'error');
+                return;
+            }
+        }
+        if (isNaN(parseInt(formData.paymentDay))) {
+            addToast('Escolha o dia de pagamento.', 'error');
+            return;
+        }
+
         setSaving(true);
         try {
             let photoUrl = formData.profilePictureUrl;
@@ -211,6 +243,22 @@ export default function StudentForm() {
                 await uploadBytes(photoRef, itemPhoto);
                 photoUrl = await getDownloadURL(photoRef);
             }
+
+                // Cadastro novo: registra (ou não) o 1º pagamento conforme a pergunta.
+                let firstPaymentFields = {};
+                if (!id && firstPaymentPaid) {
+                    const todayISOStr = new Date().toISOString();
+                    firstPaymentFields = {
+                        lastPaymentDate: todayISOStr,
+                        paymentHistory: [{
+                            date: todayISOStr,
+                            description: 'Mensalidade - matrícula (1º pagamento)',
+                            value: parseFloat(formData.price) || 0,
+                            status: 'Paid',
+                            method: firstPaymentMethod,
+                        }],
+                    };
+                }
 
                 // --- Sincronização Inteligente de Vencimento (Fixo e Ancorado) ---
                 let nextPaymentDate = null;
@@ -228,7 +276,7 @@ export default function StudentForm() {
                     now.setHours(0, 0, 0, 0); 
                     
                     // 2. Tentar achar o ÚLTIMO pagamento REAL do histórico se lastPaymentDate falhar
-                    let lastPayment = formData.lastPaymentDate;
+                    let lastPayment = firstPaymentFields.lastPaymentDate || formData.lastPaymentDate;
                     if (!lastPayment && formData.paymentHistory && formData.paymentHistory.length > 0) {
                         lastPayment = formData.paymentHistory[0].date;
                     }
@@ -272,8 +320,17 @@ export default function StudentForm() {
                     nextPaymentDate = syncDate.toISOString();
                 }
 
+            // Aluno novo que NÃO pagou → entra em "período de início" (5 dias) e
+            // depois vira pendente. Marca a flag pra lógica de status.
+            if (!id && !firstPaymentPaid) {
+                const startD = formData.startDate ? new Date(formData.startDate) : new Date();
+                nextPaymentDate = (isNaN(startD.getTime()) ? new Date() : startD).toISOString();
+                firstPaymentFields = { ...firstPaymentFields, awaitingFirstPayment: true };
+            }
+
             const dataToSave = {
                 ...formData,
+                ...firstPaymentFields,
                 profilePictureUrl: photoUrl || null,
                 nextPaymentDate: nextPaymentDate
             };
@@ -814,6 +871,7 @@ export default function StudentForm() {
                                 step="0.01"
                                 value={formData.price}
                                 onChange={handleChange}
+                                required
                                 style={inputStyle}
                                 placeholder="ex: 89.90"
                             />
@@ -845,6 +903,38 @@ export default function StudentForm() {
                             </select>
                         </div>
                     </div>
+
+                    {/* Pergunta de 1º pagamento (só no cadastro novo) */}
+                    {!id && (
+                        <div style={{ marginTop: '1rem', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--card-bg)' }}>
+                            <label style={{ ...labelStyle, marginBottom: '0.6rem' }}>O aluno já pagou a primeira mensalidade?</label>
+                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                <button type="button" onClick={() => setFirstPaymentPaid(true)}
+                                    style={{ flex: 1, minWidth: '120px', padding: '0.65rem', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, border: `1px solid ${firstPaymentPaid ? 'var(--primary)' : 'var(--border-glass)'}`, background: firstPaymentPaid ? 'var(--primary)' : 'transparent', color: firstPaymentPaid ? '#fff' : 'var(--text-main)' }}>
+                                    Sim, já pagou
+                                </button>
+                                <button type="button" onClick={() => setFirstPaymentPaid(false)}
+                                    style={{ flex: 1, minWidth: '120px', padding: '0.65rem', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, border: `1px solid ${!firstPaymentPaid ? '#ef4444' : 'var(--border-glass)'}`, background: !firstPaymentPaid ? '#ef4444' : 'transparent', color: !firstPaymentPaid ? '#fff' : 'var(--text-main)' }}>
+                                    Não, ainda não
+                                </button>
+                            </div>
+                            {firstPaymentPaid ? (
+                                <div style={{ marginTop: '0.85rem' }}>
+                                    <label style={{ ...labelStyle, fontSize: '0.78rem' }}>Forma de pagamento</label>
+                                    <select value={firstPaymentMethod} onChange={(e) => setFirstPaymentMethod(e.target.value)} style={inputStyle}>
+                                        <option>Dinheiro</option>
+                                        <option>Pix</option>
+                                        <option>Cartão de Crédito</option>
+                                        <option>Cartão de Débito</option>
+                                        <option>Transferência</option>
+                                    </select>
+                                    <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.4rem 0 0' }}>Vamos registrar esse 1º pagamento no histórico e marcar o próximo vencimento.</p>
+                                </div>
+                            ) : (
+                                <p style={{ fontSize: '0.72rem', color: '#f59e0b', margin: '0.6rem 0 0' }}>O aluno vai aparecer como <strong>pendente</strong> no financeiro até você registrar o pagamento.</p>
+                            )}
+                        </div>
+                    )}
 
                     <div style={{ marginTop: '1.5rem' }}>
                         <label style={labelStyle}>Status</label>

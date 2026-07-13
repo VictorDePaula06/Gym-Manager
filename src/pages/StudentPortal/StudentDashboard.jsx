@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { getPaymentStatus } from '../../utils/payments';
+import CheckinCard from './CheckinCard';
 
 export default function StudentDashboard() {
     const { user } = useAuth();
@@ -75,6 +76,8 @@ export default function StudentDashboard() {
                 <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {studentData.name.split(' ')[0]}! 👋</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Pronto para o treino de hoje?</p>
             </div>
+
+            <CheckinCard />
 
             <div className="student-home-grid">
             {/* Weekly Activity Tracker */}

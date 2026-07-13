@@ -43,14 +43,40 @@ export const computeFirstDueDate = (startDate, paymentDay) => {
     return due;
 };
 
+// Dias de "período de início" para o aluno que ainda não fez o 1º pagamento.
+export const FIRST_PAYMENT_GRACE_DAYS = 5;
+
 // Status completo: vencimento, se está atrasado, quantos dias e QUANTAS mensalidades em aberto.
 export const getPaymentStatus = (student) => {
-    const next = getNextPaymentDate(student);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Aluno que ainda NÃO tem NENHUM pagamento registrado: período de início
+    // (X dias) e depois vira pendente. Pega tanto quem foi marcado no cadastro
+    // (awaitingFirstPayment) quanto quem simplesmente nunca pagou.
+    const neverPaid = !toDate(student?.lastPaymentDate)
+        && !(Array.isArray(student?.paymentHistory) && student.paymentHistory.some(p => p?.status === 'Paid'));
+    if (student?.awaitingFirstPayment || neverPaid) {
+        const start = toDate(student.startDate) || today;
+        const graceEnd = new Date(start);
+        graceEnd.setHours(0, 0, 0, 0);
+        graceEnd.setDate(graceEnd.getDate() + FIRST_PAYMENT_GRACE_DAYS);
+        const daysRemaining = Math.ceil((graceEnd - today) / (1000 * 60 * 60 * 24));
+        const withinGrace = today <= graceEnd;
+        return {
+            next: graceEnd,
+            isOverdue: !withinGrace,
+            daysRemaining,
+            cyclesOverdue: withinGrace ? 0 : 1,
+            awaitingFirst: withinGrace,
+            neverPaid: true,
+        };
+    }
+
+    const next = getNextPaymentDate(student);
+
     if (!next) {
-        return { next: null, isOverdue: false, daysRemaining: null, cyclesOverdue: 0 };
+        return { next: null, isOverdue: false, daysRemaining: null, cyclesOverdue: 0, awaitingFirst: false, neverPaid: false };
     }
 
     const n = new Date(next);
@@ -69,5 +95,5 @@ export const getPaymentStatus = (student) => {
         }
     }
 
-    return { next, isOverdue, daysRemaining, cyclesOverdue };
+    return { next, isOverdue, daysRemaining, cyclesOverdue, awaitingFirst: false, neverPaid: false };
 };

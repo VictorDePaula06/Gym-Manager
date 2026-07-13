@@ -44,14 +44,19 @@ export const AuthProvider = ({ children }) => {
                         const link = linkSnap.exists() ? linkSnap.data() : null;
 
                         if (link && link.studentId && link.tenantId) {
-                            // Aluno já vinculado → entra direto como aluno
+                            // Aluno já vinculado → entra direto como aluno.
+                            // Usa um objeto PRÓPRIO (não mutar o User do Firebase, cujo
+                            // tenantId é read-only e quebraria o caminho do tenant).
                             sessionStorage.removeItem('student_login_intent');
-                            currentUser.role = 'student';
-                            currentUser.tenantId = link.tenantId;
-                            currentUser.studentId = link.studentId;
-                            currentUser.name = link.name || currentUser.displayName || 'Aluno';
                             setPendingStudentLink(null);
-                            setUser(currentUser);
+                            setUser({
+                                email: currentUser.email,
+                                name: link.name || currentUser.displayName || 'Aluno',
+                                studentId: link.studentId,
+                                tenantId: link.tenantId,
+                                role: 'student',
+                                uid: currentUser.uid,
+                            });
                             setLoading(false);
                             return;
                         }
@@ -358,11 +363,14 @@ export const AuthProvider = ({ children }) => {
         sessionStorage.removeItem('student_login_intent');
         const u = auth.currentUser;
         if (u) {
-            u.role = 'student';
-            u.tenantId = tenantId;
-            u.studentId = studentId;
-            u.name = name;
-            setUser(u);
+            setUser({
+                email: u.email,
+                name,
+                studentId,
+                tenantId,
+                role: 'student',
+                uid: u.uid,
+            });
         }
         setPendingStudentLink(null);
     };

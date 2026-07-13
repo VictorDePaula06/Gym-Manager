@@ -4,6 +4,7 @@ import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getD
 import { setGeminiKey, clearGeminiKey } from '../services/gemini';
 import { computeFirstDueDate } from '../utils/payments';
 import { planLimits } from '../config/plans';
+import { normalizeCheckin } from '../config/checkin';
 
 const GymContext = createContext();
 
@@ -42,7 +43,7 @@ export const GymProvider = ({ children }) => {
             setExpenses([]);
             setTeachers([]);
             setTeacherPayments([]);
-            setSettings({ gymName: 'Vector GymHub', logoUrl: null, theme: 'dark' });
+            setSettings({ gymName: 'Vector GymHub', logoUrl: null, theme: 'dark', checkinConfig: normalizeCheckin(null) });
             setAiConfig({ configured: false });
             clearGeminiKey(); // remove a chave de IA da memória ao deslogar
 
@@ -139,6 +140,7 @@ export const GymProvider = ({ children }) => {
                 whatsapp: data.whatsapp || '',
                 theme: data.theme || 'dark',
                 enableTeachers: data.enableTeachers !== undefined ? data.enableTeachers : true, // Default to true for existing users
+                checkinConfig: normalizeCheckin(data.checkinConfig),
             });
 
             if (data.theme === 'light') {

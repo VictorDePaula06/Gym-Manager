@@ -7,7 +7,10 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2, Lock, Unlock } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2, Lock, Unlock, ClipboardList } from 'lucide-react';
+import { subscribeCheckins } from '../services/checkin';
+import { DEFAULT_CHECKIN } from '../config/checkin';
+import { getNextPaymentDate, getPaymentStatus } from '../utils/payments';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -46,6 +49,7 @@ export default function StudentDetails() {
     const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'overview');
     const [assessments, setAssessments] = useState([]);
     const [trainingLogs, setTrainingLogs] = useState([]);
+    const [checkins, setCheckins] = useState([]);
     const [loadingLogs, setLoadingLogs] = useState(false);
     const [showAssessmentForm, setShowAssessmentForm] = useState(false);
     const [editingAssessmentId, setEditingAssessmentId] = useState(null);
@@ -59,6 +63,14 @@ export default function StudentDetails() {
     const [aiInstruction, setAiInstruction] = useState(''); // Instrução livre para a IA
     const [isGeneratingSheet, setIsGeneratingSheet] = useState(false);
     const [genStep, setGenStep] = useState(0);
+
+    // Histórico de check-ins do aluno (feedback periódico)
+    useEffect(() => {
+        const tenantId = user?.tenantId || user?.uid;
+        if (!tenantId || !id) return;
+        const unsub = subscribeCheckins(tenantId, id, setCheckins);
+        return () => unsub();
+    }, [user, id]);
 
     useEffect(() => {
         if (!isGeneratingSheet) { setGenStep(0); return; }
@@ -1049,6 +1061,7 @@ export default function StudentDetails() {
             await updateStudent(id, {
                 ...student,
                 status: 'Active',
+                awaitingFirstPayment: false, // deixou de aguardar o 1º pagamento
                 paymentHistory: newHistory,
                 lastPaymentDate: paymentDateObj.toISOString(),
                 nextPaymentDate: nextDueDate.toISOString()
@@ -1866,15 +1879,17 @@ export default function StudentDetails() {
             {/* Navigation Tabs */}
             <div className="tab-navigation desktop-only" style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem', overflowX: 'auto' }}>
                 <TabButton id="overview" label="Visão Geral" icon={User} />
+                <TabButton id="checkins" label="Check-ins" icon={ClipboardList} />
                 <TabButton id="assessments" label="Avaliações" icon={Scale} />
                 <TabButton id="map" label="Mapa Corporal" icon={Accessibility} />
                 <TabButton id="workouts" label="Treinos" icon={Dumbbell} />
                 <TabButton id="financial" label="Financeiro" icon={DollarSign} />
                 <TabButton id="photos" label="Fotos" icon={ImageIcon} />
             </div>
-            
+
             <div className="tab-navigation mobile-only" style={{ display: 'none', overflowX: 'auto', gap: '0.5rem', padding: '0.5rem 0', borderBottom: '1px solid var(--border-glass)' }}>
                 <TabButton id="overview" label="Visão Geral" icon={User} />
+                <TabButton id="checkins" label="Check-ins" icon={ClipboardList} />
                 <TabButton id="assessments" label="Avaliações" icon={Scale} />
                 <TabButton id="map" label="Mapa" icon={Accessibility} />
                 <TabButton id="workouts" label="Treinos" icon={Dumbbell} />
@@ -1903,23 +1918,11 @@ export default function StudentDetails() {
                             {/* Plan Summary */}
                             {/* Plan Summary */}
                             {(() => {
-                                const today = new Date();
-                                today.setHours(0, 0, 0, 0);
-
-                                let nextPaymentDate = null;
-                                if (student.nextPaymentDate) {
-                                    nextPaymentDate = student.nextPaymentDate.seconds 
-                                        ? new Date(student.nextPaymentDate.seconds * 1000) 
-                                        : new Date(student.nextPaymentDate);
-                                } else {
-                                    const dueDay = parseInt(student.paymentDay);
-                                    if (!isNaN(dueDay)) {
-                                        nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
-                                    }
-                                }
-
-                                if (nextPaymentDate) nextPaymentDate.setHours(0, 0, 0, 0);
-                                const isOverdue = nextPaymentDate && nextPaymentDate < today;
+                                // Fonte única de verdade (evita datas divergentes entre telas)
+                                const ps = getPaymentStatus(student);
+                                const nextPaymentDate = ps.next;
+                                const isOverdue = ps.isOverdue;
+                                const awaitingFirst = ps.awaitingFirst;
 
                                 return (
                                     <div className="glass-panel" style={{
@@ -1931,6 +1934,7 @@ export default function StudentDetails() {
                                         <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
                                             Plano Atual
                                             {isOverdue && <span style={{ marginLeft: '0.5rem', color: '#ef4444', fontWeight: 'bold' }}>(PENDENTE)</span>}
+                                            {awaitingFirst && <span style={{ marginLeft: '0.5rem', color: '#f59e0b', fontWeight: 'bold' }}>(INÍCIO)</span>}
                                         </h4>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                                             <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
@@ -1950,12 +1954,20 @@ export default function StudentDetails() {
                                             </span>
                                         </div>
                                         <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                                            {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
-                                            <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
-                                                {nextPaymentDate
-                                                    ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
-                                                    : 'Data não def.'}
-                                            </span>
+                                            {awaitingFirst ? (
+                                                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                                                    Período de início · aguardando 1º pagamento ({ps.daysRemaining} {ps.daysRemaining === 1 ? 'dia' : 'dias'})
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
+                                                    <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
+                                                        {nextPaymentDate
+                                                            ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+                                                            : 'Data não def.'}
+                                                    </span>
+                                                </>
+                                            )}
                                         </p>
 
                                         {isOverdue && (
@@ -2321,6 +2333,89 @@ export default function StudentDetails() {
                 )}
 
 
+
+                {activeTab === 'checkins' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <ClipboardList size={20} color="var(--primary)" />
+                            <h3 style={{ margin: 0 }}>Check-ins do aluno</h3>
+                        </div>
+                        {checkins.length === 0 ? (
+                            <div className="glass-panel" style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                Nenhum check-in ainda. Assim que o aluno responder, aparece aqui.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: '1rem', alignItems: 'start' }}>
+                            {checkins.map((c) => {
+                                const cfgQs = settings?.checkinConfig?.questions?.length ? settings.checkinConfig.questions : DEFAULT_CHECKIN.questions;
+                                const has = (v) => v !== undefined && v !== '' && v !== null;
+                                const answered = cfgQs.filter((q) => has(c.answers?.[q.id]));
+                                const scales = answered.filter((q) => q.type === 'scale');
+                                const chips = answered.filter((q) => q.type === 'number' || q.type === 'choice');
+                                const texts = answered.filter((q) => q.type === 'text');
+                                let rel = '';
+                                if (c.createdAt) {
+                                    const d = Math.floor((Date.now() - new Date(c.createdAt).getTime()) / 86400000);
+                                    rel = d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`;
+                                }
+                                return (
+                                    <div key={c.id} className="glass-panel" style={{ padding: '1.25rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem' }}>
+                                            <span style={{ fontWeight: 700 }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' }) : ''}</span>
+                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{rel}</span>
+                                        </div>
+
+                                        {/* Escalas em grid */}
+                                        {scales.length > 0 && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: chips.length || texts.length ? '1rem' : 0 }}>
+                                                {scales.map((q) => {
+                                                    const val = Number(c.answers[q.id]);
+                                                    return (
+                                                        <div key={q.id} style={{ background: 'var(--input-bg)', borderRadius: '10px', padding: '0.6rem 0.75rem' }}>
+                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.label}</div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <div style={{ display: 'flex', gap: '3px', flex: 1 }}>
+                                                                    {[1, 2, 3, 4, 5].map((n) => (
+                                                                        <span key={n} style={{ flex: 1, height: '6px', borderRadius: '3px', background: n <= val ? 'var(--primary)' : 'var(--border-glass)' }} />
+                                                                    ))}
+                                                                </div>
+                                                                <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--primary)' }}>{val}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* Número / opções como chips */}
+                                        {chips.length > 0 && (
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: texts.length ? '1rem' : 0 }}>
+                                                {chips.map((q) => (
+                                                    <span key={q.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--input-bg)', borderRadius: '20px', padding: '0.35rem 0.8rem', fontSize: '0.82rem' }}>
+                                                        <span style={{ color: 'var(--text-muted)' }}>{q.label}:</span>
+                                                        <strong>{String(c.answers[q.id])}</strong>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Comentários */}
+                                        {texts.map((q) => (
+                                            <div key={q.id} style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem', margin: '0.5rem 0', fontStyle: 'italic', color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                                                “{String(c.answers[q.id])}”
+                                            </div>
+                                        ))}
+
+                                        {answered.length === 0 && (
+                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Enviado sem respostas.</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {activeTab === 'map' && (
                     <div className="glass-panel" style={{ padding: '2rem', background: 'var(--card-bg)', minHeight: '600px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -3265,50 +3360,19 @@ export default function StudentDetails() {
 
                             <div className="glass-panel status-card">
                                 {(() => {
-                                    const today = new Date();
-                                    today.setHours(0, 0, 0, 0);
-
-                                    let nextPaymentDate = null;
-                                    if (student.nextPaymentDate) {
-                                        nextPaymentDate = student.nextPaymentDate.seconds 
-                                            ? new Date(student.nextPaymentDate.seconds * 1000) 
-                                            : new Date(student.nextPaymentDate);
-                                    } else {
-                                        // Fallback if no nextPaymentDate set but paymentDay exists
-                                        const dueDay = parseInt(student.paymentDay);
-                                        if (!isNaN(dueDay)) {
-                                            nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), dueDay);
-                                            // If today is past due day, assume next month? 
-                                            // ideally we rely on stored nextPaymentDate. 
-                                            // If we are guessing, and today > dueDay, maybe they are late for THIS month?
-                                            // Let's stick to a simple logic: if no date stored, assume current month's day.
-                                        }
-                                    }
-
-                                    // Check overlap
-                                    // Make sure we clear time for comparison
-                                    if (nextPaymentDate) {
-                                        nextPaymentDate.setHours(0, 0, 0, 0);
-                                    }
-
-                                    const isOverdue = nextPaymentDate && nextPaymentDate < today;
-
+                                    const ps = getPaymentStatus(student);
+                                    const nextPaymentDate = ps.next;
+                                    const color = ps.awaitingFirst ? '#f59e0b' : ps.isOverdue ? '#ef4444' : '#10b981';
+                                    const label = ps.awaitingFirst ? 'Período de início' : ps.isOverdue ? 'Pendente' : 'Em dia';
                                     return (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            {isOverdue ? (
-                                                <AlertCircle color="#ef4444" size={24} />
-                                            ) : (
-                                                <CheckCircle color="#10b981" size={24} />
-                                            )}
+                                            {ps.isOverdue ? <AlertCircle color={color} size={24} /> : <CheckCircle color={color} size={24} />}
                                             <div>
-                                                <h4 style={{ color: isOverdue ? '#ef4444' : '#10b981', margin: 0 }}>
-                                                    Status: {isOverdue ? 'Pendente' : 'Em dia'}
-                                                </h4>
+                                                <h4 style={{ color, margin: 0 }}>Status: {label}</h4>
                                                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                                    {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
-                                                    {nextPaymentDate
-                                                        ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
-                                                        : 'Data não def.'}
+                                                    {ps.awaitingFirst
+                                                        ? `Aguardando 1º pagamento · ${ps.daysRemaining} ${ps.daysRemaining === 1 ? 'dia' : 'dias'} restantes`
+                                                        : `${ps.isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}${nextPaymentDate ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' }) : 'Data não def.'}`}
                                                 </p>
                                             </div>
                                         </div>
@@ -3439,14 +3503,9 @@ export default function StudentDetails() {
                                         ))
                                     ) : (
                                         <tr>
-                                            <td style={{ padding: '1rem' }}>{new Date(student.startDate).toLocaleDateString()}</td>
-                                            <td>Plano {student.plan} - Contratação (Legado)</td>
-                                            <td>
-                                                {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : 'R$ 89,90'}
+                                            <td colSpan={6} style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                                Nenhum pagamento registrado ainda.
                                             </td>
-                                            <td><span style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px' }}>Pago</span></td>
-                                            <td>Cartão de Crédito</td>
-                                            <td>{/* Actions placeholder for legacy */}</td>
                                         </tr>
                                     )}
                                 </tbody>

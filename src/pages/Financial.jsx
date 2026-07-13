@@ -512,17 +512,20 @@ export default function Financial() {
                                     </td>
                                     <td data-label="Status">
                                         {(() => {
-                                            const cycles = getPaymentStatus(student).cyclesOverdue;
+                                            const ps = getPaymentStatus(student);
                                             const paid = student.currentMonthStatus === 'Paid';
+                                            const awaiting = !paid && ps.awaitingFirst;
+                                            const bg = paid ? 'rgba(16, 185, 129, 0.2)' : awaiting ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+                                            const col = paid ? '#10b981' : awaiting ? '#f59e0b' : '#ef4444';
+                                            const text = paid ? 'Em dia' : awaiting ? 'Início' : (ps.cyclesOverdue > 1 ? `${ps.cyclesOverdue} vencidas` : 'Pendente');
                                             return (
                                                 <span style={{
                                                     padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.85rem',
-                                                    background: paid ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                                    color: paid ? '#10b981' : '#ef4444',
+                                                    background: bg, color: col,
                                                     display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
                                                 }}>
                                                     {paid ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
-                                                    {paid ? 'Em dia' : (cycles > 1 ? `${cycles} vencidas` : 'Pendente')}
+                                                    {text}
                                                 </span>
                                             );
                                         })()}

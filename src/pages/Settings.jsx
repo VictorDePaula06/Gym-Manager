@@ -8,6 +8,7 @@ import { storage, db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, getDoc, doc, setDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 import { validateApiKey } from '../services/gemini';
+import CheckinSettings from './CheckinSettings';
 
 export default function Settings() {
     const { settings, updateSettings, aiConfig, updateAiConfig, aiPlanBlocked, planInfo, plan, students } = useGym();
@@ -716,6 +717,9 @@ export default function Settings() {
                             🔒 Sua chave é validada antes de salvar e guardada de forma privada — não fica visível para seus alunos.
                         </p>
                     </div>
+
+                    {/* Check-in dos alunos */}
+                    <CheckinSettings />
 
                     {/* Advanced / Maintenance Section */}
                     <div className="glass-panel" style={{ padding: '2rem', marginTop: '2rem', border: '1px dashed var(--border-glass)' }}>
