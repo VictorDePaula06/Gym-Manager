@@ -81,7 +81,7 @@ export default function Layout() {
                         </svg>
                     </button>
                     <span style={{ marginLeft: '1rem', fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>
-                        {settings?.gymName || 'GymManager'}
+                        {settings?.gymName || 'Alivia Fitness'}
                     </span>
                 </div>
             )}
@@ -158,7 +158,7 @@ export default function Layout() {
                         margin: 0,
                         whiteSpace: 'nowrap'
                     }}>
-                        {settings?.gymName || 'GymManager'}
+                        {settings?.gymName || 'Alivia Fitness'}
                     </h1>
                 </div>
 

@@ -33,7 +33,7 @@ export default function Settings() {
         if (settings) {
             setFormData(prev => ({
                 ...prev,
-                gymName: settings.gymName || 'GymManager',
+                gymName: settings.gymName || 'Alivia Fitness',
                 whatsapp: settings.whatsapp || '',
                 theme: settings.theme || 'dark'
             }));

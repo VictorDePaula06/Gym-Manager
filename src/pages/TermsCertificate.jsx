@@ -78,7 +78,7 @@ const TermsCertificate = () => {
                         Certificado de Adesão
                     </h1>
                     <p style={{ fontSize: '1rem', color: '#64748b', fontStyle: 'italic' }}>
-                        Vector GymHub - Termos de Uso e Política de Privacidade
+                        Alivia Fitness - Termos de Uso e Política de Privacidade
                     </p>
                 </div>
 
@@ -88,7 +88,7 @@ const TermsCertificate = () => {
                         Certificamos para os devidos fins jurídicos que <strong>{tenant.ownerName || 'USUÁRIO DO SISTEMA'}</strong>,
                         portador do documento <strong>{tenant.documentNumber || 'N/A'}</strong> ({tenant.personType === 'pj' ? 'CNPJ' : 'CPF'}),
                         inscrito sob o email <strong>{tenant.email}</strong>, operando a unidade de negócio denominada <strong>{tenant.gymName}</strong>,
-                        realizou o aceite digital irrevogável dos Termos de Uso e Políticas de Privacidade da plataforma Vector GymHub.
+                        realizou o aceite digital irrevogável dos Termos de Uso e Políticas de Privacidade da plataforma Alivia Fitness.
                     </p>
                     <p style={{ marginTop: '1.5rem' }}>
                         O aceite foi registrado em nossos sistemas seguros na data de:

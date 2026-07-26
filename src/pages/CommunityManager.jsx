@@ -369,7 +369,7 @@ export default function CommunityManager() {
                         <div style={{ display: 'grid', gap: '1rem', marginBottom: '1.5rem' }}>
                             <div><label style={labelStyle}>Título</label><input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex: Julho sem faltar treino" style={inputStyle} /></div>
                             <div><label style={labelStyle}>Descrição / regras</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} placeholder="Ex: Complete o máximo de treinos possíveis este mês!" style={{ ...inputStyle, resize: 'vertical' }} /></div>
-                            <div><label style={labelStyle}>Prêmio (opcional)</label><input value={form.prize} onChange={e => setForm({ ...form, prize: e.target.value })} placeholder="Ex: Camiseta Oficial Vector" style={inputStyle} /></div>
+                            <div><label style={labelStyle}>Prêmio (opcional)</label><input value={form.prize} onChange={e => setForm({ ...form, prize: e.target.value })} placeholder="Ex: 1 mês grátis" style={inputStyle} /></div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div><label style={labelStyle}>Início</label><input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} style={inputStyle} /></div>
                                 <div><label style={labelStyle}>Fim</label><input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} style={inputStyle} /></div>

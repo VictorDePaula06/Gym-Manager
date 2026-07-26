@@ -27,9 +27,9 @@ export default defineConfig({
       includeAssets: ['favicon.png', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Vector GymHub',
-        short_name: 'Vector',
-        description: 'Gerenciamento de Academia Completo',
+        name: 'Alivia Fitness',
+        short_name: 'Alivia',
+        description: 'Gestão para Personal Trainers — alunos, treinos e financeiro',
         theme_color: '#121214',
         background_color: '#121214',
         display: 'standalone',
@@ -37,17 +37,17 @@ export default defineConfig({
         start_url: '/app',
         icons: [
           {
-            src: 'app-icon-192-v2.png',
+            src: 'icon-alivia.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'app-icon-512-v2.png',
+            src: 'icon-alivia.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'app-icon-512-v2.png',
+            src: 'icon-alivia.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

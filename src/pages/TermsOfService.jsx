@@ -144,7 +144,7 @@ const TermsOfService = () => {
                         <Shield color="#10b981" /> Termos de Uso e Política de Privacidade
                     </h1>
                     <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>
-                        Para continuar utilizando o Vector GymHub, você precisa ler e aceitar nossos termos.
+                        Para continuar utilizando o Alivia Fitness, você precisa ler e aceitar nossos termos.
                     </p>
                 </div>
 

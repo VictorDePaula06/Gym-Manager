@@ -152,7 +152,7 @@ const VectorGymHub = () => {
                 <header className="fixed top-0 w-full z-40 bg-[#0f172a]/80 backdrop-blur-md border-b border-white/5 px-8 py-6 flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#06b6d4] to-[#3b82f6]"></div>
-                        <span className="text-2xl font-bold tracking-tight">Vector GymHub</span>
+                        <span className="text-2xl font-bold tracking-tight">Alivia Fitness</span>
                     </div>
                     <div className="flex gap-4">
                         <button
@@ -333,7 +333,7 @@ const VectorGymHub = () => {
 
                 {/* Footer */}
                 <footer className="py-8 text-center text-gray-600 text-sm border-t border-white/5">
-                    <p>&copy; {new Date().getFullYear()} Vector GymHub. Todos os direitos reservados.</p>
+                    <p>&copy; {new Date().getFullYear()} Alivia Fitness. Todos os direitos reservados.</p>
                 </footer>
 
                 {/* Modal Overlay */}

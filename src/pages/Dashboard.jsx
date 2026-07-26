@@ -32,7 +32,7 @@ export default function Dashboard() {
     const { user, trialInfo } = useAuth();
     const [showPending, setShowPending] = useState(false); // Collapsed by default
 
-    const showOnboardingAlert = !loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp);
+    const showOnboardingAlert = !loading && !students.length && (!settings?.gymName || settings.gymName === 'Alivia Fitness' || !settings?.whatsapp);
 
     // --- Stats & Charts Logic ---
 
@@ -345,7 +345,7 @@ export default function Dashboard() {
             )}
 
             {/* Onboarding Alert */}
-            {(!loading && !students.length && (!settings?.gymName || settings.gymName === 'GymManager' || !settings?.whatsapp)) && (
+            {(!loading && !students.length && (!settings?.gymName || settings.gymName === 'Alivia Fitness' || !settings?.whatsapp)) && (
                 <div style={{
                     background: 'rgba(245, 158, 11, 0.1)',
                     border: '1px solid #f59e0b',

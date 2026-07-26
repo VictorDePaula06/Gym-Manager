@@ -72,7 +72,7 @@ export default function StudentLayout() {
                         </div>
                     )}
                     <div>
-                        <h1 style={{ fontSize: '1rem', fontWeight: 'bold', margin: 0 }}>{settings?.gymName || 'GymManager'}</h1>
+                        <h1 style={{ fontSize: '1rem', fontWeight: 'bold', margin: 0 }}>{settings?.gymName || 'Alivia Fitness'}</h1>
                         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>Portal do Aluno</p>
                     </div>
                 </div>

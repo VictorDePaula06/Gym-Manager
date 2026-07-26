@@ -70,7 +70,7 @@ const FeatureShowcase = () => {
             <div className="max-w-7xl mx-auto">
                 <div className="mb-20 text-center">
                     <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-500 mb-6">
-                        Por que escolher a <span className="text-[#ccff00]">Vector?</span>
+                        Por que escolher a <span className="text-[#ccff00]">Alivia?</span>
                     </h2>
                     <p className="text-gray-400 text-lg max-w-2xl mx-auto">
                         Tecnologia de ponta para transformar a gestão do seu negócio fitness.

@@ -26,7 +26,7 @@ export const GymProvider = ({ children }) => {
     const loading = loadingStudents || loadingSettings;
 
     const [settings, setSettings] = useState({
-        gymName: 'Vector GymHub',
+        gymName: 'Alivia Fitness',
         logoUrl: null,
         theme: 'dark'
     });
@@ -43,7 +43,7 @@ export const GymProvider = ({ children }) => {
             setExpenses([]);
             setTeachers([]);
             setTeacherPayments([]);
-            setSettings({ gymName: 'Vector GymHub', logoUrl: null, theme: 'dark', checkinConfig: normalizeCheckin(null) });
+            setSettings({ gymName: 'Alivia Fitness', logoUrl: null, theme: 'dark', checkinConfig: normalizeCheckin(null) });
             setAiConfig({ configured: false });
             clearGeminiKey(); // remove a chave de IA da memória ao deslogar
 
@@ -134,7 +134,7 @@ export const GymProvider = ({ children }) => {
             const data = docSnap.exists() ? docSnap.data() : {};
 
             setSettings({
-                gymName: data.gymName || 'Vector GymHub',
+                gymName: data.gymName || 'Alivia Fitness',
                 // Use local default logo if DB has none
                 logoUrl: data.logoUrl || '/logo.png',
                 whatsapp: data.whatsapp || '',

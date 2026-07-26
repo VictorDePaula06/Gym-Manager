@@ -27,7 +27,7 @@ const PricingCards = () => {
         });
     }, []);
 
-    const whatsappLink = "https://wa.me/5521982626387?text=Ol%C3%A1%21%20Gostaria%20de%20assinar%20o%20Vector%20GymHub%20para%20Personal%20Trainers.";
+    const whatsappLink = "https://wa.me/5521982626387?text=Ol%C3%A1%21%20Gostaria%20de%20assinar%20o%20Alivia%20Fitness%20para%20Personal%20Trainers.";
 
     const plans = [
         {

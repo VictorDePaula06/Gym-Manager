@@ -72,7 +72,7 @@ export default function PaymentRequired() {
                 <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', fontWeight: 'bold' }}>Hora de Assinar</h1>
                 <p style={{ maxWidth: '600px', fontSize: '1.1rem', color: '#9ca3af', marginBottom: '1rem', lineHeight: '1.6', margin: '0 auto' }}>
                     O período de teste (ou sua assinatura) expirou. <br />
-                    Para continuar aproveitando o <b>Gym Manager</b>, escolha um plano abaixo.
+                    Para continuar aproveitando o <b>Alivia Fitness</b>, escolha um plano abaixo.
                 </p>
             </div>
 

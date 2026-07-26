@@ -178,31 +178,8 @@ const Login = () => {
                 animation: 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
             }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <div style={{
-                        width: '6rem',
-                        height: '6rem',
-                        borderRadius: '1rem',
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 1.5rem auto',
-                        boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.4)',
-                        overflow: 'hidden'
-                    }}>
-                        <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <h1 style={{
-                        fontSize: '1.875rem',
-                        fontWeight: '700',
-                        color: 'white',
-                        marginBottom: '0.5rem',
-                        letterSpacing: '-0.025em',
-                        textShadow: '0 2px 10px rgba(0,0,0,0.3)'
-                    }}>
-                        Vector GymHub
-                    </h1>
-                    <p style={{ color: '#cbd5e1', fontSize: '0.95rem', fontWeight: '300' }}>Gerencie sua academia com excelência</p>
+                    <img src="/logo-Aliviaf.png" alt="Alivia Fitness" style={{ width: '220px', maxWidth: '85%', height: 'auto', margin: '0 auto 1rem', display: 'block', filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.35))' }} />
+                    <p style={{ color: '#cbd5e1', fontSize: '0.95rem', fontWeight: '300' }}>Gerencie sua consultoria com excelência</p>
                 </div>
 
                 <div style={{

@@ -116,9 +116,10 @@ export default function LandingPage() {
         <div ref={containerRef} style={container}>
             {/* Header — sem logo/nome (marca a definir) */}
             <header style={{ padding: '1.25rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'fixed', width: '100%', top: 0, zIndex: 40, boxSizing: 'border-box', backdropFilter: 'blur(12px)', background: scrolled ? 'rgba(11,15,14,0.85)' : 'transparent', borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent', transition: 'all 0.3s' }}>
-                {/* Marca placeholder (só um ícone neutro, sem nome) */}
-                <div style={{ width: '40px', height: '40px', borderRadius: '11px', background: `linear-gradient(135deg, ${ACCENT}, ${ACCENT_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 16px rgba(16,185,129,0.35)' }}>
-                    <Dumbbell size={22} color="white" />
+                {/* Marca */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                    <img src="/logo-Aliviaf.png" alt="Alivia Fitness" style={{ height: '100px', width: 'auto' }} />
+
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                     <button onClick={() => navigate('/login')} style={{ background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '0.6rem 1.2rem', borderRadius: '99px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600' }}>Entrar</button>
@@ -131,10 +132,6 @@ export default function LandingPage() {
                 <div style={{ position: 'absolute', top: '-15%', left: '50%', transform: 'translateX(-50%)', width: '80%', height: '55%', background: 'radial-gradient(circle, rgba(16,185,129,0.16) 0%, rgba(0,0,0,0) 70%)', zIndex: 0, pointerEvents: 'none' }} />
 
                 <div className="hero-content" style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '820px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
-                    <div style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', padding: '0.6rem 1.3rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ color: ACCENT, fontSize: '0.9rem', fontWeight: 600 }}>💪 Feito para Personal Trainers</span>
-                    </div>
-
                     <h1 style={{ fontSize: 'clamp(2.6rem, 6vw, 5rem)', fontWeight: 800, lineHeight: 1.08, margin: 0, letterSpacing: '-0.02em', background: 'linear-gradient(to bottom, #ffffff, #9ca3af)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                         A plataforma definitiva<br />para sua{' '}
                         <span style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #34d399 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>consultoria</span>
@@ -426,7 +423,7 @@ export default function LandingPage() {
 
             {/* Footer (sem nome) */}
             <footer style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} · Todos os direitos reservados.</p>
+                <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} Alivia Fitness · Todos os direitos reservados.</p>
             </footer>
 
             {/* Responsivo */}
