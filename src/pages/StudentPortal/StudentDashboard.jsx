@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
-import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2 } from 'lucide-react';
+import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2, Weight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
@@ -149,6 +149,23 @@ export default function StudentDashboard() {
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0 }}>Vezes/Semana</p>
                 </div>
             </div>
+
+            {/* Volume Load da semana (séries × reps × carga) */}
+            {(() => {
+                const weekVolume = weeklyLogs.reduce((sum, l) => sum + (l.volumeLoad || 0), 0);
+                if (!weekVolume) return null;
+                return (
+                    <div className="glass-panel" style={{ padding: '1.1rem 1.25rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                        <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(16,185,129,0.15)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Weight size={22} />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: '1.15rem', fontWeight: 800 }}>{Math.round(weekVolume).toLocaleString('pt-BR')} kg</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Volume levantado essa semana</div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Payment Status Bar */}
             {(() => {

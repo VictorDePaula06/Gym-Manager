@@ -6,6 +6,7 @@ import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
 import RestTimer from '../../components/RestTimer';
 import { createPost, uploadPostImage } from '../../services/community';
+import { workoutVolumeLoad } from '../../utils/volumeLoad';
 
 export default function StudentWorkouts() {
     const { user } = useAuth();
@@ -140,6 +141,9 @@ export default function StudentWorkouts() {
             variation: activeVar,
             duration: durationMinutes,
             exercisesCompleted: exercises.length,
+            // Volume Load (séries × reps × carga) a partir da ficha prescrita —
+            // usado pra acompanhar a progressão semanal de carga do aluno.
+            volumeLoad: workoutVolumeLoad(exercises),
             completedAt: endTime.toISOString()
         };
 

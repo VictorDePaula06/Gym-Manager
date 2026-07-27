@@ -7,14 +7,15 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2, Lock, Unlock, ClipboardList } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2, Lock, Unlock, ClipboardList, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { subscribeCheckins } from '../services/checkin';
 import { DEFAULT_CHECKIN } from '../config/checkin';
 import { getNextPaymentDate, getPaymentStatus } from '../utils/payments';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ComposedChart, Bar, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { weeklyVolumeLoad } from '../utils/volumeLoad';
 import BodyMeasurementMap from '../components/BodyMeasurementMap';
 import StudentCard from '../components/StudentCard';
 import { generateWorkout } from '../utils/workoutRecommendations';
@@ -2740,6 +2741,73 @@ export default function StudentDetails() {
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Volume Load: séries × reps × carga, por semana */}
+                            {(() => {
+                                const weeks = weeklyVolumeLoad(trainingLogs, 6);
+                                const filledWeeks = weeks.filter(w => w.volume > 0);
+                                if (filledWeeks.length === 0) return null;
+
+                                const thisWeek = weeks[weeks.length - 1].volume;
+                                const lastWeek = weeks[weeks.length - 2]?.volume || 0;
+                                const diffPct = lastWeek > 0 ? Math.round(((thisWeek - lastWeek) / lastWeek) * 100) : null;
+                                const TrendIcon = diffPct === null || diffPct === 0 ? Minus : diffPct > 0 ? TrendingUp : TrendingDown;
+                                const trendColor = diffPct === null || diffPct === 0 ? 'var(--text-muted)' : diffPct > 0 ? '#10b981' : '#ef4444';
+                                const maxVolume = Math.max(...weeks.map(w => w.volume));
+
+                                return (
+                                    <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                            <div>
+                                                <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Volume Load semanal</h3>
+                                                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Séries × repetições × carga, por semana (kg)</p>
+                                            </div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)' }}>{thisWeek.toLocaleString('pt-BR')} kg</div>
+                                                {diffPct !== null && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.3rem', fontSize: '0.82rem', fontWeight: 700, color: trendColor }}>
+                                                        <TrendIcon size={14} /> {diffPct > 0 ? '+' : ''}{diffPct}% vs. semana anterior
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {filledWeeks.length < 2 ? (
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
+                                                Começou a acompanhar essa semana. O gráfico de evolução aparece a partir da 2ª semana com treino registrado.
+                                            </p>
+                                        ) : (
+                                            <div style={{ width: '100%', height: '190px' }}>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <ComposedChart data={weeks} margin={{ top: 20, right: 8, left: 8, bottom: 0 }} barCategoryGap="32%">
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
+                                                        <XAxis dataKey="label" stroke="var(--text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                                                        <YAxis hide domain={[0, maxVolume * 1.3]} />
+                                                        <Tooltip
+                                                            cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                                                            formatter={(v) => [`${v.toLocaleString('pt-BR')} kg`, 'Volume']}
+                                                            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border-glass)', borderRadius: '8px', fontSize: '0.85rem' }}
+                                                        />
+                                                        <Bar dataKey="volume" radius={[6, 6, 0, 0]} maxBarSize={32}>
+                                                            {weeks.map((w, i) => (
+                                                                <Cell key={i} fill={i === weeks.length - 1 ? 'rgba(16,185,129,0.55)' : 'rgba(16,185,129,0.18)'} />
+                                                            ))}
+                                                        </Bar>
+                                                        <Line
+                                                            type="monotone"
+                                                            dataKey="volume"
+                                                            stroke="var(--primary)"
+                                                            strokeWidth={2.5}
+                                                            dot={{ r: 4, fill: 'var(--primary)', strokeWidth: 0 }}
+                                                            activeDot={{ r: 6 }}
+                                                        />
+                                                    </ComposedChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })()}
