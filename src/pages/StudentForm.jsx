@@ -410,6 +410,9 @@ export default function StudentForm() {
                 <div style={{ marginBottom: '2rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '1rem' }}>
                     <h1 style={{ fontSize: '1.8rem' }}>{id ? 'Editar Aluno' : 'Cadastrar Aluno'}</h1>
                     <p style={{ color: 'var(--text-muted)' }}>Preencha as informações para gerenciar o acesso e planos.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+                        <span style={{ color: 'var(--primary)' }}>*</span> Campos obrigatórios
+                    </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
@@ -496,7 +499,7 @@ export default function StudentForm() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                         <div>
-                            <label style={labelStyle}>Nome Completo</label>
+                            <label style={labelStyle}>Nome Completo *</label>
                             <input
                                 name="name"
                                 value={formData.name}
@@ -519,7 +522,7 @@ export default function StudentForm() {
                                 />
                             </div>
                             <div>
-                                <label style={labelStyle}>Gênero</label>
+                                <label style={labelStyle}>Gênero *</label>
                                 <select name="gender" value={formData.gender} onChange={handleChange} style={inputStyle}>
                                     <option value="">Selecione...</option>
                                     <option value="Male">Masculino</option>
@@ -529,7 +532,7 @@ export default function StudentForm() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                             <div>
-                                <label style={labelStyle}>Data de Nascimento {age !== '' && <span style={{ color: 'var(--primary)', marginLeft: '0.5rem' }}>({age} anos)</span>}</label>
+                                <label style={labelStyle}>Data de Nascimento * {age !== '' && <span style={{ color: 'var(--primary)', marginLeft: '0.5rem' }}>({age} anos)</span>}</label>
                                 <input
                                     name="birthDate"
                                     type="date"
@@ -541,7 +544,7 @@ export default function StudentForm() {
                         </div>
                         <div className="responsive-grid">
                             <div>
-                                <label style={labelStyle}>Telefone</label>
+                                <label style={labelStyle}>Telefone *</label>
                                 <input
                                     name="phone"
                                     value={formData.phone}
@@ -622,7 +625,7 @@ export default function StudentForm() {
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                         <div>
-                            <label style={labelStyle}>Objetivo Principal</label>
+                            <label style={labelStyle}>Objetivo Principal *</label>
                             {(() => {
                                 const presets = OBJECTIVE_OPTIONS.slice(0, -1); // sem o "Outro"
                                 const isCustom = objectiveOther || (!!formData.objective && !presets.includes(formData.objective));
@@ -676,7 +679,7 @@ export default function StudentForm() {
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                             <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid var(--border-glass)', paddingTop: '1.25rem' }}>Perfil de Treino</div>
                             <div>
-                                <label style={labelStyle}>Rotina / Trabalho</label>
+                                <label style={labelStyle}>Rotina / Trabalho *</label>
                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                     {ROUTINE_OPTIONS.map(opt => (
                                         <button
@@ -701,7 +704,7 @@ export default function StudentForm() {
                             </div>
                             <div className="responsive-grid">
                                 <div>
-                                    <label style={labelStyle}>Frequência Semanal</label>
+                                    <label style={labelStyle}>Frequência Semanal *</label>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                         {FREQUENCY_OPTIONS.map(opt => (
                                             <button key={opt} type="button" onClick={() => setSingleSelection('trainingFrequency', opt)}
@@ -712,7 +715,7 @@ export default function StudentForm() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={labelStyle}>Nível / Experiência</label>
+                                    <label style={labelStyle}>Nível / Experiência *</label>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                         {LEVEL_OPTIONS.map(opt => (
                                             <button key={opt} type="button" onClick={() => setSingleSelection('level', opt)}
@@ -726,7 +729,7 @@ export default function StudentForm() {
 
                             <div className="responsive-grid">
                                 <div>
-                                    <label style={labelStyle}>Local de Treino / Equipamentos</label>
+                                    <label style={labelStyle}>Local de Treino / Equipamentos *</label>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                         {LOCATION_OPTIONS.map(opt => (
                                             <button key={opt} type="button" onClick={() => setSingleSelection('trainingLocation', opt)}
@@ -737,7 +740,7 @@ export default function StudentForm() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label style={labelStyle}>Tempo por Sessão</label>
+                                    <label style={labelStyle}>Tempo por Sessão *</label>
                                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                         {SESSION_OPTIONS.map(opt => (
                                             <button key={opt} type="button" onClick={() => setSingleSelection('sessionTime', opt)}
@@ -844,7 +847,7 @@ export default function StudentForm() {
                     </div>
                     <div className="responsive-grid">
                         <div>
-                            <label style={labelStyle}>Tipo de Plano</label>
+                            <label style={labelStyle}>Tipo de Plano *</label>
                             <select name="plan" value={formData.plan} onChange={handleChange} style={inputStyle}>
                                 <option value="Monthly">Mensal</option>
                                 <option value="Quarterly">Trimestral</option>
@@ -853,7 +856,7 @@ export default function StudentForm() {
                             </select>
                         </div>
                         <div>
-                            <label style={labelStyle}>Dia de Pagamento</label>
+                            <label style={labelStyle}>Dia de Pagamento *</label>
                             <select name="paymentDay" value={formData.paymentDay} onChange={handleChange} style={inputStyle}>
                                 <option value="5">Dia 05</option>
                                 <option value="10">Dia 10</option>
@@ -864,7 +867,7 @@ export default function StudentForm() {
                             </select>
                         </div>
                         <div>
-                            <label style={labelStyle}>Valor (R$)</label>
+                            <label style={labelStyle}>Valor (R$) *</label>
                             <input
                                 name="price"
                                 type="number"
@@ -877,7 +880,7 @@ export default function StudentForm() {
                             />
                         </div>
                         <div>
-                            <label style={labelStyle}>Data de Início</label>
+                            <label style={labelStyle}>Data de Início *</label>
                             <input
                                 name="startDate"
                                 type="date"

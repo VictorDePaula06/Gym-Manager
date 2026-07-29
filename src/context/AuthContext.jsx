@@ -43,7 +43,11 @@ export const AuthProvider = ({ children }) => {
                         const linkSnap = await getDoc(doc(db, 'student_access', emailKey));
                         const link = linkSnap.exists() ? linkSnap.data() : null;
 
-                        if (link && link.studentId && link.tenantId) {
+                        // IMPORTANTE: só entra direto se o vínculo foi confirmado pelo
+                        // CÓDIGO (viaGoogle: true, gravado em linkStudentByCode). O simples
+                        // fato do e-mail do cadastro bater com a conta Google NÃO é
+                        // suficiente — o código é a etapa que garante a união aluno-personal.
+                        if (link && link.studentId && link.tenantId && link.viaGoogle) {
                             // Aluno já vinculado → entra direto como aluno.
                             // Usa um objeto PRÓPRIO (não mutar o User do Firebase, cujo
                             // tenantId é read-only e quebraria o caminho do tenant).
