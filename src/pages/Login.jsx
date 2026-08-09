@@ -121,18 +121,24 @@ const Login = () => {
             backgroundColor: '#0a0a0c', // slate-950 fallback
             fontFamily: "'Outfit', sans-serif"
         }}>
-            {/* Background Image with Overlay */}
-            <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                backgroundImage: 'url(/img/login-bg.png)',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                zIndex: 1
-            }}></div>
+            {/* Background Video with Overlay */}
+            <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    zIndex: 1
+                }}
+            >
+                <source src="/FAF2.mp4" type="video/mp4" />
+            </video>
 
             {/* Gradient Overlay for better readability */}
             <div style={{
