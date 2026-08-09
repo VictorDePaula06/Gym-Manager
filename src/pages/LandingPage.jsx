@@ -73,8 +73,7 @@ export default function LandingPage() {
 
     useEffect(() => {
         const ctx = gsap.context(() => {
-            gsap.from('.hero-content > *', { y: 30, duration: 1, stagger: 0.1, ease: 'power3.out', delay: 0.1 });
-            gsap.from('.hero-image-container', { y: 50, duration: 1.2, ease: 'power3.out', delay: 0.4 });
+            gsap.from('.hero-content > *', { y: 30, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 0.1 });
             gsap.from('.feature-card', { y: 50, duration: 0.8, stagger: 0.1, ease: 'power3.out', scrollTrigger: { trigger: '#features', start: 'top 95%' } });
             gsap.from('.plan-card', { y: 40, duration: 0.7, stagger: 0.12, ease: 'power3.out', scrollTrigger: { trigger: '#planos', start: 'top 85%' } });
         }, containerRef);
@@ -114,13 +113,8 @@ export default function LandingPage() {
 
     return (
         <div ref={containerRef} style={container}>
-            {/* Header — sem logo/nome (marca a definir) */}
-            <header style={{ padding: '1.25rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'fixed', width: '100%', top: 0, zIndex: 40, boxSizing: 'border-box', backdropFilter: 'blur(12px)', background: scrolled ? 'rgba(11,15,14,0.85)' : 'transparent', borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent', transition: 'all 0.3s' }}>
-                {/* Marca */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                    <img src="/logo-Aliviaf.png" alt="Alivia Fitness" style={{ height: '100px', width: 'auto' }} />
-
-                </div>
+            {/* Header — a logo grande já aparece no hero, não repete aqui */}
+            <header style={{ padding: '1.25rem 2rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'fixed', width: '100%', top: 0, zIndex: 40, boxSizing: 'border-box', backdropFilter: 'blur(12px)', background: scrolled ? 'rgba(11,15,14,0.85)' : 'transparent', borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent', transition: 'all 0.3s' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                     <button onClick={() => navigate('/login')} style={{ background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '0.6rem 1.2rem', borderRadius: '99px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600' }}>Entrar</button>
                     <button onClick={() => navigate('/login')} style={{ ...btnPrimary, padding: '0.6rem 1.5rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Teste grátis (7 dias)</button>
@@ -128,32 +122,33 @@ export default function LandingPage() {
             </header>
 
             {/* Hero */}
-            <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '9rem 2rem 4rem', overflow: 'hidden', background: 'transparent' }}>
-                <div style={{ position: 'absolute', top: '-15%', left: '50%', transform: 'translateX(-50%)', width: '80%', height: '55%', background: 'radial-gradient(circle, rgba(16,185,129,0.16) 0%, rgba(0,0,0,0) 70%)', zIndex: 0, pointerEvents: 'none' }} />
+            <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '6.5rem 2rem 2rem', overflow: 'hidden', background: 'transparent' }}>
+                <div style={{ position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '140%', background: 'radial-gradient(ellipse, rgba(16,185,129,0.16) 0%, rgba(0,0,0,0) 60%)', zIndex: 0, pointerEvents: 'none' }} />
 
-                <div className="hero-content" style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '820px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
-                    <h1 style={{ fontSize: 'clamp(2.6rem, 6vw, 5rem)', fontWeight: 800, lineHeight: 1.08, margin: 0, letterSpacing: '-0.02em', background: 'linear-gradient(to bottom, #ffffff, #9ca3af)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                        A plataforma definitiva<br />para sua{' '}
-                        <span style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #34d399 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>consultoria</span>
-                    </h1>
+                <div className="hero-content" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '1380px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(360px, 680px) 1fr', gap: '1.5rem', alignItems: 'center' }}>
+                    {/* Logo grande à esquerda */}
+                    <div className="hero-logo-col" style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                        <div style={{ position: 'absolute', width: '620px', height: '620px', background: ACCENT, filter: 'blur(160px)', opacity: 0.3, borderRadius: '50%', zIndex: 0 }} />
+                        <img src="/logo-Aliviaf.png" alt="Alivia Fitness" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '680px', height: 'auto' }} />
+                    </div>
 
-                    <p style={{ fontSize: 'clamp(1.05rem, 2vw, 1.35rem)', color: '#9ca3af', maxWidth: '680px', margin: '0.5rem auto 1rem', lineHeight: 1.6 }}>
-                        Abandone as planilhas e o PDF. Gerencie alunos, treinos, avaliações e pagamentos em um app moderno — com Inteligência Artificial para montar os treinos.
-                    </p>
+                    {/* Texto à direita */}
+                    <div className="hero-text-col" style={{ textAlign: 'left' }}>
+                        <h1 style={{ fontSize: 'clamp(2.3rem, 4.5vw, 4rem)', fontWeight: 800, lineHeight: 1.1, margin: 0, letterSpacing: '-0.02em', background: 'linear-gradient(to bottom, #ffffff, #9ca3af)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            A plataforma definitiva para sua{' '}
+                            <span style={{ background: `linear-gradient(135deg, ${ACCENT} 0%, #34d399 100%)`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>consultoria</span>
+                        </h1>
 
-                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => navigate('/login')} style={{ ...btnPrimary, padding: '1rem 2.5rem' }}>Começar grátis <ArrowRight size={20} /></button>
-                        <button onClick={() => document.getElementById('planos').scrollIntoView({ behavior: 'smooth' })} style={{ ...btnPrimary, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: 'none', padding: '1rem 2rem' }}>Ver planos</button>
+                        <p style={{ fontSize: 'clamp(1.05rem, 1.6vw, 1.25rem)', color: '#9ca3af', maxWidth: '520px', margin: '1.25rem 0 0', lineHeight: 1.6 }}>
+                            Abandone as planilhas e o PDF. Gerencie alunos, treinos, avaliações e pagamentos em um app moderno — com Inteligência Artificial para montar os treinos.
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '2rem' }}>
+                            <button onClick={() => navigate('/login')} style={{ ...btnPrimary, padding: '1rem 2.5rem' }}>Começar grátis <ArrowRight size={20} /></button>
+                            <button onClick={() => document.getElementById('planos').scrollIntoView({ behavior: 'smooth' })} style={{ ...btnPrimary, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: 'none', padding: '1rem 2rem' }}>Ver planos</button>
+                        </div>
                     </div>
                 </div>
-
-                {/* Imagem do dashboard */}
-                <div className="hero-image-container" style={{ position: 'relative', zIndex: 5, width: '100%', maxWidth: '1150px', perspective: '2000px', marginTop: '3rem', marginBottom: '-90px' }}>
-                    <div style={{ transform: 'rotateX(18deg) scale(0.92)', transformStyle: 'preserve-3d', animation: 'floatHero 6s ease-in-out infinite', borderRadius: '24px', boxShadow: '0 50px 100px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08)', background: '#111917', padding: '10px' }}>
-                        <img src="/img/dashboard-hero.png" alt="Painel" style={{ width: '100%', height: 'auto', display: 'block', borderRadius: '16px' }} />
-                    </div>
-                </div>
-                <style>{`@keyframes floatHero { 0%,100% { transform: rotateX(18deg) scale(0.92) translateY(0);} 50% { transform: rotateX(18deg) scale(0.92) translateY(-18px);} }`}</style>
             </section>
 
             {/* Features */}
@@ -431,8 +426,11 @@ export default function LandingPage() {
                 @media (max-width: 768px) {
                     header { padding: 0.85rem 1rem !important; }
                     section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
-                    .hero-content { padding-top: 2rem !important; }
-                    .hero-image-container { margin-bottom: -30px !important; transform: rotateX(10deg) scale(0.85) !important; }
+                    .hero-content { grid-template-columns: 1fr !important; gap: 2rem !important; text-align: center !important; }
+                    .hero-logo-col img { max-width: 300px !important; }
+                    .hero-text-col { text-align: center !important; }
+                    .hero-text-col p { margin-left: auto !important; margin-right: auto !important; }
+                    .hero-text-col > div:last-child { justify-content: center !important; }
                     .modal-content { width: 95% !important; }
                     .modal-header, .modal-body { padding: 1.5rem !important; }
                 }
