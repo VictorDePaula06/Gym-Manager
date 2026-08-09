@@ -1,5 +1,5 @@
 import { db, storage } from '../firebase';
-import { collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
+import { collection, doc, addDoc, setDoc, updateDoc, deleteDoc, getDoc, getDocs, onSnapshot, query, orderBy, arrayUnion, arrayRemove, increment } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { compressImage } from '../utils/imageOptimizer';
 
@@ -142,4 +142,22 @@ export const getChallengeStatus = (ch) => {
         daysLeft = Math.ceil((new Date(y, m - 1, dd, 23, 59) - d) / 86400000);
     }
     return { label: 'Em andamento', color: '#10b981', daysLeft };
+};
+
+// Histórico de desafios: lista todos os desafios já criados (exceto o mês
+// atual), mais recente primeiro. Cada mês fica salvo em challenges/{monthKey},
+// e nunca é apagado quando o mês vira — só deixa de ser "o desafio atual".
+export const getChallengeHistory = async (tenantId, currentMonthKey) => {
+    const snap = await getDocs(collection(db, `users/${tenantId}/challenges`));
+    return snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((c) => c.id !== currentMonthKey && (c.title || c.startDate))
+        .sort((a, b) => b.id.localeCompare(a.id));
+};
+
+// Placar (leaderboard) de um mês específico — usado pra montar o ranking
+// final de um desafio já encerrado.
+export const getLeaderboardForMonth = async (tenantId, monthKey) => {
+    const snap = await getDoc(doc(db, `users/${tenantId}/leaderboard`, monthKey));
+    return snap.exists() ? (snap.data().entries || {}) : {};
 };

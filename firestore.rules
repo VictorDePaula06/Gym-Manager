@@ -9,11 +9,17 @@ service cloud.firestore {
     }
 
     // Códigos de acesso do aluno (vincular conta Google no 1º login).
-    // Leitura pública (o app procura o aluno pelo código); escrita exige login
-    // (o personal cria; o aluno consome ao vincular).
+    // Leitura pública (o app procura o aluno pelo código).
+    // CRIAÇÃO: só quem está autenticado como o DONO daquele tenant (uid ==
+    // tenantId, sempre verdade pra personal nesse app) pode gerar um código —
+    // impede alguém autenticado (até anônimo) forjar um código apontando pra
+    // aluno de outra academia.
+    // CONSUMO: o aluno apaga o código ao vincular (uso único); sem "update",
+    // pois nenhum fluxo legítimo precisa alterar um código já criado.
     match /student_codes/{code} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.tenantId == request.auth.uid;
+      allow delete: if request.auth != null;
     }
 
     // 2. Regras para os dados do Ginásio (Alunos, Treinos, Vídeos, Professores, Feed, etc)
@@ -32,9 +38,12 @@ service cloud.firestore {
         );
       }
 
-      // PORTAL DO ALUNO: ler dados do aluno e histórico
+      // PORTAL DO ALUNO: ler dados do aluno e histórico.
+      // Exige autenticação (o app SEMPRE tem uma sessão — anônima ou Google —
+      // antes de ler isso), mas não exige ser o dono: evita exposição de dados
+      // pessoais (saúde, telefone, ficha) pra quem nem está logado no app.
       match /students/{studentId} {
-        allow read: if true;
+        allow read: if request.auth != null;
         // Aluno salva seus próprios logs de treino no banco do professor
         match /training_logs/{logId} {
           allow read, write: if request.auth != null;
@@ -44,7 +53,7 @@ service cloud.firestore {
           allow read, write: if request.auth != null;
         }
         match /{subDoc=**} {
-          allow read: if true;
+          allow read: if request.auth != null;
         }
       }
 

@@ -4,7 +4,7 @@ import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3 } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange } from '../services/community';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../services/community';
 
 const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -26,6 +26,13 @@ const Avatar = ({ name, photo, size = 40 }) => (
 );
 
 const fmtDay = (ymd) => { const [, m, d] = ymd.split('-'); return `${Number(d)}/${Number(m)}`; };
+
+// "2026-07" -> "Julho de 2026"
+const fmtMonthKey = (key) => {
+    const [y, m] = key.split('-').map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
+};
 
 function CircleProgress({ pct, size = 84 }) {
     const r = (size - 10) / 2;
@@ -127,6 +134,8 @@ export default function CommunityManager() {
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState({ title: '', description: '', prize: '', startDate: '', endDate: '' });
     const [saving, setSaving] = useState(false);
+    const [history, setHistory] = useState(null); // null = ainda não carregado
+    const [loadingHistory, setLoadingHistory] = useState(false);
 
     // Composer do personal
     const [text, setText] = useState('');
@@ -144,6 +153,35 @@ export default function CommunityManager() {
         const u3 = subscribeChallenge(tenantId, monthKey, setChallenge);
         return () => { u1(); u2(); u3(); };
     }, [tenantId, monthKey]);
+
+    // Histórico de desafios: carrega sob demanda (quando a aba é aberta), já
+    // que exige ler o placar de cada mês passado individualmente.
+    useEffect(() => {
+        if (tab !== 'desafios' || !tenantId || history !== null) return;
+        let cancelled = false;
+        setLoadingHistory(true);
+        (async () => {
+            try {
+                const past = await getChallengeHistory(tenantId, monthKey);
+                const withRanking = await Promise.all(past.map(async (ch) => {
+                    const pastBoard = await getLeaderboardForMonth(tenantId, ch.id);
+                    const parts = ch.participants || [];
+                    const rk = Object.entries(pastBoard || {})
+                        .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, ch.startDate, ch.endDate) }))
+                        .filter((e) => e.n > 0 && parts.includes(e.id))
+                        .sort((a, b) => b.n - a.n);
+                    return { ...ch, ranking: rk };
+                }));
+                if (!cancelled) setHistory(withRanking);
+            } catch (e) {
+                console.error('Erro ao carregar histórico de desafios:', e);
+                if (!cancelled) setHistory([]);
+            } finally {
+                if (!cancelled) setLoadingHistory(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [tab, tenantId, monthKey, history]);
 
     // Só participantes do desafio entram no ranking (modelo de convite).
     const ranking = useMemo(() => {
@@ -166,7 +204,10 @@ export default function CommunityManager() {
     const totalLikes = useMemo(() => posts.reduce((s, p) => s + (Array.isArray(p.likes) ? p.likes.length : 0), 0), [posts]);
     const totalComments = useMemo(() => posts.reduce((s, p) => s + (p.commentCount || 0), 0), [posts]);
     const status = getChallengeStatus(challenge);
-    const challengeTitle = challenge?.title || `Desafio de ${monthName}`;
+    // Só existe um desafio de verdade se o personal salvou algo (título, descrição
+    // ou datas) — o doc pode nem existir ainda no primeiro acesso do mês.
+    const hasChallenge = !!challenge && !!(challenge.title || challenge.description || challenge.startDate);
+    const challengeTitle = hasChallenge ? (challenge.title || `Desafio de ${monthName}`) : 'Nenhum desafio criado este mês';
 
     // % do período decorrido (progresso do desafio)
     const periodPct = useMemo(() => {
@@ -261,14 +302,18 @@ export default function CommunityManager() {
                     <Trophy size={34} color="#fbbf24" />
                 </div>
                 <div style={{ flex: 1, minWidth: '220px' }}>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Desafio do mês</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--primary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{hasChallenge ? 'Desafio do mês' : 'Sem desafio ativo'}</div>
                     <h2 style={{ margin: '0.15rem 0 0.35rem', fontSize: '1.4rem' }}>{challengeTitle}</h2>
-                    <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{challenge?.description || 'Defina o desafio do mês em "Editar desafio".'}</p>
-                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={15} /> {ranking.length} participantes</span>
-                        {status?.daysLeft != null && status.daysLeft >= 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Clock size={15} /> {status.daysLeft} dias restantes</span>}
-                        {challenge?.prize && <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Gift size={15} /> Prêmio: {challenge.prize}</span>}
-                    </div>
+                    <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                        {hasChallenge ? (challenge?.description || 'Sem descrição.') : 'Crie um desafio para engajar seus alunos — defina título, prêmio e período em "Editar desafio".'}
+                    </p>
+                    {hasChallenge && (
+                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Users size={15} /> {ranking.length} participantes</span>
+                            {status?.daysLeft != null && status.daysLeft >= 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Clock size={15} /> {status.daysLeft} dias restantes</span>}
+                            {challenge?.prize && <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Gift size={15} /> Prêmio: {challenge.prize}</span>}
+                        </div>
+                    )}
                 </div>
                 {periodPct != null && (
                     <div style={{ textAlign: 'center' }}>
@@ -345,16 +390,55 @@ export default function CommunityManager() {
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h3 style={{ margin: 0 }}>Desafio atual</h3>
-                            <button onClick={openEditor} className="btn-primary" style={{ padding: '0.5rem 1rem' }}><Pencil size={16} /> Editar</button>
+                            <button onClick={openEditor} className="btn-primary" style={{ padding: '0.5rem 1rem' }}><Pencil size={16} /> {hasChallenge ? 'Editar' : 'Criar desafio'}</button>
                         </div>
                         <p style={{ color: 'var(--text-muted)' }}><strong style={{ color: 'var(--text-main)' }}>{challengeTitle}</strong>{challenge?.startDate && challenge?.endDate ? ` · ${fmtDay(challenge.startDate)} a ${fmtDay(challenge.endDate)}` : ''}{challenge?.prize ? ` · Prêmio: ${challenge.prize}` : ''}</p>
-                        <p style={{ color: 'var(--text-muted)', margin: 0 }}>{challenge?.description || 'Sem descrição.'}</p>
+                        <p style={{ color: 'var(--text-muted)', margin: 0 }}>{hasChallenge ? (challenge?.description || 'Sem descrição.') : 'Nenhum desafio configurado este mês.'}</p>
                     </div>
                     {/* Ranking só dos participantes, dentro das datas do desafio */}
                     {rankingCard(ranking, false, 'Ranking do desafio')}
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', textAlign: 'center', margin: 0 }}>
                         Conta só quem aceitou participar e os treinos dentro do período do desafio.
                     </p>
+
+                    {/* Histórico: desafios de meses anteriores, com o ranking final de cada um */}
+                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
+                        <h3 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                            <Clock size={18} color="var(--text-muted)" /> Histórico de desafios
+                        </h3>
+                        {loadingHistory && <p style={{ color: 'var(--text-muted)', margin: 0 }}>Carregando...</p>}
+                        {!loadingHistory && history && history.length === 0 && (
+                            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Nenhum desafio anterior ainda.</p>
+                        )}
+                        {!loadingHistory && history && history.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {history.map((ch) => (
+                                    <div key={ch.id} style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--card-bg)' }}>
+                                        <strong style={{ display: 'block' }}>{ch.title || fmtMonthKey(ch.id)}</strong>
+                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                                            {fmtMonthKey(ch.id)}
+                                            {ch.startDate && ch.endDate ? ` · ${fmtDay(ch.startDate)} a ${fmtDay(ch.endDate)}` : ''}
+                                            {ch.prize ? ` · Prêmio: ${ch.prize}` : ''}
+                                        </div>
+                                        {ch.ranking.length === 0 ? (
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Ninguém completou treinos nesse desafio.</p>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {ch.ranking.slice(0, 3).map((t, i) => (
+                                                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                        <span>{['🥇', '🥈', '🥉'][i]}</span>
+                                                        <Avatar name={t.name} photo={t.photo} size={28} />
+                                                        <span style={{ flex: 1, fontSize: '0.88rem', fontWeight: i === 0 ? 700 : 500 }}>{t.name}</span>
+                                                        <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{t.n} treino{t.n > 1 ? 's' : ''}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 

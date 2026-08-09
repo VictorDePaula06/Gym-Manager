@@ -35,6 +35,7 @@ import CommunityManager from './pages/CommunityManager';
 import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
 import Subscription from './pages/Subscription';
+import Manual from './pages/Manual';
 
 // Student Portal Imports
 import StudentLayout from './components/StudentLayout';
@@ -114,6 +115,7 @@ function App() {
                   <Route path="community" element={<CommunityManager />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="subscription" element={<Subscription />} />
+                  <Route path="manual" element={<Manual />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
 

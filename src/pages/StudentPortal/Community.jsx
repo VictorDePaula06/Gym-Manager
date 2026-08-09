@@ -4,7 +4,7 @@ import { useGym } from '../../context/GymContext';
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
 import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange } from '../../services/community';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../../services/community';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -18,6 +18,15 @@ const timeAgo = (iso) => {
     const d = Math.floor(h / 24);
     if (d < 7) return `${d}d`;
     return new Date(iso).toLocaleDateString('pt-BR');
+};
+
+const fmtDay = (ymd) => { const [, m, d] = ymd.split('-'); return `${Number(d)}/${Number(m)}`; };
+
+// "2026-07" -> "Julho de 2026"
+const fmtMonthKey = (key) => {
+    const [y, m] = key.split('-').map(Number);
+    const label = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return label.charAt(0).toUpperCase() + label.slice(1);
 };
 
 const Avatar = ({ name, photo, size = 40 }) => (
@@ -174,6 +183,7 @@ export default function Community() {
 
     const [board, setBoard] = useState({});
     const [challengeCfg, setChallengeCfg] = useState(null);
+    const [history, setHistory] = useState(null);
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -195,14 +205,50 @@ export default function Community() {
         return () => { unsubAuth(); unsubFeed(); unsubBoard(); unsubChallenge(); };
     }, [tenantId, monthKey]);
 
+    // Histórico de desafios anteriores (carregado uma vez, junto com o resto).
+    useEffect(() => {
+        if (!tenantId || history !== null) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const past = await getChallengeHistory(tenantId, monthKey);
+                const withRanking = await Promise.all(past.map(async (ch) => {
+                    const pastBoard = await getLeaderboardForMonth(tenantId, ch.id);
+                    const parts = ch.participants || [];
+                    const rk = Object.entries(pastBoard || {})
+                        .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, ch.startDate, ch.endDate) }))
+                        .filter((e) => e.n > 0 && parts.includes(e.id))
+                        .sort((a, b) => b.n - a.n);
+                    return { ...ch, ranking: rk };
+                }));
+                if (!cancelled) setHistory(withRanking);
+            } catch (e) {
+                console.error('Erro ao carregar histórico de desafios:', e);
+                if (!cancelled) setHistory([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [tenantId, monthKey, history]);
+
+    // Se o aluno venceu o desafio mais recente já encerrado, mostra um aviso.
+    const lastWin = useMemo(() => {
+        if (!history || history.length === 0) return null;
+        const mostRecent = history[0];
+        if (mostRecent.ranking?.[0]?.id === me.id) return mostRecent;
+        return null;
+    }, [history, me.id]);
+
     // Participação no desafio (convite): só quem aceitou entra no ranking.
     const participants = challengeCfg?.participants || [];
     const declined = challengeCfg?.declined || [];
     const isParticipant = participants.includes(me.id);
     const hasDeclined = declined.includes(me.id);
     const chStatus = getChallengeStatus(challengeCfg);
-    // Dá pra entrar enquanto o desafio existe e não está encerrado.
-    const canJoin = !!challengeCfg && (!chStatus || chStatus.label !== 'Encerrado');
+    // Só existe desafio de verdade se o personal salvou algo — evita mostrar
+    // um título "pronto" quando ainda não foi configurado nada este mês.
+    const hasChallenge = !!challengeCfg && !!(challengeCfg.title || challengeCfg.description || challengeCfg.startDate);
+    // Dá pra entrar enquanto o desafio existe de verdade e não está encerrado.
+    const canJoin = hasChallenge && (!chStatus || chStatus.label !== 'Encerrado');
 
     // Desafio do mês: ranking por TREINOS CONCLUÍDOS, apenas dos participantes.
     const challenge = useMemo(() => {
@@ -284,6 +330,19 @@ export default function Community() {
             <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Comunidade</h1>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Compartilhe seus treinos com a galera da {settings?.gymName || 'academia'}.</p>
 
+            {/* Aviso de vitória: você foi o campeão do desafio anterior */}
+            {lastWin && (
+                <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'center', background: 'linear-gradient(135deg, rgba(251,191,36,0.18), rgba(168,85,247,0.1))', border: '1px solid rgba(251,191,36,0.4)' }}>
+                    <div style={{ fontSize: '2.2rem', marginBottom: '0.4rem' }}>🏆</div>
+                    <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.25rem' }}>
+                        Você venceu o desafio de {fmtMonthKey(lastWin.id)}!
+                    </strong>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {lastWin.title ? `"${lastWin.title}" · ` : ''}{lastWin.ranking[0].n} treino{lastWin.ranking[0].n > 1 ? 's' : ''}{lastWin.prize ? ` · Prêmio: ${lastWin.prize}` : ''}
+                    </span>
+                </div>
+            )}
+
             {/* Desafio do mês */}
             <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(168,85,247,0.15), rgba(59,130,246,0.08))', border: '1px solid rgba(168,85,247,0.35)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
@@ -292,8 +351,12 @@ export default function Community() {
                             <Trophy size={20} color="#a855f7" />
                         </div>
                         <div>
-                            <strong style={{ textTransform: 'capitalize', display: 'block', lineHeight: 1.2 }}>{challengeCfg?.title || `Desafio de ${challenge.month}`}</strong>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{challengeCfg?.description || 'Quem mais treina lidera 🏆'}</span>
+                            <strong style={{ textTransform: 'capitalize', display: 'block', lineHeight: 1.2 }}>
+                                {hasChallenge ? (challengeCfg?.title || `Desafio de ${challenge.month}`) : 'Nenhum desafio este mês'}
+                            </strong>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {hasChallenge ? (challengeCfg?.description || 'Quem mais treina lidera 🏆') : 'Seu personal ainda não criou o desafio deste mês.'}
+                            </span>
                         </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
@@ -350,7 +413,7 @@ export default function Community() {
                     </div>
                 )}
 
-                {challenge.top.length === 0 ? (
+                {hasChallenge && (challenge.top.length === 0 ? (
                     <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center', padding: '0.5rem 0' }}>
                         Ninguém concluiu treino este mês ainda.<br />Seja o primeiro! 💪
                     </p>
@@ -389,7 +452,7 @@ export default function Community() {
                             </div>
                         )}
                     </div>
-                )}
+                ))}
             </div>
 
             {/* Ranking Geral (todos os alunos, do mês) */}
@@ -448,6 +511,43 @@ export default function Community() {
                     </div>
                 )}
             </div>
+
+            {/* Histórico de desafios anteriores */}
+            {history && history.length > 0 && (
+                <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
+                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Trophy size={17} color="var(--text-muted)" /> Histórico de desafios
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {history.map((ch) => {
+                            const won = ch.ranking?.[0]?.id === me.id;
+                            return (
+                                <div key={ch.id} style={{ padding: '0.85rem', borderRadius: '10px', border: won ? '1px solid rgba(251,191,36,0.4)' : '1px solid var(--border-glass)', background: won ? 'rgba(251,191,36,0.08)' : 'var(--input-bg)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: ch.ranking.length ? '0.5rem' : 0 }}>
+                                        <strong style={{ fontSize: '0.9rem' }}>{ch.title || fmtMonthKey(ch.id)}</strong>
+                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{fmtMonthKey(ch.id)}</span>
+                                    </div>
+                                    {ch.ranking.length === 0 ? (
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Ninguém completou treinos nesse desafio.</p>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                            {ch.ranking.slice(0, 3).map((t, i) => (
+                                                <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.82rem' }}>
+                                                    <span>{['🥇', '🥈', '🥉'][i]}</span>
+                                                    <span style={{ flex: 1, fontWeight: t.id === me.id ? 700 : 500, color: t.id === me.id ? 'var(--primary)' : 'var(--text-main)' }}>
+                                                        {t.name}{t.id === me.id ? ' (você)' : ''}
+                                                    </span>
+                                                    <span style={{ color: 'var(--text-muted)' }}>{t.n} treino{t.n > 1 ? 's' : ''}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Compositor */}
             <div className="glass-panel" style={{ padding: '1.1rem', marginBottom: '1.5rem' }}>

@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle, Video, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle, Video, MessageCircle, BookOpen } from 'lucide-react';
 import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -211,6 +211,10 @@ export default function Layout() {
                             <span className="sidebar-text">Assinatura</span>
                         </Link>
                     )}
+                    <Link to="/app/manual" style={linkStyle('/app/manual')} onClick={() => setSidebarOpen(false)}>
+                        <BookOpen size={20} style={{ minWidth: '20px' }} />
+                        <span className="sidebar-text">Manual</span>
+                    </Link>
                 </nav>
 
                 <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border-glass)' }}>
