@@ -351,7 +351,7 @@ export default function WorkoutBuilder() {
     const variations = getSortedVariations(targetWorkouts, currentVariation);
 
     return (
-        <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '4rem' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '4rem' }}>
             <button onClick={() => navigate(`/app/students/${id}`, { state: { activeTab: 'workouts' } })} style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -368,11 +368,11 @@ export default function WorkoutBuilder() {
             <style>{`
                 .exercise-row {
                     display: grid;
-                    grid-template-columns: minmax(180px, 3fr) 0.7fr 0.7fr 0.7fr 0.7fr auto;
-                    gap: 1rem;
+                    grid-template-columns: minmax(260px, 2.5fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(90px, 1fr) auto;
+                    gap: 1.25rem;
                     align-items: end;
                     margin-bottom: 1rem;
-                    padding: 1rem;
+                    padding: 1.25rem;
                     background: var(--card-bg);
                     border-radius: 12px;
                 }
@@ -550,7 +550,7 @@ export default function WorkoutBuilder() {
                                             value={exercise.name}
                                             list="exercise-suggestions"
                                             onChange={(e) => updateExercise(exercise.id, 'name', e.target.value)}
-                                            style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            style={{ width: '100%', padding: '0.7rem 0.75rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '1rem' }}
                                         />
                                     </div>
                                     <div>
@@ -559,7 +559,7 @@ export default function WorkoutBuilder() {
                                             type="number"
                                             value={exercise.sets}
                                             onChange={(e) => updateExercise(exercise.id, 'sets', e.target.value)}
-                                            style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            style={{ width: '100%', padding: '0.7rem 0.75rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '1rem' }}
                                         />
                                     </div>
                                     <div>
@@ -567,7 +567,7 @@ export default function WorkoutBuilder() {
                                         <input
                                             value={exercise.reps}
                                             onChange={(e) => updateExercise(exercise.id, 'reps', e.target.value)}
-                                            style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            style={{ width: '100%', padding: '0.7rem 0.75rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '1rem' }}
                                         />
                                     </div>
                                     <div>
@@ -575,7 +575,7 @@ export default function WorkoutBuilder() {
                                         <input
                                             value={exercise.weight}
                                             onChange={(e) => updateExercise(exercise.id, 'weight', e.target.value)}
-                                            style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            style={{ width: '100%', padding: '0.7rem 0.75rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '1rem' }}
                                         />
                                     </div>
                                     <div>
@@ -585,7 +585,7 @@ export default function WorkoutBuilder() {
                                             placeholder="s"
                                             value={exercise.restTime || ''}
                                             onChange={(e) => updateExercise(exercise.id, 'restTime', parseInt(e.target.value) || 0)}
-                                            style={{ width: '100%', padding: '0.5rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)' }}
+                                            style={{ width: '100%', padding: '0.7rem 0.75rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '1rem' }}
                                         />
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'end' }}>

@@ -2719,7 +2719,8 @@ export default function StudentDetails() {
                                 const lastLog = trainingLogs[0];
                                 let lastLabel = '—';
                                 if (lastLog?.timestamp) {
-                                    const days = Math.floor((now - new Date(lastLog.timestamp).getTime()) / (24 * 3600 * 1000));
+                                    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                                    const days = Math.round((startOfDay(new Date(now)) - startOfDay(new Date(lastLog.timestamp))) / (24 * 3600 * 1000));
                                     lastLabel = days <= 0 ? 'Hoje' : days === 1 ? 'Ontem' : `Há ${days} dias`;
                                 }
                                 const stale = lastLog?.timestamp && (now - new Date(lastLog.timestamp).getTime()) > 14 * 24 * 3600 * 1000;

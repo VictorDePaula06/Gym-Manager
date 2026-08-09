@@ -60,6 +60,7 @@ const PLANS = [
 export default function LandingPage() {
     const navigate = useNavigate();
     const [activeFeature, setActiveFeature] = useState(null);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [openFaq, setOpenFaq] = useState(null);
     const [scrolled, setScrolled] = useState(false);
     const [billing, setBilling] = useState('annual'); // 'monthly' | 'annual'
@@ -85,12 +86,12 @@ export default function LandingPage() {
     }, [activeFeature]);
 
     const features = [
-        { id: 'students', title: 'Seus Alunos', shortDesc: 'Controle total de matrículas e avaliações.', longDesc: 'Tenha todos os seus alunos na palma da mão. Acompanhe a evolução física com gráficos, fotos comparativas e avaliações detalhadas para mostrar resultados reais.', icon: Users, color: '16, 185, 129', images: [{ src: '/img/students-grid.png', label: 'Lista de Alunos' }, { src: '/img/assessments.png', label: 'Avaliações Físicas' }, { src: '/img/body-map.png', label: 'Mapa Corporal' }, { src: '/img/comparison.png', label: 'Comparativo de Evolução' }] },
-        { id: 'financial', title: 'Financeiro', shortDesc: 'Controle quem pagou e quem deve.', longDesc: 'Diga adeus às cobranças manuais constrangedoras. Saiba exatamente quem pagou, quem está atrasado e tenha uma visão clara do seu faturamento mensal.', icon: DollarSign, color: '16, 185, 129', images: [{ src: '/img/financial-dashboard.png', label: 'Dashboard Financeiro' }, { src: '/img/financial-student.png', label: 'Histórico de Pagamentos' }] },
-        { id: 'workouts', title: 'Prescrição de Treinos', shortDesc: 'Fichas personalizadas em segundos.', longDesc: 'Monte treinos completos com a biblioteca de exercícios ou crie os seus. Nos planos com IA, deixe a inteligência artificial montar a ficha pelo perfil do aluno.', icon: Dumbbell, color: '249, 115, 22', images: [{ src: '/img/workouts-grid.png', label: 'Biblioteca de Treinos' }, { src: '/img/workout-editor.png', label: 'Editor de Fichas' }, { src: '/img/workouts-main.png', label: 'Visão Geral' }] },
-        { id: 'reports', title: 'Relatórios Pro', shortDesc: 'Mostre seu valor com dados.', longDesc: 'Gere relatórios de evolução e mostre ao aluno o quanto ele melhorou com a sua consultoria. Dados visuais que ajudam a reter alunos por mais tempo.', icon: FileText, color: '236, 72, 153', images: [{ src: '/img/reports-main.png', label: 'Central de Relatórios' }, { src: '/img/reports-download.png', label: 'Exportação PDF' }] },
-        { id: 'assessments', title: 'Avaliação Física', shortDesc: 'Monitore a evolução corporal.', longDesc: 'Registre dobras, perímetros e peso. Gráficos automáticos de composição corporal para mostrar ao aluno que o treino está funcionando.', icon: Activity, color: '139, 92, 246', images: [{ src: '/img/assessments.png', label: 'Avaliações Físicas' }, { src: '/img/body-map.png', label: 'Mapa Corporal' }] },
-        { id: 'dashboard', title: 'Seu Painel', shortDesc: 'Seu negócio em uma tela.', longDesc: 'Comece o dia sabendo como está sua consultoria: alunos ativos, faturamento do mês e o que precisa de atenção em um só lugar.', icon: TrendingUp, color: '234, 179, 8', images: [{ src: '/img/dashboard-hero.png', label: 'Visão Geral' }, { src: '/img/dashboard-overview.png', label: 'Resumo do Negócio' }] },
+        { id: 'students', title: 'Seus Alunos', shortDesc: 'Controle total de matrículas e avaliações.', longDesc: 'Tenha todos os seus alunos na palma da mão. Acompanhe a evolução física com gráficos, fotos comparativas e avaliações detalhadas para mostrar resultados reais.', icon: Users, color: '16, 185, 129', images: [{ src: '/img/Aluno1.jpeg', label: 'Lista de Alunos' }, { src: '/img/Aluno2.jpeg', label: 'Avaliações Físicas' }, { src: '/img/Aluno3.jpeg', label: 'Mapa Corporal' }, { src: '/img/Aluno4.jpeg', label: 'Comparativo de Evolução' }] },
+        { id: 'financial', title: 'Financeiro', shortDesc: 'Controle quem pagou e quem deve.', longDesc: 'Diga adeus às cobranças manuais constrangedoras. Saiba exatamente quem pagou, quem está atrasado e tenha uma visão clara do seu faturamento mensal.', icon: DollarSign, color: '16, 185, 129', images: [{ src: '/img/Fin1.jpeg', label: 'Dashboard Financeiro' }, { src: '/img/Fin2.jpeg', label: 'Histórico de Pagamentos' }, { src: '/img/Fin3.jpeg', label: 'Controle de Faturamento' }] },
+        { id: 'workouts', title: 'Prescrição de Treinos', shortDesc: 'Fichas personalizadas em segundos.', longDesc: 'Monte treinos completos com a biblioteca de exercícios ou crie os seus. Nos planos com IA, deixe a inteligência artificial montar a ficha pelo perfil do aluno.', icon: Dumbbell, color: '249, 115, 22', images: [{ src: '/img/Treino1.jpeg', label: 'Biblioteca de Treinos' }, { src: '/img/Treino2.jpeg', label: 'Editor de Fichas' }, { src: '/img/Treino3.jpeg', label: 'Visão Geral' }] },
+        { id: 'reports', title: 'Relatórios Pro', shortDesc: 'Mostre seu valor com dados.', longDesc: 'Gere relatórios de evolução e mostre ao aluno o quanto ele melhorou com a sua consultoria. Dados visuais que ajudam a reter alunos por mais tempo.', icon: FileText, color: '236, 72, 153', images: [{ src: '/img/Rel1.jpeg', label: 'Central de Relatórios' }, { src: '/img/Rel2.jpeg', label: 'Exportação PDF' }] },
+        { id: 'assessments', title: 'Avaliação Física', shortDesc: 'Avaliação, check-in e volume load.', longDesc: 'Registre dobras, perímetros e peso com gráficos automáticos de evolução. Configure check-ins periódicos que o aluno responde ao final de cada ciclo de treino, e acompanhe o volume load (séries x repetições x carga) semanal para provar, com dados, que o treino está funcionando.', icon: Activity, color: '139, 92, 246', images: [{ src: '/img/Av1.jpeg', label: 'Avaliação Física' }, { src: '/img/Av2.jpeg', label: 'Check-in do Aluno' }, { src: '/img/Av3.jpeg', label: 'Volume Load' }] },
+        { id: 'dashboard', title: 'Seu Painel', shortDesc: 'Seu negócio em uma tela.', longDesc: 'Comece o dia sabendo como está sua consultoria: alunos ativos, faturamento do mês e o que precisa de atenção em um só lugar.', icon: TrendingUp, color: '234, 179, 8', images: [{ src: '/img/Visual.jpeg', label: 'Visão Geral' }] },
     ];
 
     const container = {
@@ -122,7 +123,17 @@ export default function LandingPage() {
             </header>
 
             {/* Hero */}
-            <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '6.5rem 2rem 2rem', overflow: 'hidden', background: 'transparent' }}>
+            <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '6.5rem 2rem 2rem', overflow: 'hidden', background: '#050705' }}>
+                <video
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, opacity: 0.45 }}
+                >
+                    <source src="/FAF2.mp4" type="video/mp4" />
+                </video>
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(5,7,5,0.55) 0%, rgba(5,7,5,0.75) 60%, #050705 100%)', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '140%', background: 'radial-gradient(ellipse, rgba(16,185,129,0.16) 0%, rgba(0,0,0,0) 60%)', zIndex: 0, pointerEvents: 'none' }} />
 
                 <div className="hero-content" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '1380px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(360px, 680px) 1fr', gap: '1.5rem', alignItems: 'center' }}>
@@ -154,7 +165,7 @@ export default function LandingPage() {
             {/* Features */}
             <section id="features" style={{ padding: '6rem 2rem 4rem', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                 {features.map((f) => (
-                    <div key={f.id} className="feature-card" style={cardStyle} onClick={() => setActiveFeature(f)}
+                    <div key={f.id} className="feature-card" style={cardStyle} onClick={() => { setActiveFeature(f); setActiveImageIndex(0); }}
                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.borderColor = `rgb(${f.color})`; e.currentTarget.style.boxShadow = `0 12px 30px -10px rgba(${f.color}, 0.35)`; }}
                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none'; }}>
                         <div>
@@ -186,16 +197,58 @@ export default function LandingPage() {
                             <button onClick={() => setActiveFeature(null)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '0.5rem' }}><X size={30} /></button>
                         </div>
                         <div className="modal-body" style={{ padding: '2rem', background: '#0b0f0e' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-                                {activeFeature.images.map((img, i) => (
-                                    <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                        <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                            <img src={img.src} alt={img.label} style={{ width: '100%', height: 'auto', display: 'block' }} />
-                                        </div>
-                                        <span style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.9rem' }}>{img.label}</span>
+                            {activeFeature.images.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '14px' }}>
+                                    Fotos em breve.
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Imagem grande em destaque */}
+                                    <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: '#0f1513' }}>
+                                        <img
+                                            src={activeFeature.images[activeImageIndex].src}
+                                            alt={activeFeature.images[activeImageIndex].label}
+                                            style={{ width: '100%', height: 'auto', maxHeight: '520px', objectFit: 'contain', display: 'block', margin: '0 auto' }}
+                                        />
+                                        {activeFeature.images.length > 1 && (
+                                            <>
+                                                <button
+                                                    onClick={() => setActiveImageIndex((i) => (i - 1 + activeFeature.images.length) % activeFeature.images.length)}
+                                                    aria-label="Imagem anterior"
+                                                    style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                >‹</button>
+                                                <button
+                                                    onClick={() => setActiveImageIndex((i) => (i + 1) % activeFeature.images.length)}
+                                                    aria-label="Próxima imagem"
+                                                    style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(0,0,0,0.55)', border: '1px solid rgba(255,255,255,0.15)', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                >›</button>
+                                            </>
+                                        )}
                                     </div>
-                                ))}
-                            </div>
+                                    <p style={{ textAlign: 'center', color: 'white', fontWeight: 600, fontSize: '0.95rem', margin: '0.9rem 0 0' }}>
+                                        {activeFeature.images[activeImageIndex].label}
+                                    </p>
+
+                                    {/* Miniaturas pra trocar a imagem em destaque */}
+                                    {activeFeature.images.length > 1 && (
+                                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+                                            {activeFeature.images.map((img, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => setActiveImageIndex(i)}
+                                                    style={{
+                                                        flexShrink: 0, width: '110px', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', padding: 0,
+                                                        border: i === activeImageIndex ? `2px solid rgb(${activeFeature.color})` : '2px solid rgba(255,255,255,0.1)',
+                                                        opacity: i === activeImageIndex ? 1 : 0.6, transition: 'opacity 0.15s, border-color 0.15s',
+                                                    }}
+                                                >
+                                                    <img src={img.src} alt={img.label} style={{ width: '100%', height: '62px', objectFit: 'cover', display: 'block' }} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
                         </div>
                         <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
                             <button onClick={() => setActiveFeature(null)} style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'transparent', color: 'white', cursor: 'pointer' }}>Fechar</button>
@@ -225,7 +278,7 @@ export default function LandingPage() {
                         <div style={{ position: 'absolute', width: '300px', height: '480px', background: ACCENT, filter: 'blur(120px)', opacity: 0.25, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 0 }} />
                         <div style={{ position: 'relative', width: '270px', height: '540px', background: '#0b0f0e', borderRadius: '40px', border: '8px solid #26332e', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', zIndex: 1, transform: 'rotateY(-5deg) rotateX(5deg)' }}>
                             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '110px', height: '22px', background: '#000', borderBottomLeftRadius: '14px', borderBottomRightRadius: '14px', zIndex: 10 }} />
-                            <img src="/img/mobile-dashboard-final.png" alt="App" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src="/img/DashMobile.jpeg" alt="App" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         </div>
                     </div>
                 </div>
@@ -251,6 +304,34 @@ export default function LandingPage() {
                             {['Treinos com vídeos e séries pra marcar na hora', 'Check-in semanal: o aluno conta como foi a semana', 'Comunidade com ranking e desafios entre os alunos', 'Evolução com fotos e avaliações físicas'].map((item, i) => (
                                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#e2e8f0' }}>
                                     <div style={{ background: 'rgba(16,185,129,0.2)', borderRadius: '50%', padding: '5px', display: 'flex', color: ACCENT }}><Check size={14} /></div>
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Comunidade (celular à esquerda) */}
+            <section style={{ padding: '5rem 2rem 7rem', background: 'transparent', overflow: 'hidden' }}>
+                <div style={{ maxWidth: '1150px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem', alignItems: 'center' }}>
+                    {/* Celular */}
+                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', perspective: '1000px' }}>
+                        <div style={{ position: 'absolute', width: '300px', height: '480px', background: '#0ea5e9', filter: 'blur(120px)', opacity: 0.22, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 0 }} />
+                        <div style={{ position: 'relative', width: '270px', height: '540px', background: '#0b0f0e', borderRadius: '40px', border: '8px solid #26332e', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', zIndex: 1, transform: 'rotateY(5deg) rotateX(5deg)' }}>
+                            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '110px', height: '22px', background: '#000', borderBottomLeftRadius: '14px', borderBottomRightRadius: '14px', zIndex: 10 }} />
+                            <img src="/img/Comunidade.jpeg" alt="Comunidade" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
+                    </div>
+                    {/* Texto */}
+                    <div style={{ textAlign: 'left' }}>
+                        <div style={{ display: 'inline-block', padding: '0.4rem 1rem', background: 'rgba(14,165,233,0.1)', color: '#0ea5e9', borderRadius: '99px', fontWeight: 700, fontSize: '0.85rem', marginBottom: '1.25rem', border: '1px solid rgba(14,165,233,0.2)' }}>💬 Comunidade</div>
+                        <h2 style={{ fontSize: '2.6rem', fontWeight: 800, color: 'white', lineHeight: 1.12, marginBottom: '1.25rem' }}>Seus alunos <span style={{ color: '#0ea5e9' }}>conectados entre si</span></h2>
+                        <p style={{ color: '#9ca3af', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '2rem' }}>Um feed onde os alunos compartilham conquistas e se apoiam, além de desafios mensais que você configura para engajar a turma. Cria proximidade e mantém todo mundo motivado a treinar.</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                            {['Feed com posts e comentários entre os alunos', 'Desafios mensais configurados por você, com ranking', 'Aumenta o engajamento e reduz a evasão da consultoria'].map((item, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#e2e8f0' }}>
+                                    <div style={{ background: 'rgba(14,165,233,0.2)', borderRadius: '50%', padding: '5px', display: 'flex', color: '#0ea5e9' }}><Check size={14} /></div>
                                     {item}
                                 </div>
                             ))}
