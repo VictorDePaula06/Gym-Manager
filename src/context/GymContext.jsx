@@ -455,9 +455,7 @@ export const GymProvider = ({ children }) => {
         planInfo: planLimits(plan),  // { name, maxStudents, ai, ... }
         settings,
         updateSettings,
-        // IA só vale se o plano permitir (Bronze = sem IA, mesmo com chave salva)
         aiConfig: { ...aiConfig, configured: aiConfig.configured && planLimits(plan).ai },
-        aiPlanBlocked: !planLimits(plan).ai,   // true no Bronze → mostrar upsell
         updateAiConfig,
         addStudent,
         updateStudent,

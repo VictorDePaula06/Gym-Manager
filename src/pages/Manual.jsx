@@ -103,9 +103,9 @@ export default function Manual() {
                         <Steps items={[
                             <>Na tela de login, deixe selecionado <strong>Sou Personal</strong>.</>,
                             <>Toque em <strong>Entrar com Google</strong> e escolha a conta que vai usar.</>,
-                            <>Sua conta é criada na hora, já com <strong>7 dias de teste grátis</strong> no plano Ouro (tudo liberado, incluindo IA).</>,
+                            <>Sua conta é criada na hora, já com <strong>7 dias de teste grátis</strong> no plano Ouro (tudo liberado).</>,
                         ]} />
-                        <p>Quando o teste termina, <strong>o acesso não é bloqueado</strong> — sua conta cai automaticamente para o plano Bronze e você continua usando o sistema, só sem IA e limitado a 15 alunos até assinar um plano pago.</p>
+                        <p>Quando o teste termina, <strong>o acesso não é bloqueado</strong> — sua conta cai automaticamente para o plano Bronze e você continua usando o sistema, incluindo a IA, só limitado a 15 alunos até assinar um plano pago.</p>
                     </Card>
 
                     <Card icon={CreditCard} title="Planos e assinatura">
@@ -119,7 +119,7 @@ export default function Manual() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr style={{ borderTop: '1px solid var(--border-glass)' }}><td style={{ padding: '0.5rem 0.6rem' }}>Bronze</td><td style={{ padding: '0.5rem 0.6rem' }}>15</td><td style={{ padding: '0.5rem 0.6rem' }}>—</td></tr>
+                                    <tr style={{ borderTop: '1px solid var(--border-glass)' }}><td style={{ padding: '0.5rem 0.6rem' }}>Bronze</td><td style={{ padding: '0.5rem 0.6rem' }}>15</td><td style={{ padding: '0.5rem 0.6rem' }}><Pill tone="green">Incluída</Pill></td></tr>
                                     <tr style={{ borderTop: '1px solid var(--border-glass)' }}><td style={{ padding: '0.5rem 0.6rem' }}>Prata</td><td style={{ padding: '0.5rem 0.6rem' }}>40</td><td style={{ padding: '0.5rem 0.6rem' }}><Pill tone="green">Incluída</Pill></td></tr>
                                     <tr style={{ borderTop: '1px solid var(--border-glass)' }}><td style={{ padding: '0.5rem 0.6rem' }}>Ouro</td><td style={{ padding: '0.5rem 0.6rem' }}>Ilimitado</td><td style={{ padding: '0.5rem 0.6rem' }}><Pill tone="green">Incluída</Pill></td></tr>
                                 </tbody>
@@ -160,7 +160,7 @@ export default function Manual() {
                     </Card>
 
                     <Card icon={Dumbbell} title="Treinos e fichas">
-                        <p>Monte fichas por divisão (A, B, C…) com séries, repetições e carga. Nos planos <strong>Prata</strong> e <strong>Ouro</strong>, configure sua chave do Google Gemini em Configurações → Inteligência Artificial e gere fichas automaticamente com base no perfil do aluno.</p>
+                        <p>Monte fichas por divisão (A, B, C…) com séries, repetições e carga. Em qualquer plano, configure sua chave do Google Gemini em Configurações → Inteligência Artificial e gere fichas automaticamente com base no perfil do aluno.</p>
                         <p>Toda ficha pode ser enviada por WhatsApp ou baixada em PDF.</p>
                     </Card>
 
@@ -187,7 +187,7 @@ export default function Manual() {
                             'Nome e logo — aparecem no seu app e no portal do aluno.',
                             'WhatsApp — usado nos botões de contato do sistema.',
                             'Tema — claro ou escuro.',
-                            'Inteligência Artificial — sua chave do Gemini (planos Prata e Ouro).',
+                            'Inteligência Artificial — sua chave do Gemini (disponível em todos os planos).',
                         ]} />
                     </Card>
                 </div>

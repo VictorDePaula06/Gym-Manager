@@ -1,12 +1,13 @@
 // Definição central dos planos do personal (tenant).
-// Bronze: grátis, limitado, sem IA. Prata: IA + 40 alunos. Ouro: tudo ilimitado.
+// A IA é BYOK (cada personal usa a própria chave do Gemini) e está disponível
+// em todos os planos. O que diferencia os planos é só a quantidade de alunos.
 export const PLANS = {
     bronze: {
         id: 'bronze',
         name: 'Bronze',
         color: '#b45309',      // amber-700
         maxStudents: 15,
-        ai: false,
+        ai: true,
         price: 0,
     },
     prata: {

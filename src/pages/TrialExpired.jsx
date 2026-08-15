@@ -113,7 +113,7 @@ const TrialExpired = () => {
                         <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: 0, margin: 0, listStyle: 'none' }}>
                             {[
                                 'Acesso ilimitado a alunos',
-                                'Gerador de Treinos com IA',
+                                'Relatórios de evolução',
                                 'Gestão Financeira Completa',
                                 'Suporte Prioritário no WhatsApp'
                             ].map((item, index) => (

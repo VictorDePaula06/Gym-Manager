@@ -7,9 +7,9 @@ import { db } from '../firebase';
 const WHATS = 'https://wa.me/5521982626387';
 
 const PLANS = [
-    { name: 'Bronze', color: '#c2803f', icon: Dumbbell, badge: null, highlight: false, monthly: '39,90', annual: '29,90', annualTotal: '358,80', save: '120', features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos + app do aluno', 'Comunidade e desafios'], note: 'Sem inteligência artificial' },
-    { name: 'Prata', color: '#94a3b8', icon: Sparkles, badge: 'Mais popular', highlight: true, monthly: '79,90', annual: '59,90', annualTotal: '718,80', save: '240', features: ['Até 40 alunos', 'Tudo do Bronze', 'Treinos com Inteligência Artificial', 'Relatórios de evolução', 'Suporte prioritário'], note: null },
-    { name: 'Ouro', color: '#eab308', icon: Crown, badge: null, highlight: false, monthly: '149,90', annual: '119,90', annualTotal: '1.438,80', save: '360', features: ['Alunos ilimitados', 'Tudo do Prata', 'IA sem limites', 'Suporte VIP no WhatsApp'], note: null },
+    { name: 'Bronze', color: '#c2803f', icon: Dumbbell, badge: null, highlight: false, monthly: '39,90', annual: '29,90', annualTotal: '358,80', save: '120', features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos com Inteligência Artificial', 'Comunidade e desafios'], note: null },
+    { name: 'Prata', color: '#94a3b8', icon: Sparkles, badge: 'Mais popular', highlight: true, monthly: '79,90', annual: '59,90', annualTotal: '718,80', save: '240', features: ['Até 40 alunos', 'Tudo do Bronze', 'Relatórios de evolução', 'Suporte prioritário'], note: null },
+    { name: 'Ouro', color: '#eab308', icon: Crown, badge: null, highlight: false, monthly: '149,90', annual: '119,90', annualTotal: '1.438,80', save: '360', features: ['Alunos ilimitados', 'Tudo do Prata', 'Suporte VIP no WhatsApp'], note: null },
 ];
 
 const Subscription = () => {

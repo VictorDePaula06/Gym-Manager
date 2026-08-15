@@ -23,8 +23,8 @@ const PLANS = [
         highlight: false,
         badge: null,
         icon: Dumbbell,
-        features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Montagem de treinos', 'App do aluno + comunidade', 'Check-in e desafios'],
-        note: 'Sem inteligência artificial',
+        features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos com Inteligência Artificial', 'App do aluno + comunidade', 'Check-in e desafios'],
+        note: null,
         cta: 'Assinar Bronze',
     },
     {
@@ -37,7 +37,7 @@ const PLANS = [
         highlight: true,
         badge: 'Mais popular',
         icon: Sparkles,
-        features: ['Até 40 alunos', 'Tudo do Bronze', 'Treinos com Inteligência Artificial', 'Relatórios de evolução', 'Suporte prioritário'],
+        features: ['Até 40 alunos', 'Tudo do Bronze', 'Relatórios de evolução', 'Suporte prioritário'],
         note: null,
         cta: 'Assinar Prata',
     },
@@ -51,7 +51,7 @@ const PLANS = [
         highlight: false,
         badge: null,
         icon: Crown,
-        features: ['Alunos ilimitados', 'Tudo do Prata', 'IA sem limites', 'Suporte VIP no WhatsApp'],
+        features: ['Alunos ilimitados', 'Tudo do Prata', 'Suporte VIP no WhatsApp'],
         note: null,
         cta: 'Assinar Ouro',
     },
@@ -482,7 +482,7 @@ export default function LandingPage() {
                         { q: 'Preciso instalar algum programa?', a: 'Não! É 100% online (nas nuvens). Você acessa pelo navegador de qualquer computador, tablet ou celular. Se seu aparelho estragar, seus dados continuam salvos.' },
                         { q: 'Funciona em iPhone e Android?', a: 'Sim. É otimizado para celular e funciona como um aplicativo. Não precisa baixar da loja — basta acessar pelo navegador e adicionar à tela inicial.' },
                         { q: 'Meus dados estão seguros?', a: 'Muito mais que no papel ou planilha. Criptografia de ponta e backups automáticos. Ninguém além de você acessa os dados dos seus alunos.' },
-                        { q: 'Como funciona o teste grátis?', a: 'Todo novo cadastro começa com 7 dias grátis no plano Ouro (tudo liberado, com IA). Depois, é só escolher o plano que faz mais sentido pra você.' },
+                        { q: 'Como funciona o teste grátis?', a: 'Todo novo cadastro começa com 7 dias grátis no plano Ouro (tudo liberado). Depois, é só escolher o plano que faz mais sentido pra você — a Inteligência Artificial está incluída em todos os planos.' },
                     ].map((faq, i) => (
                         <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', overflow: 'hidden' }}>
                             <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: openFaq === i ? ACCENT : '#e2e8f0' }}>
