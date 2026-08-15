@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle, Video, MessageCircle, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Dumbbell, Settings, LogOut, PieChart, Briefcase, AlertTriangle, Video, MessageCircle, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getFirestore, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +43,15 @@ export default function Layout() {
 
     const { settings } = useGym();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === '1');
+
+    const toggleCollapsed = () => {
+        setCollapsed(prev => {
+            const next = !prev;
+            localStorage.setItem('sidebarCollapsed', next ? '1' : '0');
+            return next;
+        });
+    };
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative' }}>
@@ -96,7 +105,7 @@ export default function Layout() {
 
             {/* Sidebar */}
             <aside
-                className={`glass-panel desktop-sidebar ${sidebarOpen ? 'open' : ''}`}
+                className={`glass-panel desktop-sidebar ${sidebarOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
                 style={{
                     height: '96vh',
                     margin: '2vh 0 2vh 2vh',
@@ -107,6 +116,32 @@ export default function Layout() {
                     transition: 'width 0.3s ease, left 0.3s ease'
                 }}
             >
+                {/* Botão de recolher/expandir (só desktop) */}
+                <button
+                    onClick={toggleCollapsed}
+                    className="sidebar-collapse-btn"
+                    title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+                    style={{
+                        position: 'absolute',
+                        top: '28px',
+                        right: '-12px',
+                        width: '26px',
+                        height: '26px',
+                        borderRadius: '50%',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-glass)',
+                        color: 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        boxShadow: 'var(--shadow-glass)'
+                    }}
+                >
+                    {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+                </button>
+
                 {/* Close Button Mobile - Moved to top level */}
                 <button
                     onClick={() => setSidebarOpen(false)}
@@ -318,11 +353,26 @@ export default function Layout() {
                 <style>{`
                     .mobile-close-btn { display: none; }
                     .desktop-sidebar { width: 280px; }
-                    
-                    /* Table/Compact Mode (768px - 1100px) */
+
+                    /* Modo compacto (ícone-only) — manual via botão de recolher,
+                       em qualquer largura de tela. */
+                    .desktop-sidebar.collapsed {
+                        width: 80px !important;
+                        margin: 2vh 0 2vh 1vh !important;
+                    }
+                    .desktop-sidebar.collapsed .sidebar-text { display: none !important; }
+                    .desktop-sidebar.collapsed .sidebar-header { padding: 1.5rem 0.5rem !important; }
+                    .desktop-sidebar.collapsed .sidebar-logo { width: 45px !important; height: 45px !important; }
+                    .desktop-sidebar.collapsed .sidebar-nav { padding: 0 0.75rem !important; }
+                    .desktop-sidebar.collapsed .sidebar-nav a { justify-content: center !important; padding: 0.75rem !important; }
+                    .desktop-sidebar.collapsed .sidebar-user-card { padding: 0.5rem !important; justify-content: center !important; }
+                    .desktop-sidebar.collapsed .sidebar-footer { padding: 1rem 0.5rem !important; }
+                    .desktop-sidebar.collapsed .sidebar-footer a, .desktop-sidebar.collapsed .sidebar-footer button { justify-content: center !important; padding: 0.75rem !important; }
+
+                    /* Modo compacto automático em telas médias (768-1100px) */
                     @media (min-width: 769px) and (max-width: 1100px) {
-                        .desktop-sidebar { 
-                            width: 80px !important; 
+                        .desktop-sidebar {
+                            width: 80px !important;
                             margin: 2vh 0 2vh 1vh !important;
                         }
                         .sidebar-text { display: none !important; }
@@ -333,18 +383,18 @@ export default function Layout() {
                         .sidebar-user-card { padding: 0.5rem !important; justify-content: center !important; }
                         .sidebar-footer { padding: 1rem 0.5rem !important; }
                         .sidebar-footer a, .sidebar-footer button { justify-content: center !important; padding: 0.75rem !important; }
-                        
+
                         .main-content { padding: 2vh 2vh 2vh 1vh !important; }
                     }
 
                     @media (max-width: 768px) {
                         .mobile-header { display: flex !important; }
-                        
-                        .desktop-sidebar { 
+
+                        .desktop-sidebar {
                             position: fixed !important;
                             top: 0 !important;
                             left: -100%;
-                            width: 280px !important; 
+                            width: 280px !important;
                             height: 100vh !important;
                             margin: 0 !important;
                             border-radius: 0 !important;
@@ -353,14 +403,15 @@ export default function Layout() {
                             overflow-y: auto;
                             padding-bottom: calc(20px + env(safe-area-inset-bottom));
                         }
-                        
+
                         .desktop-sidebar.open {
                             left: 0 !important;
                             box-shadow: 20px 0 50px rgba(0,0,0,0.5);
                         }
 
                         .mobile-close-btn { display: flex !important; }
-                        
+                        .sidebar-collapse-btn { display: none !important; }
+
                         .main-content {
                             padding-top: 80px !important;
                         }

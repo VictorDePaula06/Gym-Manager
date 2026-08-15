@@ -387,10 +387,10 @@ export default function Students() {
                 </div>
             ) : (
                 viewType === 'grid' ? (
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-                        gap: '1.5rem',
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
+                        gap: '1rem',
                         width: '100%'
                     }}>
                         {filteredStudents.map(student => (

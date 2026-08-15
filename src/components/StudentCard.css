@@ -145,6 +145,7 @@
     font-weight: 800;
     color: #f8fafc;
     /* Slate 50 */
+    white-space: nowrap;
 }
 
 .stat-value small {

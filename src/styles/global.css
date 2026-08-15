@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Densidade por tamanho de tela — a maioria dos espaçamentos/fontes do app
+   usa rem, então ajustar a base escala tudo de forma proporcional. Sem isso,
+   o layout pensado pra monitor grande fica "gigante" em tela de notebook
+   (a única faixa responsiva existente antes era só a de celular). */
+html {
+    font-size: 11px;
+}
+
+@media (min-width: 1600px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
 :root {
     /* Colors - Graphite Dark Theme (Default) — neutro, sem tom azulado */
     --bg-app: #121214;
