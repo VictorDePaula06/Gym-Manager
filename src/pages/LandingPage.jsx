@@ -65,6 +65,7 @@ export default function LandingPage() {
     const [scrolled, setScrolled] = useState(false);
     const [billing, setBilling] = useState('annual'); // 'monthly' | 'annual'
     const containerRef = useRef(null);
+    const logoTiltRef = useRef(null);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 50);
@@ -84,6 +85,36 @@ export default function LandingPage() {
     useEffect(() => {
         document.body.style.overflow = activeFeature ? 'hidden' : 'unset';
     }, [activeFeature]);
+
+    // Tilt 3D no logo do hero, seguindo o mouse (efeito sutil, desativado no celular)
+    useEffect(() => {
+        const el = logoTiltRef.current;
+        if (!el || window.matchMedia('(max-width: 768px)').matches) return;
+
+        const handleMove = (e) => {
+            const rect = el.getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width - 0.5;
+            const py = (e.clientY - rect.top) / rect.height - 0.5;
+            gsap.to(el, {
+                rotateY: px * 18,
+                rotateX: -py * 18,
+                duration: 0.6,
+                ease: 'power2.out',
+                transformPerspective: 800,
+            });
+        };
+        const handleLeave = () => {
+            gsap.to(el, { rotateY: 0, rotateX: 0, duration: 0.8, ease: 'power3.out' });
+        };
+
+        const section = el.closest('section');
+        section?.addEventListener('mousemove', handleMove);
+        section?.addEventListener('mouseleave', handleLeave);
+        return () => {
+            section?.removeEventListener('mousemove', handleMove);
+            section?.removeEventListener('mouseleave', handleLeave);
+        };
+    }, []);
 
     const features = [
         { id: 'students', title: 'Seus Alunos', shortDesc: 'Controle total de matrículas e avaliações.', longDesc: 'Tenha todos os seus alunos na palma da mão. Acompanhe a evolução física com gráficos, fotos comparativas e avaliações detalhadas para mostrar resultados reais.', icon: Users, color: '16, 185, 129', images: [{ src: '/img/Aluno1.jpeg', label: 'Lista de Alunos' }, { src: '/img/Aluno2.jpeg', label: 'Avaliações Físicas' }, { src: '/img/Aluno3.jpeg', label: 'Mapa Corporal' }, { src: '/img/Aluno4.jpeg', label: 'Comparativo de Evolução' }] },
@@ -140,7 +171,12 @@ export default function LandingPage() {
                     {/* Logo grande à esquerda */}
                     <div className="hero-logo-col" style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
                         <div style={{ position: 'absolute', width: '620px', height: '620px', background: ACCENT, filter: 'blur(160px)', opacity: 0.3, borderRadius: '50%', zIndex: 0 }} />
-                        <img src="/logo-Aliviaf.png" alt="Alivia Fitness" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '680px', height: 'auto' }} />
+                        <img
+                            ref={logoTiltRef}
+                            src="/logo-Aliviaf.png"
+                            alt="Alivia Fitness"
+                            style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '680px', height: 'auto', transformStyle: 'preserve-3d', willChange: 'transform' }}
+                        />
                     </div>
 
                     {/* Texto à direita */}
