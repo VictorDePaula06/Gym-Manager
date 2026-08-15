@@ -1912,8 +1912,8 @@ export default function StudentDetails() {
                         {/* LEFT COLUMN: Profile & Personal */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {/* Profile Card */}
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                                <StudentCard student={student} settings={settings} style={{ width: '18.75rem' }} />
+                            <div style={{ marginBottom: '1rem' }}>
+                                <StudentCard student={student} settings={settings} style={{ width: '100%', maxWidth: 'none' }} />
                             </div>
 
                             {/* Código de acesso do app (login com Google) — bem visível, logo abaixo da foto */}
