@@ -172,11 +172,11 @@ const Login = () => {
             <div style={{
                 maxWidth: '26rem', // Somewhat narrower for elegance
                 width: '100%',
-                backgroundColor: 'rgba(24, 24, 27, 0.72)', // More transparent
+                background: 'linear-gradient(160deg, rgba(16, 185, 129, 0.14), rgba(24, 24, 27, 0.78))',
                 backdropFilter: 'blur(16px)',
                 WebkitBackdropFilter: 'blur(16px)',
                 borderRadius: '1.5rem',
-                border: '1px solid rgba(255, 255, 255, 0.1)', // Light border
+                border: '1px solid rgba(16, 185, 129, 0.18)', // Leve contorno esverdeado
                 padding: '2.5rem',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)',
                 position: 'relative',
