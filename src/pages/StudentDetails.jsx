@@ -1908,12 +1908,12 @@ export default function StudentDetails() {
             <div style={{ marginTop: '2rem' }}>
 
                 {activeTab === 'overview' && (
-                    <div className="responsive-grid" style={{ gap: '2rem', gridTemplateColumns: 'minmax(20rem, auto) 1fr' }}>
+                    <div className="responsive-grid" style={{ gap: '2rem', gridTemplateColumns: 'minmax(18.75rem, auto) 1fr' }}>
                         {/* LEFT COLUMN: Profile & Personal */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '18.75rem', maxWidth: '100%' }}>
                             {/* Profile Card */}
                             <div style={{ marginBottom: '1rem' }}>
-                                <StudentCard student={student} settings={settings} style={{ width: '100%', maxWidth: 'none' }} />
+                                <StudentCard student={student} settings={settings} style={{ width: '100%' }} />
                             </div>
 
                             {/* Código de acesso do app (login com Google) — bem visível, logo abaixo da foto */}
