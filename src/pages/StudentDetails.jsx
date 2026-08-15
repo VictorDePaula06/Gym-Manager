@@ -1908,12 +1908,12 @@ export default function StudentDetails() {
             <div style={{ marginTop: '2rem' }}>
 
                 {activeTab === 'overview' && (
-                    <div className="responsive-grid" style={{ gap: '2rem', gridTemplateColumns: 'minmax(320px, auto) 1fr' }}>
+                    <div className="responsive-grid" style={{ gap: '2rem', gridTemplateColumns: 'minmax(20rem, auto) 1fr' }}>
                         {/* LEFT COLUMN: Profile & Personal */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                             {/* Profile Card */}
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
-                                <StudentCard student={student} settings={settings} style={{ width: '300px' }} />
+                                <StudentCard student={student} settings={settings} style={{ width: '18.75rem' }} />
                             </div>
 
                             {/* Plan Summary */}
