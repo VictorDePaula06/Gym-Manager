@@ -1951,115 +1951,6 @@ export default function StudentDetails() {
                                 )}
                             </div>
 
-                            {/* Plan Summary */}
-                            {/* Plan Summary */}
-                            {(() => {
-                                // Fonte única de verdade (evita datas divergentes entre telas)
-                                const ps = getPaymentStatus(student);
-                                const nextPaymentDate = ps.next;
-                                const isOverdue = ps.isOverdue;
-                                const awaitingFirst = ps.awaitingFirst;
-
-                                return (
-                                    <div className="glass-panel" style={{
-                                        padding: '1.5rem',
-                                        background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'var(--card-bg)',
-                                        border: isOverdue ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-glass)',
-                                        position: 'relative'
-                                    }}>
-                                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
-                                            Plano Atual
-                                            {isOverdue && <span style={{ marginLeft: '0.5rem', color: '#ef4444', fontWeight: 'bold' }}>(PENDENTE)</span>}
-                                            {awaitingFirst && <span style={{ marginLeft: '0.5rem', color: '#f59e0b', fontWeight: 'bold' }}>(INÍCIO)</span>}
-                                        </h4>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
-                                                {{
-                                                    'Monthly': 'Mensal',
-                                                    'monthly': 'Mensal',
-                                                    'Quarterly': 'Trimestral',
-                                                    'quarterly': 'Trimestral',
-                                                    'Semiannual': 'Semestral',
-                                                    'semiannual': 'Semestral',
-                                                    'Annual': 'Anual',
-                                                    'annual': 'Anual'
-                                                }[student.plan] || student.plan}
-                                            </span>
-                                            <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
-                                                {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
-                                            </span>
-                                        </div>
-                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                                            {awaitingFirst ? (
-                                                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
-                                                    Período de início · aguardando 1º pagamento ({ps.daysRemaining} {ps.daysRemaining === 1 ? 'dia' : 'dias'})
-                                                </span>
-                                            ) : (
-                                                <>
-                                                    {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
-                                                    <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
-                                                        {nextPaymentDate
-                                                            ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
-                                                            : 'Data não def.'}
-                                                    </span>
-                                                </>
-                                            )}
-                                        </p>
-
-                                        {isOverdue && (
-                                            <>
-                                                <button
-                                                    onClick={handleWhatsApp}
-                                                    style={{
-                                                        marginTop: '1rem',
-                                                        width: '100%',
-                                                        background: '#25D366',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        padding: '0.6rem',
-                                                        borderRadius: '8px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem'
-                                                    }}
-                                                >
-                                                    <MessageCircle size={18} />
-                                                    Cobrar no WhatsApp
-                                                </button>
-
-                                                <button
-                                                    onClick={() => updateStudent(id, { accessException: !student.accessException })}
-                                                    title={student.accessException
-                                                        ? 'Este aluno está liberado mesmo pendente. Clique para bloquear novamente.'
-                                                        : 'Aluno pendente é bloqueado automaticamente. Clique para liberar o acesso deste aluno.'}
-                                                    style={{
-                                                        marginTop: '0.6rem',
-                                                        width: '100%',
-                                                        background: student.accessException ? '#ef4444' : '#10b981',
-                                                        color: 'white',
-                                                        border: 'none',
-                                                        padding: '0.6rem',
-                                                        borderRadius: '8px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        gap: '0.5rem'
-                                                    }}
-                                                >
-                                                    {student.accessException ? <Lock size={18} /> : <Unlock size={18} />}
-                                                    {student.accessException ? 'Bloquear app novamente' : 'Liberar app do aluno'}
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-
                             {/* Contact Info */}
                             <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
                                 <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Contato</h4>
@@ -2131,6 +2022,113 @@ export default function StudentDetails() {
                                     <label style={{ fontSize: '0.75rem', color: hasDiseases ? '#b45309' : 'var(--text-muted)', textTransform: 'uppercase' }}>Histórico Médico</label>
                                     <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: hasDiseases ? '#b45309' : 'var(--text-main)' }}>{hasDiseases ? student.diseases : 'Nenhum'}</p>
                                 </div>
+                                    );
+                                })()}
+
+                                {/* Plano Atual */}
+                                {(() => {
+                                    const ps = getPaymentStatus(student);
+                                    const nextPaymentDate = ps.next;
+                                    const isOverdue = ps.isOverdue;
+                                    const awaitingFirst = ps.awaitingFirst;
+
+                                    return (
+                                        <div className="glass-panel" style={{
+                                            padding: '1.5rem',
+                                            background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'var(--card-bg)',
+                                            border: isOverdue ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-glass)',
+                                            position: 'relative'
+                                        }}>
+                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                                                Plano Atual
+                                                {isOverdue && <span style={{ marginLeft: '0.5rem', color: '#ef4444', fontWeight: 'bold' }}>(PENDENTE)</span>}
+                                                {awaitingFirst && <span style={{ marginLeft: '0.5rem', color: '#f59e0b', fontWeight: 'bold' }}>(INÍCIO)</span>}
+                                            </label>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.5rem 0' }}>
+                                                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                                    {{
+                                                        'Monthly': 'Mensal',
+                                                        'monthly': 'Mensal',
+                                                        'Quarterly': 'Trimestral',
+                                                        'quarterly': 'Trimestral',
+                                                        'Semiannual': 'Semestral',
+                                                        'semiannual': 'Semestral',
+                                                        'Annual': 'Anual',
+                                                        'annual': 'Anual'
+                                                    }[student.plan] || student.plan}
+                                                </span>
+                                                <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+                                                    {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
+                                                </span>
+                                            </div>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                                                {awaitingFirst ? (
+                                                    <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                                                        Período de início · aguardando 1º pagamento ({ps.daysRemaining} {ps.daysRemaining === 1 ? 'dia' : 'dias'})
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
+                                                        <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
+                                                            {nextPaymentDate
+                                                                ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+                                                                : 'Data não def.'}
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </p>
+
+                                            {isOverdue && (
+                                                <>
+                                                    <button
+                                                        onClick={handleWhatsApp}
+                                                        style={{
+                                                            marginTop: '1rem',
+                                                            width: '100%',
+                                                            background: '#25D366',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '0.6rem',
+                                                            borderRadius: '8px',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '0.5rem'
+                                                        }}
+                                                    >
+                                                        <MessageCircle size={18} />
+                                                        Cobrar no WhatsApp
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => updateStudent(id, { accessException: !student.accessException })}
+                                                        title={student.accessException
+                                                            ? 'Este aluno está liberado mesmo pendente. Clique para bloquear novamente.'
+                                                            : 'Aluno pendente é bloqueado automaticamente. Clique para liberar o acesso deste aluno.'}
+                                                        style={{
+                                                            marginTop: '0.6rem',
+                                                            width: '100%',
+                                                            background: student.accessException ? '#ef4444' : '#10b981',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            padding: '0.6rem',
+                                                            borderRadius: '8px',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            gap: '0.5rem'
+                                                        }}
+                                                    >
+                                                        {student.accessException ? <Lock size={18} /> : <Unlock size={18} />}
+                                                        {student.accessException ? 'Bloquear app novamente' : 'Liberar app do aluno'}
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
                                     );
                                 })()}
                             </div>
