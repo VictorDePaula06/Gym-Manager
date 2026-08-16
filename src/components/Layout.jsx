@@ -354,20 +354,24 @@ export default function Layout() {
                     .mobile-close-btn { display: none; }
                     .desktop-sidebar { width: 280px; }
 
-                    /* Modo compacto (ícone-only) — manual via botão de recolher,
-                       em qualquer largura de tela. */
-                    .desktop-sidebar.collapsed {
-                        width: 80px !important;
-                        margin: 2vh 0 2vh 1vh !important;
+                    /* Modo compacto (ícone-only) — manual via botão de recolher.
+                       Só vale em telas maiores; no mobile a sidebar é sempre a
+                       gaveta cheia (senão o modo colapsado, salvo do desktop
+                       no localStorage, quebra a gaveta aberta no celular). */
+                    @media (min-width: 769px) {
+                        .desktop-sidebar.collapsed {
+                            width: 80px !important;
+                            margin: 2vh 0 2vh 1vh !important;
+                        }
+                        .desktop-sidebar.collapsed .sidebar-text { display: none !important; }
+                        .desktop-sidebar.collapsed .sidebar-header { padding: 1.5rem 0.5rem !important; }
+                        .desktop-sidebar.collapsed .sidebar-logo { width: 45px !important; height: 45px !important; }
+                        .desktop-sidebar.collapsed .sidebar-nav { padding: 0 0.75rem !important; }
+                        .desktop-sidebar.collapsed .sidebar-nav a { justify-content: center !important; padding: 0.75rem !important; }
+                        .desktop-sidebar.collapsed .sidebar-user-card { padding: 0.5rem !important; justify-content: center !important; }
+                        .desktop-sidebar.collapsed .sidebar-footer { padding: 1rem 0.5rem !important; }
+                        .desktop-sidebar.collapsed .sidebar-footer a, .desktop-sidebar.collapsed .sidebar-footer button { justify-content: center !important; padding: 0.75rem !important; }
                     }
-                    .desktop-sidebar.collapsed .sidebar-text { display: none !important; }
-                    .desktop-sidebar.collapsed .sidebar-header { padding: 1.5rem 0.5rem !important; }
-                    .desktop-sidebar.collapsed .sidebar-logo { width: 45px !important; height: 45px !important; }
-                    .desktop-sidebar.collapsed .sidebar-nav { padding: 0 0.75rem !important; }
-                    .desktop-sidebar.collapsed .sidebar-nav a { justify-content: center !important; padding: 0.75rem !important; }
-                    .desktop-sidebar.collapsed .sidebar-user-card { padding: 0.5rem !important; justify-content: center !important; }
-                    .desktop-sidebar.collapsed .sidebar-footer { padding: 1rem 0.5rem !important; }
-                    .desktop-sidebar.collapsed .sidebar-footer a, .desktop-sidebar.collapsed .sidebar-footer button { justify-content: center !important; padding: 0.75rem !important; }
 
                     /* Modo compacto automático em telas médias (768-1100px) */
                     @media (min-width: 769px) and (max-width: 1100px) {

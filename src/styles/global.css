@@ -257,6 +257,15 @@ button {
         grid-template-columns: 1fr !important;
     }
 
+    /* Coluna esquerda da Visão Geral do aluno: no mobile ela some ao lado da
+       largura fixa de desktop e sobra vazio à direita — aqui ela ocupa a
+       largura toda e fica centralizada. */
+    .student-overview-left-col {
+        width: 100% !important;
+        max-width: 420px !important;
+        margin: 0 auto !important;
+    }
+
     /* Adjust glass panels padding */
     .glass-panel {
         padding: 1.5rem !important;

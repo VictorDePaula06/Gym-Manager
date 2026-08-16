@@ -48,6 +48,7 @@ export default function StudentDetails() {
     const { confirm } = useDialog();
     const [student, setStudent] = useState(null);
     const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'overview');
+    const [bodySubTab, setBodySubTab] = useState('map'); // 'map' | 'evolution' — sub-abas dentro de Mapa Corporal
     const [assessments, setAssessments] = useState([]);
     const [trainingLogs, setTrainingLogs] = useState([]);
     const [checkins, setCheckins] = useState([]);
@@ -1910,228 +1911,337 @@ export default function StudentDetails() {
                 {activeTab === 'overview' && (
                     <div className="responsive-grid" style={{ gap: '2rem', gridTemplateColumns: 'minmax(18.75rem, auto) 1fr' }}>
                         {/* LEFT COLUMN: Profile & Personal */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '18.75rem', maxWidth: '100%' }}>
+                        <div className="student-overview-left-col" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '18.75rem', maxWidth: '100%' }}>
                             {/* Profile Card */}
                             <div style={{ marginBottom: '1rem' }}>
-                                <StudentCard student={student} settings={settings} style={{ width: '100%' }} />
+                                <StudentCard student={student} settings={settings} style={{ width: '100%', margin: '0 auto' }} />
                             </div>
 
-                            {/* Código de acesso do app (login com Google) — bem visível, logo abaixo da foto */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)', border: '1px solid var(--primary)' }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Código de acesso ao app</h4>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
-                                    O aluno usa este código no <strong>1º login com o Google</strong> pra vincular a conta.
-                                </p>
-                                {student.accessCode ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-                                        <span style={{ fontFamily: 'monospace', fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.25em', color: 'var(--primary)', background: 'var(--input-bg)', padding: '0.5rem 1rem', borderRadius: '10px' }}>
-                                            {student.accessCode}
-                                        </span>
-                                        <button
-                                            onClick={() => { navigator.clipboard?.writeText(student.accessCode); addToast('Código copiado!', 'success'); }}
-                                            style={{ padding: '0.5rem 0.9rem', borderRadius: '8px', border: '1px solid var(--border-glass)', background: 'transparent', color: 'var(--text-main)', cursor: 'pointer', fontWeight: 600 }}
-                                        >
-                                            Copiar
-                                        </button>
-                                        <button
-                                            onClick={async () => { const c = await generateStudentCode(id); if (c) addToast('Novo código gerado.', 'success'); else addToast('Erro ao gerar.', 'error'); }}
-                                            style={{ padding: '0.5rem 0.9rem', borderRadius: '8px', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', textDecoration: 'underline' }}
-                                        >
-                                            Gerar novo
-                                        </button>
+                            {/* Código de acesso do app — compacto, logo abaixo da foto */}
+                            <div className="glass-panel" style={{ padding: '0.85rem 1rem', background: 'var(--card-bg)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <div>
+                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Código de acesso</span>
+                                        {student.accessCode ? (
+                                            <div style={{ fontFamily: 'monospace', fontSize: '1rem', fontWeight: 800, letterSpacing: '0.15em', color: 'var(--primary)' }}>
+                                                {student.accessCode}
+                                            </div>
+                                        ) : (
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>não gerado</div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <button
-                                        onClick={async () => { const c = await generateStudentCode(id); if (c) addToast('Código gerado!', 'success'); else addToast('Erro ao gerar.', 'error'); }}
-                                        className="btn-primary"
-                                        style={{ padding: '0.6rem 1.1rem' }}
-                                    >
-                                        Gerar código de acesso
-                                    </button>
-                                )}
+                                    {student.accessCode ? (
+                                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                            <button
+                                                onClick={() => { navigator.clipboard?.writeText(student.accessCode); addToast('Código copiado!', 'success'); }}
+                                                title="Copiar código"
+                                                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--border-glass)', background: 'transparent', color: 'var(--text-main)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                                            >
+                                                Copiar
+                                            </button>
+                                            <button
+                                                onClick={async () => { const c = await generateStudentCode(id); if (c) addToast('Novo código gerado.', 'success'); else addToast('Erro ao gerar.', 'error'); }}
+                                                title="Gerar novo código"
+                                                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.75rem', textDecoration: 'underline' }}
+                                            >
+                                                Novo
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={async () => { const c = await generateStudentCode(id); if (c) addToast('Código gerado!', 'success'); else addToast('Erro ao gerar.', 'error'); }}
+                                            className="btn-primary"
+                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
+                                        >
+                                            Gerar
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Contact Info */}
-                            <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
-                                <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Contato</h4>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Email</label>
-                                    <span style={{ color: 'var(--text-main)' }}>{student.email || '-'}</span>
+                            {/* Plano Atual */}
+                            {(() => {
+                                const ps = getPaymentStatus(student);
+                                const nextPaymentDate = ps.next;
+                                const isOverdue = ps.isOverdue;
+                                const awaitingFirst = ps.awaitingFirst;
+
+                                return (
+                                    <div style={{
+                                        padding: isOverdue ? '1.5rem' : '0 0.25rem',
+                                        background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                                        border: isOverdue ? '1px solid rgba(239, 68, 68, 0.5)' : 'none',
+                                        borderRadius: isOverdue ? '12px' : 0,
+                                        position: 'relative'
+                                    }}>
+                                        <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                                            Plano Atual
+                                            {isOverdue && <span style={{ marginLeft: '0.5rem', color: '#ef4444', fontWeight: 'bold' }}>(PENDENTE)</span>}
+                                            {awaitingFirst && <span style={{ marginLeft: '0.5rem', color: '#f59e0b', fontWeight: 'bold' }}>(INÍCIO)</span>}
+                                        </h4>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                            <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                                                {{
+                                                    'Monthly': 'Mensal',
+                                                    'monthly': 'Mensal',
+                                                    'Quarterly': 'Trimestral',
+                                                    'quarterly': 'Trimestral',
+                                                    'Semiannual': 'Semestral',
+                                                    'semiannual': 'Semestral',
+                                                    'Annual': 'Anual',
+                                                    'annual': 'Anual'
+                                                }[student.plan] || student.plan}
+                                            </span>
+                                            <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
+                                                {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
+                                            </span>
+                                        </div>
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
+                                            {awaitingFirst ? (
+                                                <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                                                    Período de início · aguardando 1º pagamento ({ps.daysRemaining} {ps.daysRemaining === 1 ? 'dia' : 'dias'})
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
+                                                    <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
+                                                        {nextPaymentDate
+                                                            ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
+                                                            : 'Data não def.'}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </p>
+
+                                        {isOverdue && (
+                                            <>
+                                                <button
+                                                    onClick={handleWhatsApp}
+                                                    style={{
+                                                        marginTop: '1rem',
+                                                        width: '100%',
+                                                        background: '#25D366',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        padding: '0.6rem',
+                                                        borderRadius: '8px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                >
+                                                    <MessageCircle size={18} />
+                                                    Cobrar no WhatsApp
+                                                </button>
+
+                                                <button
+                                                    onClick={() => updateStudent(id, { accessException: !student.accessException })}
+                                                    title={student.accessException
+                                                        ? 'Este aluno está liberado mesmo pendente. Clique para bloquear novamente.'
+                                                        : 'Aluno pendente é bloqueado automaticamente. Clique para liberar o acesso deste aluno.'}
+                                                    style={{
+                                                        marginTop: '0.6rem',
+                                                        width: '100%',
+                                                        background: student.accessException ? '#ef4444' : '#10b981',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        padding: '0.6rem',
+                                                        borderRadius: '8px',
+                                                        fontWeight: '600',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '0.5rem'
+                                                    }}
+                                                >
+                                                    {student.accessException ? <Lock size={18} /> : <Unlock size={18} />}
+                                                    {student.accessException ? 'Bloquear app novamente' : 'Liberar app do aluno'}
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Contact Info */}
+                            <div style={{ padding: '0 0.25rem' }}>
+                                <h4 style={{ margin: '0 0 0.6rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Contato</h4>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Email</label>
+                                    <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.email || '-'}</span>
                                 </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Telefone</label>
-                                    <span style={{ color: 'var(--text-main)' }}>{student.phone || '-'}</span>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Telefone</label>
+                                    <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.phone || '-'}</span>
                                 </div>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Endereço</label>
-                                    <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.address || '-'}</span>
+                                <div style={{ marginBottom: '0.5rem' }}>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Endereço</label>
+                                    <span style={{ color: 'var(--text-main)', fontSize: '0.85rem' }}>{student.address || '-'}</span>
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>CPF</label>
-                                    <span style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{student.cpf || '-'}</span>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>CPF</label>
+                                    <span style={{ color: 'var(--text-main)', fontSize: '0.85rem' }}>{student.cpf || '-'}</span>
                                 </div>
                             </div>
+
                         </div>
 
                         {/* RIGHT COLUMN: Anamnesis & Extras */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Anamnese e Objetivos</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
-                                {/* Objective */}
-                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)', borderLeft: '3px solid var(--primary)' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Objetivo</label>
-                                    <p style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: 'var(--text-main)' }}>{student.objective || '---'}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)' }}>Anamnese e Objetivos</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div className="glass-panel" style={{ padding: '1.25rem', borderLeft: '3px solid var(--primary)' }}>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Objetivo</label>
+                                    <p style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0.4rem 0 0 0', color: 'var(--text-main)' }}>{student.objective || '---'}</p>
                                 </div>
 
-                                {/* Frequency */}
-                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Frequência</label>
-                                    <p style={{ fontSize: '1.1rem', fontWeight: 'bold', margin: '0.5rem 0 0 0', color: 'var(--text-main)' }}>{student.trainingFrequency || '---'}</p>
+                                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Frequência</label>
+                                    <p style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '0.4rem 0 0 0', color: 'var(--text-main)' }}>{student.trainingFrequency || '---'}</p>
                                 </div>
 
-                                {/* Routine */}
-                                <div className="glass-panel" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
-                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Rotina</label>
-                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: 'var(--text-main)' }}>{student.routine || '---'}</p>
+                                <div className="glass-panel" style={{ padding: '1.25rem' }}>
+                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Rotina</label>
+                                    <p style={{ fontSize: '0.95rem', margin: '0.4rem 0 0 0', color: 'var(--text-main)' }}>{student.routine || '---'}</p>
                                 </div>
 
-                                {/* Limitations */}
                                 {(() => {
                                     const hasLimitations = hasContent(student.limitations);
                                     return (
-                                <div className="glass-panel" style={{
-                                    padding: '1.5rem',
-                                    background: hasLimitations ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
-                                    border: hasLimitations ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-glass)'
-                                }}>
-                                    <label style={{ fontSize: '0.75rem', color: hasLimitations ? '#b91c1c' : 'var(--text-muted)', textTransform: 'uppercase' }}>Limitações</label>
-                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: hasLimitations ? '#b91c1c' : 'var(--text-main)' }}>{hasLimitations ? student.limitations : 'Nenhuma'}</p>
-                                </div>
+                                        <div className="glass-panel" style={{
+                                            padding: '1.25rem',
+                                            background: hasLimitations ? 'rgba(239, 68, 68, 0.1)' : 'var(--input-bg)',
+                                            border: hasLimitations ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid var(--border-glass)'
+                                        }}>
+                                            <label style={{ fontSize: '0.7rem', color: hasLimitations ? '#b91c1c' : 'var(--text-muted)', textTransform: 'uppercase' }}>Limitações</label>
+                                            <p style={{ fontSize: '0.95rem', margin: '0.4rem 0 0 0', color: hasLimitations ? '#b91c1c' : 'var(--text-main)' }}>{hasLimitations ? student.limitations : 'Nenhuma'}</p>
+                                        </div>
                                     );
                                 })()}
 
-                                {/* Diseases */}
                                 {(() => {
                                     const hasDiseases = hasContent(student.diseases);
                                     return (
-                                <div className="glass-panel" style={{
-                                    padding: '1.5rem',
-                                    background: hasDiseases ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
-                                    border: hasDiseases ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid var(--border-glass)'
-                                }}>
-                                    <label style={{ fontSize: '0.75rem', color: hasDiseases ? '#b45309' : 'var(--text-muted)', textTransform: 'uppercase' }}>Histórico Médico</label>
-                                    <p style={{ fontSize: '1rem', margin: '0.5rem 0 0 0', color: hasDiseases ? '#b45309' : 'var(--text-main)' }}>{hasDiseases ? student.diseases : 'Nenhum'}</p>
-                                </div>
-                                    );
-                                })()}
-
-                                {/* Plano Atual */}
-                                {(() => {
-                                    const ps = getPaymentStatus(student);
-                                    const nextPaymentDate = ps.next;
-                                    const isOverdue = ps.isOverdue;
-                                    const awaitingFirst = ps.awaitingFirst;
-
-                                    return (
                                         <div className="glass-panel" style={{
-                                            padding: '1.5rem',
-                                            background: isOverdue ? 'rgba(239, 68, 68, 0.1)' : 'var(--card-bg)',
-                                            border: isOverdue ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid var(--border-glass)',
-                                            position: 'relative'
+                                            padding: '1.25rem',
+                                            background: hasDiseases ? 'rgba(234, 179, 8, 0.1)' : 'var(--input-bg)',
+                                            border: hasDiseases ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid var(--border-glass)'
                                         }}>
-                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                                                Plano Atual
-                                                {isOverdue && <span style={{ marginLeft: '0.5rem', color: '#ef4444', fontWeight: 'bold' }}>(PENDENTE)</span>}
-                                                {awaitingFirst && <span style={{ marginLeft: '0.5rem', color: '#f59e0b', fontWeight: 'bold' }}>(INÍCIO)</span>}
-                                            </label>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', margin: '0.5rem 0' }}>
-                                                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)' }}>
-                                                    {{
-                                                        'Monthly': 'Mensal',
-                                                        'monthly': 'Mensal',
-                                                        'Quarterly': 'Trimestral',
-                                                        'quarterly': 'Trimestral',
-                                                        'Semiannual': 'Semestral',
-                                                        'semiannual': 'Semestral',
-                                                        'Annual': 'Anual',
-                                                        'annual': 'Anual'
-                                                    }[student.plan] || student.plan}
-                                                </span>
-                                                <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>
-                                                    {student.price ? `R$ ${parseFloat(student.price).toFixed(2)}` : '-'}
-                                                </span>
-                                            </div>
-                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0 }}>
-                                                {awaitingFirst ? (
-                                                    <span style={{ color: '#f59e0b', fontWeight: 'bold' }}>
-                                                        Período de início · aguardando 1º pagamento ({ps.daysRemaining} {ps.daysRemaining === 1 ? 'dia' : 'dias'})
-                                                    </span>
-                                                ) : (
-                                                    <>
-                                                        {isOverdue ? 'Venceu em ' : 'Próximo pagamento em '}
-                                                        <span style={{ color: isOverdue ? '#ef4444' : 'var(--text-main)', fontWeight: isOverdue ? 'bold' : 'normal' }}>
-                                                            {nextPaymentDate
-                                                                ? nextPaymentDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' })
-                                                                : 'Data não def.'}
-                                                        </span>
-                                                    </>
-                                                )}
-                                            </p>
-
-                                            {isOverdue && (
-                                                <>
-                                                    <button
-                                                        onClick={handleWhatsApp}
-                                                        style={{
-                                                            marginTop: '1rem',
-                                                            width: '100%',
-                                                            background: '#25D366',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '0.6rem',
-                                                            borderRadius: '8px',
-                                                            fontWeight: '600',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '0.5rem'
-                                                        }}
-                                                    >
-                                                        <MessageCircle size={18} />
-                                                        Cobrar no WhatsApp
-                                                    </button>
-
-                                                    <button
-                                                        onClick={() => updateStudent(id, { accessException: !student.accessException })}
-                                                        title={student.accessException
-                                                            ? 'Este aluno está liberado mesmo pendente. Clique para bloquear novamente.'
-                                                            : 'Aluno pendente é bloqueado automaticamente. Clique para liberar o acesso deste aluno.'}
-                                                        style={{
-                                                            marginTop: '0.6rem',
-                                                            width: '100%',
-                                                            background: student.accessException ? '#ef4444' : '#10b981',
-                                                            color: 'white',
-                                                            border: 'none',
-                                                            padding: '0.6rem',
-                                                            borderRadius: '8px',
-                                                            fontWeight: '600',
-                                                            cursor: 'pointer',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '0.5rem'
-                                                        }}
-                                                    >
-                                                        {student.accessException ? <Lock size={18} /> : <Unlock size={18} />}
-                                                        {student.accessException ? 'Bloquear app novamente' : 'Liberar app do aluno'}
-                                                    </button>
-                                                </>
-                                            )}
+                                            <label style={{ fontSize: '0.7rem', color: hasDiseases ? '#b45309' : 'var(--text-muted)', textTransform: 'uppercase' }}>Histórico Médico</label>
+                                            <p style={{ fontSize: '0.95rem', margin: '0.4rem 0 0 0', color: hasDiseases ? '#b45309' : 'var(--text-main)' }}>{hasDiseases ? student.diseases : 'Nenhum'}</p>
                                         </div>
                                     );
                                 })()}
                             </div>
+
+                            {/* Resumo de Atividade */}
+                            {(() => {
+                                const total = trainingLogs.length;
+                                const now = Date.now();
+                                const last30 = trainingLogs.filter(l => l.timestamp && (now - new Date(l.timestamp).getTime()) <= 30 * 24 * 3600 * 1000).length;
+                                const lastLog = trainingLogs[0];
+                                let lastLabel = '—';
+                                if (lastLog?.timestamp) {
+                                    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+                                    const days = Math.round((startOfDay(new Date(now)) - startOfDay(new Date(lastLog.timestamp))) / (24 * 3600 * 1000));
+                                    lastLabel = days <= 0 ? 'Hoje' : days === 1 ? 'Ontem' : `Há ${days} dias`;
+                                }
+                                const stale = lastLog?.timestamp && (now - new Date(lastLog.timestamp).getTime()) > 14 * 24 * 3600 * 1000;
+
+                                const weeks = weeklyVolumeLoad(trainingLogs, 2);
+                                const thisWeekVolume = weeks[weeks.length - 1]?.volume || 0;
+                                const lastWeekVolume = weeks[weeks.length - 2]?.volume || 0;
+                                const volumeDiffPct = lastWeekVolume > 0 ? Math.round(((thisWeekVolume - lastWeekVolume) / lastWeekVolume) * 100) : null;
+                                const VolumeTrendIcon = volumeDiffPct === null || volumeDiffPct === 0 ? Minus : volumeDiffPct > 0 ? TrendingUp : TrendingDown;
+                                const volumeTrendColor = volumeDiffPct === null || volumeDiffPct === 0 ? 'var(--text-muted)' : volumeDiffPct > 0 ? '#10b981' : '#ef4444';
+
+                                const stats = [
+                                    { icon: CheckCircle, color: '#10b981', value: total, label: 'Treinos realizados' },
+                                    { icon: Activity, color: '#3b82f6', value: last30, label: 'Últimos 30 dias' },
+                                    { icon: Clock, color: stale ? '#ef4444' : '#a855f7', value: lastLabel, label: 'Último treino' },
+                                    {
+                                        icon: TrendingUp, color: '#f59e0b',
+                                        value: `${thisWeekVolume.toLocaleString('pt-BR')} kg`,
+                                        label: 'Volume da semana',
+                                        trend: volumeDiffPct !== null ? (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', color: volumeTrendColor, fontSize: '0.7rem', fontWeight: 700 }}>
+                                                <VolumeTrendIcon size={11} /> {volumeDiffPct > 0 ? '+' : ''}{volumeDiffPct}%
+                                            </span>
+                                        ) : null
+                                    },
+                                ];
+                                return (
+                                    <div>
+                                        <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem', color: 'var(--text-main)' }}>Resumo de Atividade</h3>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                                            {stats.map((s, i) => (
+                                                <div key={i} className="glass-panel" style={{ padding: '0.9rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                    <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: `${s.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <s.icon size={17} color={s.color} />
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.1 }}>{s.value}</span>
+                                                            {s.trend}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{s.label}</div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Último check-in */}
+                                        <div className="glass-panel" style={{ padding: '1.75rem 2rem', minHeight: '320px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: checkins.length ? '1.1rem' : 0 }}>
+                                                <h4 style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Último check-in</h4>
+                                                {checkins.length > 0 && (
+                                                    <button onClick={() => setActiveTab('checkins')} style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                                                        Ver todos ({checkins.length})
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {checkins.length === 0 ? (
+                                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nenhum check-in ainda.</p>
+                                            ) : (() => {
+                                                const c = checkins[0];
+                                                const cfgQs = settings?.checkinConfig?.questions?.length ? settings.checkinConfig.questions : DEFAULT_CHECKIN.questions;
+                                                const has = (v) => v !== undefined && v !== '' && v !== null;
+                                                const answered = cfgQs.filter((q) => has(c.answers?.[q.id]));
+                                                let rel = '';
+                                                if (c.createdAt) {
+                                                    const d = Math.floor((Date.now() - new Date(c.createdAt).getTime()) / 86400000);
+                                                    rel = d <= 0 ? 'hoje' : d === 1 ? 'ontem' : `há ${d} dias`;
+                                                }
+                                                return (
+                                                    <div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '1rem' }}>
+                                                            <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' }) : ''}</span>
+                                                            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{rel}</span>
+                                                        </div>
+                                                        {answered.length === 0 ? (
+                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enviado sem respostas.</span>
+                                                        ) : (
+                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+                                                                {answered.map((q) => (
+                                                                    <span key={q.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--input-bg)', borderRadius: '20px', padding: '0.5rem 1rem', fontSize: '0.88rem' }}>
+                                                                        <span style={{ color: 'var(--text-muted)' }}>{q.label}:</span>
+                                                                        <strong style={{ color: 'var(--text-main)' }}>{String(c.answers[q.id])}</strong>
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* ZERO ASSESSMENTS PLACEHOLDER */}
                             {assessments.length === 0 && (
@@ -2183,150 +2293,6 @@ export default function StudentDetails() {
                                 </div>
                             )}
 
-                            {/* Additional Info / Note placeholder if needed */}
-                            {/* Additional Info / Note placeholder if needed */}
-                            {/* CPF Deleted from here */}
-
-                            {/* Progress Chart Section - Moved here for Dashboard Layout */}
-                            {assessments.length > 0 && (() => {
-                                const chartData = [...assessments].reverse().map(a => {
-                                    let dateObj = new Date();
-                                    if (a.date?.seconds) dateObj = new Date(a.date.seconds * 1000);
-                                    else if (a.date instanceof Date) dateObj = a.date;
-                                    else if (a.date) dateObj = new Date(a.date);
-                                    const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '??/??';
-                                    return {
-                                        name: dateStr,
-                                        weight: parseFloat((a.weight || 0).toString().replace(',', '.')),
-                                        bodyFat: parseFloat((a.bodyFat || 0).toString().replace(',', '.'))
-                                    };
-                                });
-                                const lastW = chartData[chartData.length - 1]?.weight;
-                                const firstW = chartData[0]?.weight;
-                                const lastF = chartData[chartData.length - 1]?.bodyFat;
-                                const firstF = chartData[0]?.bodyFat;
-                                const deltaW = (lastW || lastW === 0) && (firstW || firstW === 0) ? lastW - firstW : null;
-                                const deltaF = (lastF || lastF === 0) && (firstF || firstF === 0) ? lastF - firstF : null;
-                                const fmtDelta = (d) => (d > 0 ? '+' : '') + d.toFixed(1).replace('.', ',');
-                                return (
-                                <div className="glass-panel hide-mobile-chart" style={{ padding: '1.5rem', background: 'var(--card-bg)' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Progresso (Peso & Gordura)</h3>
-                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent)' }}></div>
-                                                Peso
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div>
-                                                Gordura
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {chartData.length >= 2 && (
-                                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                                            {(lastW || lastW === 0) && (
-                                                <div style={{ flex: '1 1 160px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '1rem 1.25rem' }}>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Peso atual</div>
-                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-                                                        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{lastW}<small style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}> kg</small></span>
-                                                        {deltaW != null && deltaW !== 0 && (
-                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>{deltaW < 0 ? '▼' : '▲'} {fmtDelta(deltaW)} kg</span>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>desde a 1ª avaliação</div>
-                                                </div>
-                                            )}
-                                            {(lastF || lastF === 0) && (
-                                                <div style={{ flex: '1 1 160px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '1rem 1.25rem' }}>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gordura corporal</div>
-                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
-                                                        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{lastF}<small style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}> %</small></span>
-                                                        {deltaF != null && deltaF !== 0 && (
-                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: deltaF < 0 ? '#10b981' : '#ef4444' }}>{deltaF < 0 ? '▼' : '▲'} {fmtDelta(deltaF)} %</span>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>desde a 1ª avaliação</div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                    <div style={{ height: '300px', width: '100%' }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={chartData}>
-                                                <defs>
-                                                    <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="colorFat" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
-                                                <XAxis
-                                                    dataKey="name"
-                                                    stroke="var(--text-muted)"
-                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                />
-                                                <YAxis
-                                                    yAxisId="left"
-                                                    orientation="left"
-                                                    stroke="var(--accent)"
-                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    domain={['dataMin - 2', 'dataMax + 2']}
-                                                />
-                                                <YAxis
-                                                    yAxisId="right"
-                                                    orientation="right"
-                                                    stroke="#10b981"
-                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    unit="%"
-                                                />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-glass)', borderRadius: '8px', color: 'var(--text-main)' }}
-                                                    itemStyle={{ color: 'var(--text-main)' }}
-                                                    labelStyle={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}
-                                                />
-                                                <Area
-                                                    yAxisId="left"
-                                                    type="monotone"
-                                                    dataKey="weight"
-                                                    stroke="var(--accent)"
-                                                    strokeWidth={2}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorWeight)"
-                                                    name="Peso (kg)"
-                                                    dot={{ r: 4, strokeWidth: 2, stroke: 'var(--card-bg)', fill: 'var(--accent)' }}
-                                                    activeDot={{ r: 6 }}
-                                                />
-                                                <Area
-                                                    yAxisId="right"
-                                                    type="monotone"
-                                                    dataKey="bodyFat"
-                                                    stroke="#10b981"
-                                                    strokeWidth={2}
-                                                    fillOpacity={1}
-                                                    fill="url(#colorFat)"
-                                                    name="Gordura (%)"
-                                                    dot={{ r: 4, strokeWidth: 2, stroke: 'var(--card-bg)', fill: '#10b981' }}
-                                                    activeDot={{ r: 6 }}
-                                                />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-                                );
-                            })()}
-
-                            {/* Body Map removed from here */}
                         </div>
                     </div>
                 )}
@@ -2417,33 +2383,204 @@ export default function StudentDetails() {
                 )}
 
                 {activeTab === 'map' && (
-                    <div className="glass-panel" style={{ padding: '2rem', background: 'var(--card-bg)', minHeight: '600px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ width: '100%', maxWidth: '900px' }}>
-                            <div style={{ marginBottom: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: 'var(--text-main)' }}>Mapa Corporal</h3>
-                                {assessments.length > 0 ? (
-                                    <span>
-                                        Comparando: <strong style={{ color: 'var(--primary)' }}>
-                                            {assessments[0].dateString || new Date(assessments[0].date.seconds * 1000).toLocaleDateString('pt-BR')}
-                                        </strong>
-                                        {' vs '}
-                                        {assessments[1]
-                                            ? (assessments[1].dateString || new Date(assessments[1].date.seconds * 1000).toLocaleDateString('pt-BR'))
-                                            : 'Início'}
-                                    </span>
-                                ) : (
-                                    <span>Nenhuma avaliação registrada.</span>
-                                )}
-                            </div>
-
-                            {assessments.length > 0 && (
-                                <BodyMeasurementMap
-                                    current={assessments[0]}
-                                    previous={assessments[1]}
-                                    gender={student.gender}
-                                />
-                            )}
+                    <div className="glass-panel" style={{ padding: '2rem', background: 'var(--card-bg)', minHeight: '600px' }}>
+                        {/* Sub-abas: Mapa Corporal | Evolução (Peso & Gordura) */}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', justifyContent: 'center' }}>
+                            <button
+                                onClick={() => setBodySubTab('map')}
+                                style={{
+                                    background: bodySubTab === 'map' ? 'var(--primary)' : 'var(--input-bg)',
+                                    color: bodySubTab === 'map' ? 'white' : 'var(--text-muted)',
+                                    border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px',
+                                    fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'
+                                }}
+                            >
+                                Mapa Corporal
+                            </button>
+                            <button
+                                onClick={() => setBodySubTab('evolution')}
+                                style={{
+                                    background: bodySubTab === 'evolution' ? 'var(--primary)' : 'var(--input-bg)',
+                                    color: bodySubTab === 'evolution' ? 'white' : 'var(--text-muted)',
+                                    border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px',
+                                    fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem'
+                                }}
+                            >
+                                Evolução (Peso & Gordura)
+                            </button>
                         </div>
+
+                        {bodySubTab === 'map' && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ width: '100%', maxWidth: '900px' }}>
+                                    <div style={{ marginBottom: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                        {assessments.length > 0 ? (
+                                            <span>
+                                                Comparando: <strong style={{ color: 'var(--primary)' }}>
+                                                    {assessments[0].dateString || new Date(assessments[0].date.seconds * 1000).toLocaleDateString('pt-BR')}
+                                                </strong>
+                                                {' vs '}
+                                                {assessments[1]
+                                                    ? (assessments[1].dateString || new Date(assessments[1].date.seconds * 1000).toLocaleDateString('pt-BR'))
+                                                    : 'Início'}
+                                            </span>
+                                        ) : (
+                                            <span>Nenhuma avaliação registrada.</span>
+                                        )}
+                                    </div>
+
+                                    {assessments.length > 0 && (
+                                        <BodyMeasurementMap
+                                            current={assessments[0]}
+                                            previous={assessments[1]}
+                                            gender={student.gender}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {bodySubTab === 'evolution' && (
+                            assessments.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>Nenhuma avaliação registrada.</div>
+                            ) : (() => {
+                                const chartData = [...assessments].reverse().map(a => {
+                                    let dateObj = new Date();
+                                    if (a.date?.seconds) dateObj = new Date(a.date.seconds * 1000);
+                                    else if (a.date instanceof Date) dateObj = a.date;
+                                    else if (a.date) dateObj = new Date(a.date);
+                                    const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '??/??';
+                                    return {
+                                        name: dateStr,
+                                        weight: parseFloat((a.weight || 0).toString().replace(',', '.')),
+                                        bodyFat: parseFloat((a.bodyFat || 0).toString().replace(',', '.'))
+                                    };
+                                });
+                                const lastW = chartData[chartData.length - 1]?.weight;
+                                const firstW = chartData[0]?.weight;
+                                const lastF = chartData[chartData.length - 1]?.bodyFat;
+                                const firstF = chartData[0]?.bodyFat;
+                                const deltaW = (lastW || lastW === 0) && (firstW || firstW === 0) ? lastW - firstW : null;
+                                const deltaF = (lastF || lastF === 0) && (firstF || firstF === 0) ? lastF - firstF : null;
+                                const fmtDelta = (d) => (d > 0 ? '+' : '') + d.toFixed(1).replace('.', ',');
+                                return (
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)' }}>Progresso (Peso & Gordura)</h3>
+                                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--accent)' }}></div>
+                                                Peso
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }}></div>
+                                                Gordura
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {chartData.length >= 2 && (
+                                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                            {(lastW || lastW === 0) && (
+                                                <div style={{ flex: '1 1 160px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '1rem 1.25rem' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Peso atual</div>
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
+                                                        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{lastW}<small style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}> kg</small></span>
+                                                        {deltaW != null && deltaW !== 0 && (
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>{deltaW < 0 ? '▼' : '▲'} {fmtDelta(deltaW)} kg</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>desde a 1ª avaliação</div>
+                                                </div>
+                                            )}
+                                            {(lastF || lastF === 0) && (
+                                                <div style={{ flex: '1 1 160px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '14px', padding: '1rem 1.25rem' }}>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Gordura corporal</div>
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginTop: '0.35rem' }}>
+                                                        <span style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{lastF}<small style={{ fontSize: '0.9rem', fontWeight: 400, color: 'var(--text-muted)' }}> %</small></span>
+                                                        {deltaF != null && deltaF !== 0 && (
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: deltaF < 0 ? '#10b981' : '#ef4444' }}>{deltaF < 0 ? '▼' : '▲'} {fmtDelta(deltaF)} %</span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>desde a 1ª avaliação</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div style={{ height: '360px', width: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={chartData}>
+                                                <defs>
+                                                    <linearGradient id="colorWeight" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="colorFat" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-glass)" vertical={false} />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    stroke="var(--text-muted)"
+                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                />
+                                                <YAxis
+                                                    yAxisId="left"
+                                                    orientation="left"
+                                                    stroke="var(--accent)"
+                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    domain={['dataMin - 2', 'dataMax + 2']}
+                                                />
+                                                <YAxis
+                                                    yAxisId="right"
+                                                    orientation="right"
+                                                    stroke="#10b981"
+                                                    tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    unit="%"
+                                                />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-glass)', borderRadius: '8px', color: 'var(--text-main)' }}
+                                                    itemStyle={{ color: 'var(--text-main)' }}
+                                                    labelStyle={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}
+                                                />
+                                                <Area
+                                                    yAxisId="left"
+                                                    type="monotone"
+                                                    dataKey="weight"
+                                                    stroke="var(--accent)"
+                                                    strokeWidth={2}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorWeight)"
+                                                    name="Peso (kg)"
+                                                    dot={{ r: 4, strokeWidth: 2, stroke: 'var(--card-bg)', fill: 'var(--accent)' }}
+                                                    activeDot={{ r: 6 }}
+                                                />
+                                                <Area
+                                                    yAxisId="right"
+                                                    type="monotone"
+                                                    dataKey="bodyFat"
+                                                    stroke="#10b981"
+                                                    strokeWidth={2}
+                                                    fillOpacity={1}
+                                                    fill="url(#colorFat)"
+                                                    name="Gordura (%)"
+                                                    dot={{ r: 4, strokeWidth: 2, stroke: 'var(--card-bg)', fill: '#10b981' }}
+                                                    activeDot={{ r: 6 }}
+                                                />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                                );
+                            })()
+                        )}
                     </div>
                 )}
                 {
