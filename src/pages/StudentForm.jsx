@@ -36,6 +36,8 @@ export default function StudentForm() {
         trainingFrequency: '',
         level: '',
         trainingLocation: '',
+        homeEquipment: '',
+        homeEquipmentOther: '',
         sessionTime: '',
         objective: '',
         teacherId: '', // Optional link to a teacher
@@ -70,6 +72,17 @@ export default function StudentForm() {
         "Casa (halteres/elásticos)",
         "Apenas peso do corpo",
         "Ar livre",
+    ];
+
+    const HOME_EQUIPMENT_OPTIONS = [
+        "Halteres",
+        "Elástico",
+        "Barra fixa",
+        "Banco",
+        "Kettlebell",
+        "Colchonete",
+        "Corda de pular",
+        "Bola suíça",
     ];
 
     const SESSION_OPTIONS = ["30 min", "45 min", "60 min", "90 min", "90+ min"];
@@ -738,6 +751,41 @@ export default function StudentForm() {
                                             </button>
                                         ))}
                                     </div>
+                                    {formData.trainingLocation === 'Casa (halteres/elásticos)' && (
+                                        <div style={{ marginTop: '0.75rem' }}>
+                                            <label style={{ ...labelStyle, fontSize: '0.8rem' }}>Quais equipamentos ele tem?</label>
+                                            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                                                {HOME_EQUIPMENT_OPTIONS.map(opt => {
+                                                    const isSelected = formData.homeEquipment && formData.homeEquipment.split(', ').includes(opt);
+                                                    return (
+                                                        <button
+                                                            key={opt}
+                                                            type="button"
+                                                            onClick={() => toggleSelection('homeEquipment', opt)}
+                                                            style={{
+                                                                padding: '0.4rem 0.8rem',
+                                                                borderRadius: '6px',
+                                                                border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-glass)',
+                                                                background: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'var(--input-bg)',
+                                                                color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.85rem'
+                                                            }}
+                                                        >
+                                                            {opt}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <input
+                                                name="homeEquipmentOther"
+                                                value={formData.homeEquipmentOther || ''}
+                                                onChange={handleChange}
+                                                style={{ ...inputStyle, marginTop: '0.75rem' }}
+                                                placeholder="Outros equipamentos (opcional)"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label style={labelStyle}>Tempo por Sessão *</label>

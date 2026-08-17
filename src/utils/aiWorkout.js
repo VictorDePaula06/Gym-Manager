@@ -111,6 +111,11 @@ const buildPrompt = (student, instruction, prev, adherence) => {
         `Nível: ${student.level || 'iniciante'}`,
         `Frequência semanal: ${student.trainingFrequency || 'não informada'}`,
         `Local de treino / equipamentos: ${student.trainingLocation || 'academia completa'}`,
+        ...(() => {
+            if (student.trainingLocation !== 'Casa (halteres/elásticos)') return [];
+            const items = [student.homeEquipment, student.homeEquipmentOther].filter(Boolean).join(', ');
+            return items ? [`Equipamentos disponíveis em casa: ${items}`] : [];
+        })(),
         `Tempo por sessão: ${student.sessionTime || 'não informado'}`,
         `Rotina: ${student.routine || 'não informada'}`,
         `Limitações físicas: ${student.limitations || 'nenhuma'}`,
