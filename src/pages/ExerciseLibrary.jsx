@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
-import { Plus, Search, Video, Trash2, Edit2, Play, Loader2, Dumbbell, X } from 'lucide-react';
+import { Plus, Search, Video, Trash2, Edit2, Play, Loader2, Dumbbell, X, Folder, ChevronLeft } from 'lucide-react';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 export default function ExerciseLibrary() {
-    const { exerciseLibrary, addExerciseToLibrary, updateExerciseInLibrary, deleteExerciseFromLibrary } = useGym();
+    const { exerciseLibrary, addExerciseToLibrary, updateExerciseInLibrary, deleteExerciseFromLibrary, propagateVideoToWorkouts } = useGym();
     const { addToast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExercise, setEditingExercise] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -23,10 +24,24 @@ export default function ExerciseLibrary() {
 
     const categories = ['Peito', 'Costas', 'Ombros', 'Bíceps', 'Tríceps', 'Pernas', 'Abdômen', 'Geral'];
 
-    const filteredExercises = exerciseLibrary.filter(ex => 
+    // Busca ativa mostra resultado plano (ignora pastas); sem busca, navega por pasta.
+    const isSearching = searchQuery.trim().length > 0;
+
+    const searchResults = exerciseLibrary.filter(ex =>
         ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ex.category.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Só mostra pastas que têm pelo menos 1 exercício.
+    const categoryCounts = categories
+        .map(cat => ({ name: cat, count: exerciseLibrary.filter(ex => (ex.category || 'Geral') === cat).length }))
+        .filter(c => c.count > 0);
+
+    const exercisesInSelectedCategory = selectedCategory
+        ? exerciseLibrary.filter(ex => (ex.category || 'Geral') === selectedCategory)
+        : [];
+
+    const filteredExercises = isSearching ? searchResults : exercisesInSelectedCategory;
 
     const handleOpenModal = (exercise = null) => {
         if (exercise) {
@@ -39,7 +54,7 @@ export default function ExerciseLibrary() {
             setVideoPreview(exercise.videoUrl);
         } else {
             setEditingExercise(null);
-            setForm({ name: '', category: 'Geral', videoUrl: '' });
+            setForm({ name: '', category: selectedCategory || 'Geral', videoUrl: '' });
             setVideoPreview(null);
         }
         setIsModalOpen(true);
@@ -80,6 +95,16 @@ export default function ExerciseLibrary() {
                 await addExerciseToLibrary(form);
                 addToast("Exercício cadastrado!", 'success');
             }
+
+            // Vincula o vídeo automaticamente nas fichas de treino que já
+            // existem (não só nas novas), pra não precisar apagar/recriar.
+            if (form.videoUrl) {
+                const count = await propagateVideoToWorkouts(form.name, form.videoUrl);
+                if (count > 0) {
+                    addToast(`Vídeo vinculado em ${count} ${count === 1 ? 'aluno' : 'alunos'} que já tinham esse exercício.`, 'success');
+                }
+            }
+
             setIsModalOpen(false);
         } catch (error) {
             addToast("Erro ao salvar exercício", 'error');
@@ -136,6 +161,52 @@ export default function ExerciseLibrary() {
                 </div>
             </div>
 
+            {!isSearching && !selectedCategory && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.5rem' }}>
+                    {categoryCounts.map(cat => (
+                        <div
+                            key={cat.name}
+                            onClick={() => setSelectedCategory(cat.name)}
+                            className="glass-panel hover-scale"
+                            style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}
+                        >
+                            <div style={{
+                                width: '48px', height: '48px', borderRadius: '12px',
+                                background: 'var(--primary-glow)', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                            }}>
+                                <Folder size={24} color="var(--primary)" />
+                            </div>
+                            <div>
+                                <h3 style={{ fontSize: '1.05rem', marginBottom: '0.2rem' }}>{cat.name}</h3>
+                                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{cat.count} {cat.count === 1 ? 'exercício' : 'exercícios'}</span>
+                            </div>
+                        </div>
+                    ))}
+
+                    {categoryCounts.length === 0 && (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '4rem' }}>
+                            <Dumbbell size={48} color="var(--text-muted)" style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                            <p style={{ color: 'var(--text-muted)' }}>Nenhum exercício cadastrado ainda.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {(isSearching || selectedCategory) && (
+            <>
+            {!isSearching && selectedCategory && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                    <button
+                        onClick={() => setSelectedCategory(null)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}
+                    >
+                        <ChevronLeft size={18} /> Pastas
+                    </button>
+                    <span style={{ color: 'var(--text-muted)' }}>/</span>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{selectedCategory}</h3>
+                </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 {filteredExercises.map(ex => (
                     <div key={ex.id} className="glass-panel hover-scale" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -201,6 +272,8 @@ export default function ExerciseLibrary() {
                     </div>
                 ) }
             </div>
+            </>
+            )}
 
             </div>
 

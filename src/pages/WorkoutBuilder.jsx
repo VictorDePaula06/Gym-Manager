@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
+import { useDialog } from '../context/DialogContext';
 import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check, Video, Loader2, Library, GripVertical } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -23,6 +24,7 @@ export default function WorkoutBuilder() {
     const navigate = useNavigate();
     const { students, updateStudent, settings, exerciseLibrary } = useGym();
     const { addToast } = useToast();
+    const { confirm } = useDialog();
 
     const student = students.find(s => s.id === id);
 
@@ -125,8 +127,18 @@ export default function WorkoutBuilder() {
         }));
     };
 
-    const removeExercise = (exerciseId) => {
-        setExercises(exercises.filter(ex => ex.id !== exerciseId));
+    const removeExercise = async (exerciseId) => {
+        const exercise = exercises.find(ex => ex.id === exerciseId);
+        const confirmed = await confirm({
+            title: 'Excluir exercício?',
+            message: exercise?.name
+                ? `Deseja realmente excluir "${exercise.name}" desta ficha?`
+                : 'Deseja realmente excluir este exercício desta ficha?',
+            confirmText: 'Excluir',
+            type: 'danger'
+        });
+        if (!confirmed) return;
+        setExercises(prev => prev.filter(ex => ex.id !== exerciseId));
     };
 
     const [dragIndex, setDragIndex] = useState(null);

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy, increment, arrayUnion } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, getDoc, query, orderBy, increment, arrayUnion, writeBatch } from 'firebase/firestore';
 import { setGeminiKey, clearGeminiKey } from '../services/gemini';
 import { computeFirstDueDate } from '../utils/payments';
 import { planLimits } from '../config/plans';
@@ -511,6 +511,80 @@ export const GymProvider = ({ children }) => {
         deleteExerciseFromLibrary: async (id) => {
             const basePath = `users/${user.tenantId || user.uid}`;
             await deleteDoc(doc(db, `${basePath}/exercise_library`, id));
+        },
+        // Quando um vídeo é adicionado/trocado na biblioteca, vincula
+        // automaticamente nas fichas de treino já existentes (não só nas
+        // novas) — só em exercícios sem vídeo próprio, ou que já vieram
+        // vinculados da biblioteca antes (nunca sobrescreve vídeo customizado
+        // que o personal subiu manualmente pra um aluno específico).
+        propagateVideoToWorkouts: async (exerciseName, videoUrl) => {
+            const targetName = exerciseName.trim().toLowerCase();
+            if (!targetName) return;
+
+            const basePath = `users/${user.tenantId || user.uid}`;
+            const batch = writeBatch(db);
+            let changedCount = 0;
+
+            const patchExercises = (exercises) => {
+                let changed = false;
+                const updated = (exercises || []).map(ex => {
+                    if (ex.name?.trim().toLowerCase() === targetName && (!ex.videoUrl || ex.fromLibrary)) {
+                        changed = true;
+                        return { ...ex, videoUrl, fromLibrary: true };
+                    }
+                    return ex;
+                });
+                return { updated, changed };
+            };
+
+            students.forEach(student => {
+                let studentChanged = false;
+                const updates = {};
+
+                if (student.workouts) {
+                    const newWorkouts = { ...student.workouts };
+                    Object.keys(newWorkouts).forEach(variation => {
+                        const { updated, changed } = patchExercises(newWorkouts[variation]?.exercises);
+                        if (changed) {
+                            newWorkouts[variation] = { ...newWorkouts[variation], exercises: updated };
+                            studentChanged = true;
+                        }
+                    });
+                    if (studentChanged) updates.workouts = newWorkouts;
+                }
+
+                if (student.workoutSheets) {
+                    const newSheets = { ...student.workoutSheets };
+                    let sheetsChanged = false;
+                    Object.keys(newSheets).forEach(sheetId => {
+                        const sheetWorkouts = { ...(newSheets[sheetId]?.workouts || {}) };
+                        let sheetChanged = false;
+                        Object.keys(sheetWorkouts).forEach(variation => {
+                            const { updated, changed } = patchExercises(sheetWorkouts[variation]?.exercises);
+                            if (changed) {
+                                sheetWorkouts[variation] = { ...sheetWorkouts[variation], exercises: updated };
+                                sheetChanged = true;
+                            }
+                        });
+                        if (sheetChanged) {
+                            newSheets[sheetId] = { ...newSheets[sheetId], workouts: sheetWorkouts };
+                            sheetsChanged = true;
+                        }
+                    });
+                    if (sheetsChanged) {
+                        updates.workoutSheets = newSheets;
+                        studentChanged = true;
+                    }
+                }
+
+                if (studentChanged) {
+                    batch.update(doc(db, `${basePath}/students`, student.id), updates);
+                    changedCount++;
+                }
+            });
+
+            if (changedCount > 0) await batch.commit();
+            return changedCount;
         },
         logWorkoutCompletion: async (studentId, workoutData) => {
             try {
