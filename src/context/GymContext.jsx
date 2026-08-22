@@ -143,7 +143,9 @@ export const GymProvider = ({ children }) => {
                 checkinConfig: normalizeCheckin(data.checkinConfig),
             });
 
-            if (data.theme === 'light') {
+            // O tema é uma preferência do personal — o portal do aluno fica
+            // sempre no escuro, sem herdar a escolha do personal.
+            if (data.theme === 'light' && user.role !== 'student') {
                 document.documentElement.setAttribute('data-theme', 'light');
             } else {
                 document.documentElement.setAttribute('data-theme', 'dark');

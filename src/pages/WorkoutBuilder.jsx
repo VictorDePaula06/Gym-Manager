@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
-import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check, Video, Loader2, Library } from 'lucide-react';
+import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check, Video, Loader2, Library, GripVertical } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { storage } from '../firebase';
@@ -127,6 +127,19 @@ export default function WorkoutBuilder() {
 
     const removeExercise = (exerciseId) => {
         setExercises(exercises.filter(ex => ex.id !== exerciseId));
+    };
+
+    const [dragIndex, setDragIndex] = useState(null);
+    const [dragOverIndex, setDragOverIndex] = useState(null);
+
+    const reorderExercises = (fromIndex, toIndex) => {
+        if (fromIndex === toIndex || fromIndex == null || toIndex == null) return;
+        setExercises(prev => {
+            const updated = [...prev];
+            const [moved] = updated.splice(fromIndex, 1);
+            updated.splice(toIndex, 0, moved);
+            return updated;
+        });
     };
 
     const handleVideoUpload = async (exerciseId, file) => {
@@ -542,7 +555,36 @@ export default function WorkoutBuilder() {
                             </div>
                         ) : (
                             exercises.map((exercise, index) => (
-                                <div key={exercise.id} className="exercise-row">
+                                <div
+                                    key={exercise.id}
+                                    draggable
+                                    onDragStart={() => setDragIndex(index)}
+                                    onDragOver={(e) => { e.preventDefault(); if (dragOverIndex !== index) setDragOverIndex(index); }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        reorderExercises(dragIndex, index);
+                                        setDragIndex(null);
+                                        setDragOverIndex(null);
+                                    }}
+                                    onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'stretch',
+                                        gap: '0.5rem',
+                                        marginBottom: '1rem',
+                                        borderRadius: '12px',
+                                        opacity: dragIndex === index ? 0.4 : 1,
+                                        outline: dragOverIndex === index && dragIndex !== null && dragIndex !== index ? '2px dashed var(--primary)' : 'none',
+                                        outlineOffset: '2px'
+                                    }}
+                                >
+                                    <div
+                                        style={{ display: 'flex', alignItems: 'center', cursor: 'grab', color: 'var(--text-muted)', flexShrink: 0 }}
+                                        title="Arrastar para reordenar"
+                                    >
+                                        <GripVertical size={18} />
+                                    </div>
+                                    <div className="exercise-row" style={{ flex: 1, marginBottom: 0 }}>
                                     <div>
                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem', display: 'block' }}>Exercício</label>
                                         <input
@@ -627,6 +669,7 @@ export default function WorkoutBuilder() {
                                         >
                                             <Trash2 size={18} />
                                         </button>
+                                    </div>
                                     </div>
                                 </div>
                             ))
