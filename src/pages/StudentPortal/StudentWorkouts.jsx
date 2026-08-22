@@ -7,6 +7,8 @@ import { useDialog } from '../../context/DialogContext';
 import RestTimer from '../../components/RestTimer';
 import { createPost, uploadPostImage } from '../../services/community';
 import { workoutVolumeLoad } from '../../utils/volumeLoad';
+import { db } from '../../firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
 export default function StudentWorkouts() {
     const { user } = useAuth();
@@ -33,8 +35,22 @@ export default function StudentWorkouts() {
     const [workoutProgress, setWorkoutProgress] = useState([]); // Array of {exerciseName, setsDone}
     const [showRestTimer, setShowRestTimer] = useState(false);
     const [isFinished, setIsFinished] = useState(false);
+    const [showExerciseList, setShowExerciseList] = useState(false);
+    const [allTrainingLogs, setAllTrainingLogs] = useState([]);
 
     const studentData = students.find(s => s.id === user?.studentId);
+
+    // Histórico completo (todas as sessões) — usado pra detectar recorde de
+    // volume ao concluir um treino.
+    useEffect(() => {
+        if (!user?.studentId || !user?.tenantId) return;
+        const logsRef = collection(db, `users/${user.tenantId}/students/${user.studentId}/training_logs`);
+        const q = query(logsRef, orderBy('timestamp', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setAllTrainingLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return () => unsubscribe();
+    }, [user]);
 
     useEffect(() => {
         if (studentData) {
@@ -147,12 +163,17 @@ export default function StudentWorkouts() {
             completedAt: endTime.toISOString()
         };
 
+        // Recorde pessoal de volume: só conta como recorde se já existia
+        // histórico antes (o 1º treino registrado não é "recorde", é o início).
+        const previousBest = allTrainingLogs.reduce((max, l) => Math.max(max, l.volumeLoad || 0), 0);
+        const isNewPR = allTrainingLogs.length > 0 && logData.volumeLoad > previousBest;
+
         try {
             await logWorkoutCompletion(user.studentId, logData);
             // Concluir já soma no ranking do desafio (independente de postar).
             // Passa a data do treino pra contar só dentro da janela do desafio.
             await addWorkoutToLeaderboard(user.studentId, studentData?.name || user.name, studentData?.profilePictureUrl || null, logData.completedAt);
-            setFinishedInfo(logData);
+            setFinishedInfo({ ...logData, isNewPR, previousBest });
             setShared(false);
             setIsFinished(true);
             setIsWorkoutActive(false);
@@ -199,6 +220,19 @@ export default function StudentWorkouts() {
         }
     };
 
+    // Pula pra outro exercício da ficha, fora da ordem — retoma de onde parou
+    // se já tinha feito alguma série nele (útil quando o aparelho tá ocupado).
+    const jumpToExercise = (index) => {
+        if (index === currentExIndex) {
+            setShowExerciseList(false);
+            return;
+        }
+        setCurrentExIndex(index);
+        setCompletedSets(workoutProgress[index]?.done || 0);
+        setShowRestTimer(false);
+        setShowExerciseList(false);
+    };
+
     const handleCancelWorkout = async () => {
         const confirmed = await confirm({
             title: 'Cancelar Treino?',
@@ -228,18 +262,18 @@ export default function StudentWorkouts() {
                 overflowY: 'auto'
             }}>
                 {/* Header */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', padding: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', padding: '0.5rem' }}>
                     <div>
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Treino em Andamento</span>
                         <h3 style={{ margin: 0, fontSize: '1.25rem' }}>Variação {activeVar}</h3>
                     </div>
-                    <button 
+                    <button
                         onClick={handleCancelWorkout}
-                        style={{ 
-                            background: 'rgba(239, 68, 68, 0.1)', 
-                            border: '1px solid rgba(239, 68, 68, 0.2)', 
-                            color: '#ef4444', 
-                            padding: '0.5rem', 
+                        style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            color: '#ef4444',
+                            padding: '0.5rem',
                             borderRadius: '12px',
                             cursor: 'pointer',
                             display: 'flex',
@@ -249,6 +283,65 @@ export default function StudentWorkouts() {
                     >
                         <X size={24} />
                     </button>
+                </div>
+
+                {/* Trocar exercício (fora de ordem) */}
+                <div style={{ padding: '0 0.5rem', marginBottom: '1rem' }}>
+                    <button
+                        onClick={() => setShowExerciseList(prev => !prev)}
+                        style={{
+                            width: '100%',
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid var(--border-glass)',
+                            color: 'var(--text-main)',
+                            padding: '0.7rem 1rem',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '0.85rem',
+                            fontWeight: 600
+                        }}
+                    >
+                        Trocar exercício
+                        <ChevronRight size={16} style={{ transform: showExerciseList ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                    </button>
+                    {showExerciseList && (
+                        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {exercises.map((ex, idx) => {
+                                const total = parseInt(ex.sets) || 0;
+                                const done = workoutProgress[idx]?.done || 0;
+                                const isCurrent = idx === currentExIndex;
+                                const isComplete = total > 0 && done >= total;
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => jumpToExercise(idx)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '0.75rem',
+                                            padding: '0.75rem 1rem',
+                                            borderRadius: '12px',
+                                            background: isCurrent ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255,255,255,0.03)',
+                                            border: isCurrent ? '1px solid var(--primary)' : '1px solid transparent',
+                                            color: 'var(--text-main)',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                    >
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}>
+                                            {isComplete ? <CheckCircle2 size={16} color="var(--primary)" /> : <span style={{ width: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</span>}
+                                            {ex.name}
+                                        </span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{done}/{total} séries</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* Exercise Focus Card */}
@@ -479,6 +572,16 @@ export default function StudentWorkouts() {
                             <Trophy size={40} color="#10b981" />
                         </div>
                         <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Treino Concluído!</h2>
+                        {finishedInfo?.isNewPR && (
+                            <div style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                                background: 'rgba(234, 179, 8, 0.12)', border: '1px solid rgba(234, 179, 8, 0.35)',
+                                color: '#eab308', padding: '0.4rem 0.9rem', borderRadius: '99px',
+                                fontSize: '0.82rem', fontWeight: 700, marginBottom: '1rem'
+                            }}>
+                                🏆 Novo recorde de volume!
+                            </div>
+                        )}
                         <input ref={shareFileRef} type="file" accept="image/*" onChange={handlePickPhoto} style={{ display: 'none' }} />
 
                         {!sharePhotoPreview ? (

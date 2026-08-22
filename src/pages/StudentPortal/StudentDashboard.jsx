@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
-import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2, Weight } from 'lucide-react';
+import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2, Weight, User, Camera, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { db } from '../../firebase';
+import { db, storage } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { compressImage } from '../../utils/imageOptimizer';
 import { getPaymentStatus } from '../../utils/payments';
 import CheckinCard from './CheckinCard';
 
 export default function StudentDashboard() {
     const { user } = useAuth();
-    const { students, settings } = useGym();
+    const { students, settings, updateStudentProfilePicture } = useGym();
     const [weeklyLogs, setWeeklyLogs] = useState([]);
+    const [allLogs, setAllLogs] = useState([]);
+    const [uploadingPhoto, setUploadingPhoto] = useState(false);
+    const photoInputRef = useRef(null);
 
     const studentData = students.find(s => s.id === user?.studentId);
 
@@ -48,6 +53,86 @@ export default function StudentDashboard() {
         return () => unsubscribe();
     }, [user]);
 
+    // Histórico completo — usado pra calcular sequência de semanas treinando
+    // e o lembrete de "faz tempo que você não treina".
+    useEffect(() => {
+        if (!user?.studentId || !user?.tenantId) return;
+        const logsRef = collection(db, `users/${user.tenantId}/students/${user.studentId}/training_logs`);
+        const q = query(logsRef, orderBy('completedAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            setAllLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+        });
+        return () => unsubscribe();
+    }, [user]);
+
+    // Segunda-feira da semana de uma data (chave estável pra agrupar por semana)
+    const mondayKey = (date) => {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.getFullYear(), d.getMonth(), diff);
+        return monday.toISOString().slice(0, 10);
+    };
+
+    // Sequência de semanas consecutivas com pelo menos 1 treino (não conta a
+    // semana atual como "quebra" se ela ainda não acabou e só não treinou ainda).
+    const weekStreak = (() => {
+        if (allLogs.length === 0) return 0;
+        const trainedWeeks = new Set(allLogs.map(l => mondayKey(l.completedAt || l.timestamp)));
+        const today = new Date();
+        let cursor = new Date(mondayKey(today));
+        if (!trainedWeeks.has(mondayKey(today))) {
+            cursor.setDate(cursor.getDate() - 7); // semana atual em aberto, começa da anterior
+        }
+        let streak = 0;
+        while (trainedWeeks.has(mondayKey(cursor))) {
+            streak++;
+            cursor.setDate(cursor.getDate() - 7);
+        }
+        return streak;
+    })();
+
+    // Lembrete: dias desde o último treino vs. meta de frequência semanal do aluno.
+    const trainingReminder = (() => {
+        if (allLogs.length === 0) return null;
+        const lastLog = allLogs[0];
+        const lastDate = new Date(lastLog.completedAt || lastLog.timestamp);
+        const daysSince = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
+
+        const targetPerWeek = parseInt(studentData?.trainingFrequency) || 3;
+        const expectedGapDays = Math.max(1, Math.floor(7 / targetPerWeek));
+        // Um dia de folga além do esperado antes de avisar.
+        if (daysSince > expectedGapDays + 1) {
+            return { daysSince };
+        }
+        return null;
+    })();
+
+    const handlePhotoChange = async (e) => {
+        const file = e.target.files[0];
+        e.target.value = '';
+        if (!file || !studentData) return;
+
+        setUploadingPhoto(true);
+        try {
+            let toUpload = file;
+            try {
+                const blob = await compressImage(file, 800, 0.8);
+                toUpload = new File([blob], file.name, { type: 'image/jpeg' });
+            } catch (err) {
+                console.warn('Compressão falhou, usando original', err);
+            }
+            const photoRef = ref(storage, `students/${studentData.id}_${Date.now()}_${toUpload.name}`);
+            await uploadBytes(photoRef, toUpload);
+            const url = await getDownloadURL(photoRef);
+            await updateStudentProfilePicture(studentData.id, url);
+        } catch (err) {
+            console.error('Erro ao trocar foto de perfil:', err);
+        } finally {
+            setUploadingPhoto(false);
+        }
+    };
+
     if (!studentData) {
         return (
             <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -72,10 +157,87 @@ export default function StudentDashboard() {
 
     return (
         <div style={{ color: 'var(--text-main)' }}>
-            <div style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {studentData.name.split(' ')[0]}! 👋</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Pronto para o treino de hoje?</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <div
+                    onClick={() => !uploadingPhoto && photoInputRef.current?.click()}
+                    style={{
+                        position: 'relative',
+                        width: '64px',
+                        height: '64px',
+                        flexShrink: 0,
+                        cursor: uploadingPhoto ? 'default' : 'pointer'
+                    }}
+                    title="Trocar foto de perfil"
+                >
+                    <div style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        overflow: 'hidden',
+                        border: '2px solid var(--border-glass)',
+                        background: 'var(--input-bg)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }}>
+                        {studentData.profilePictureUrl ? (
+                            <img src={studentData.profilePictureUrl} alt={studentData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <User size={28} color="var(--text-muted)" />
+                        )}
+                        {uploadingPhoto && (
+                            <div style={{
+                                position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <Loader2 size={18} color="white" className="animate-spin" />
+                            </div>
+                        )}
+                    </div>
+                    <div style={{
+                        position: 'absolute', bottom: '-3px', right: '-3px',
+                        width: '22px', height: '22px', borderRadius: '50%',
+                        background: 'var(--primary)', border: '2px solid var(--background)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <Camera size={11} color="white" />
+                    </div>
+                    <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        style={{ display: 'none' }}
+                    />
+                </div>
+                <div>
+                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {studentData.name.split(' ')[0]}! 👋</h2>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Pronto para o treino de hoje?</p>
+                </div>
+                {weekStreak > 0 && (
+                    <div style={{
+                        marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem',
+                        background: 'rgba(249, 115, 22, 0.12)', border: '1px solid rgba(249, 115, 22, 0.3)',
+                        color: '#f97316', padding: '0.4rem 0.75rem', borderRadius: '99px',
+                        fontSize: '0.8rem', fontWeight: 700, flexShrink: 0
+                    }}>
+                        🔥 {weekStreak} {weekStreak === 1 ? 'semana' : 'semanas'}
+                    </div>
+                )}
             </div>
+
+            {trainingReminder && (
+                <div className="glass-panel" style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '1rem 1.25rem', marginBottom: '1.5rem',
+                    background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)'
+                }}>
+                    <Calendar size={20} color="#f59e0b" style={{ flexShrink: 0 }} />
+                    <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-main)' }}>
+                        Faz <strong>{trainingReminder.daysSince} dias</strong> que você não treina. Bora manter o ritmo? 💪
+                    </p>
+                </div>
+            )}
 
             <CheckinCard />
 

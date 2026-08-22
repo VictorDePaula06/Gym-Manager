@@ -1,11 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
-import { Save, ChevronLeft, User, CreditCard, MapPin, Activity, Camera, Trash2 } from 'lucide-react';
-import { storage } from '../firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { compressImage } from '../utils/imageOptimizer';
+import { Save, ChevronLeft, User, CreditCard, MapPin, Activity } from 'lucide-react';
 import { todayISO } from '../utils/date';
 
 export default function StudentForm() {
@@ -113,12 +110,10 @@ export default function StudentForm() {
 
     const [age, setAge] = useState('');
     const [saving, setSaving] = useState(false);
-    const [itemPhoto, setItemPhoto] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     // Cadastro: o aluno já pagou a 1ª mensalidade?
     const [firstPaymentPaid, setFirstPaymentPaid] = useState(true);
     const [firstPaymentMethod, setFirstPaymentMethod] = useState('Dinheiro');
-    const fileInputRef = useRef(null);
 
     useEffect(() => {
         if (id) {
@@ -188,34 +183,6 @@ export default function StudentForm() {
         }));
     };
 
-    const handlePhotoChange = async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            try {
-                const compressedFile = await compressImage(file, 800, 0.8);
-                // Convert blob back to file if needed, or just use blob. 
-                // specialized uploadBytes works with Blob or File.
-                // We'll rename it to preserve original name but with jpg extension if converted? 
-                // compressImage outputs jpeg/blob. 
-                // Let's create a new File object to keep it simple for the rest of the logic
-                const newFile = new File([compressedFile], file.name, { type: 'image/jpeg' });
-
-                setItemPhoto(newFile);
-                setPhotoPreview(URL.createObjectURL(newFile));
-            } catch (error) {
-                console.error("Error compressing image:", error);
-                // Fallback to original
-                setItemPhoto(file);
-                setPhotoPreview(URL.createObjectURL(file));
-            }
-        }
-    };
-
-    const handleRemovePhoto = () => {
-        setItemPhoto(null);
-        setPhotoPreview(null);
-        setFormData(prev => ({ ...prev, profilePictureUrl: null }));
-    };
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -249,13 +216,6 @@ export default function StudentForm() {
 
         setSaving(true);
         try {
-            let photoUrl = formData.profilePictureUrl;
-
-            if (itemPhoto) {
-                const photoRef = ref(storage, `students/${Date.now()}_${itemPhoto.name}`);
-                await uploadBytes(photoRef, itemPhoto);
-                photoUrl = await getDownloadURL(photoRef);
-            }
 
                 // Cadastro novo: registra (ou não) o 1º pagamento conforme a pergunta.
                 let firstPaymentFields = {};
@@ -344,7 +304,6 @@ export default function StudentForm() {
             const dataToSave = {
                 ...formData,
                 ...firstPaymentFields,
-                profilePictureUrl: photoUrl || null,
                 nextPaymentDate: nextPaymentDate
             };
 
@@ -460,55 +419,10 @@ export default function StudentForm() {
                                     <User size={48} color="var(--text-muted)" />
                                 )}
                             </div>
-
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current.click()}
-                                style={{
-                                    position: 'absolute',
-                                    bottom: '0',
-                                    right: '0',
-                                    background: 'var(--primary)',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '50%',
-                                    width: '36px',
-                                    height: '36px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
-                                }}
-                            >
-                                <Camera size={18} />
-                            </button>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handlePhotoChange}
-                                accept="image/*"
-                                style={{ display: 'none' }}
-                            />
                         </div>
-                        {photoPreview && (
-                            <button
-                                type="button"
-                                onClick={handleRemovePhoto}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#ef4444',
-                                    cursor: 'pointer',
-                                    fontSize: '0.85rem',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.25rem'
-                                }}
-                            >
-                                <Trash2 size={14} /> Remover foto
-                            </button>
-                        )}
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', maxWidth: '220px' }}>
+                            {photoPreview ? 'A foto é definida pelo próprio aluno no portal dele.' : 'O aluno ainda não definiu uma foto de perfil.'}
+                        </p>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
                         <div>

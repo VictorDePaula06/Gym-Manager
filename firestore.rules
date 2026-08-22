@@ -44,6 +44,10 @@ service cloud.firestore {
       // pessoais (saúde, telefone, ficha) pra quem nem está logado no app.
       match /students/{studentId} {
         allow read: if request.auth != null;
+        // Aluno troca a própria foto de perfil — só esse campo pode mudar
+        // (mesmo padrão do desafio: update restrito por affectedKeys).
+        allow update: if request.auth != null
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['profilePictureUrl']);
         // Aluno salva seus próprios logs de treino no banco do professor
         match /training_logs/{logId} {
           allow read, write: if request.auth != null;

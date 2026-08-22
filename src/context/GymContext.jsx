@@ -282,6 +282,14 @@ export const GymProvider = ({ children }) => {
         }
     };
 
+    // O próprio aluno troca a própria foto de perfil pelo portal dele.
+    // Escrita restrita só a esse campo (ver firestore.rules) — diferente do
+    // updateStudent geral, que é de uso exclusivo do personal.
+    const updateStudentProfilePicture = async (studentId, url) => {
+        const basePath = getUserBasePath();
+        await updateDoc(doc(db, `${basePath}/students`, studentId), { profilePictureUrl: url });
+    };
+
     const updateStudent = async (id, studentData) => {
         try {
             const basePath = getUserBasePath();
@@ -461,6 +469,7 @@ export const GymProvider = ({ children }) => {
         updateAiConfig,
         addStudent,
         updateStudent,
+        updateStudentProfilePicture,
         deleteStudent,
         // Gera (ou regenera) o código de acesso de um aluno já existente.
         generateStudentCode: async (studentId) => {
