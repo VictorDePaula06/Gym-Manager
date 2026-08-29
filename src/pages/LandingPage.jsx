@@ -11,6 +11,31 @@ const ACCENT = '#10b981';
 const ACCENT_DARK = '#059669';
 const WHATS = 'https://wa.me/5521982626387';
 
+// Padrão de "rede de pontos" em SVG puro — a mesma estética do vídeo do hero,
+// mas sem vídeo rodando (custo de bateria/GPU zero, é só uma imagem estática
+// repetida). Usado como camada de fundo no resto da página.
+const NETWORK_PATTERN_SVG = `
+    <svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'>
+        <g stroke='rgba(16,185,129,0.10)' stroke-width='1'>
+            <line x1='20' y1='35' x2='95' y2='80'/>
+            <line x1='95' y1='80' x2='170' y2='30'/>
+            <line x1='95' y1='80' x2='70' y2='170'/>
+            <line x1='70' y1='170' x2='180' y2='200'/>
+            <line x1='170' y1='30' x2='230' y2='100'/>
+            <line x1='230' y1='100' x2='180' y2='200'/>
+        </g>
+        <g fill='rgba(16,185,129,0.22)'>
+            <circle cx='20' cy='35' r='2'/>
+            <circle cx='95' cy='80' r='2.5'/>
+            <circle cx='170' cy='30' r='2'/>
+            <circle cx='70' cy='170' r='2'/>
+            <circle cx='180' cy='200' r='2.5'/>
+            <circle cx='230' cy='100' r='2'/>
+        </g>
+    </svg>
+`;
+const NETWORK_PATTERN_URL = `url("data:image/svg+xml,${encodeURIComponent(NETWORK_PATTERN_SVG)}")`;
+
 // Planos (Bronze/Prata/Ouro). Preço mensal e anual (valor por mês no plano anual).
 const PLANS = [
     {
@@ -64,6 +89,8 @@ export default function LandingPage() {
     const [openFaq, setOpenFaq] = useState(null);
     const [scrolled, setScrolled] = useState(false);
     const [billing, setBilling] = useState('annual'); // 'monthly' | 'annual'
+    const [blockedSlide, setBlockedSlide] = useState(0);
+    const [appAlunoSlide, setAppAlunoSlide] = useState(0);
     const containerRef = useRef(null);
     const logoTiltRef = useRef(null);
 
@@ -73,13 +100,38 @@ export default function LandingPage() {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
+    // Alterna sozinho entre as 2 telas do mockup da seção "Cobrança automática"
+    useEffect(() => {
+        const id = setInterval(() => setBlockedSlide((i) => (i + 1) % 2), 3000);
+        return () => clearInterval(id);
+    }, []);
+
+    // Alterna sozinho entre as 3 telas do mockup da seção "App do aluno"
+    useEffect(() => {
+        const id = setInterval(() => setAppAlunoSlide((i) => (i + 1) % 3), 3000);
+        return () => clearInterval(id);
+    }, []);
+
     useEffect(() => {
         const ctx = gsap.context(() => {
-            gsap.from('.hero-content > *', { y: 30, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 0.1 });
-            gsap.from('.feature-card', { y: 50, duration: 0.8, stagger: 0.1, ease: 'power3.out', scrollTrigger: { trigger: '#features', start: 'top 95%' } });
-            gsap.from('.plan-card', { y: 40, duration: 0.7, stagger: 0.12, ease: 'power3.out', scrollTrigger: { trigger: '#planos', start: 'top 85%' } });
+            gsap.from('.hero-content > *', { y: 30, duration: 1, stagger: 0.15, ease: 'power3.out', delay: 0.1, clearProps: 'transform,opacity' });
+            gsap.from('.feature-card', { y: 50, duration: 0.8, stagger: 0.1, ease: 'power3.out', clearProps: 'transform,opacity', scrollTrigger: { trigger: '#features', start: 'top 95%', once: true } });
+            gsap.from('.plan-card', { y: 40, duration: 0.7, stagger: 0.12, ease: 'power3.out', clearProps: 'transform,opacity', scrollTrigger: { trigger: '#planos', start: 'top 85%', once: true } });
         }, containerRef);
-        return () => ctx.revert();
+
+        // A página tem várias imagens carregando (prints, vídeo de fundo) que
+        // mudam a altura total depois que o ScrollTrigger já mediu as posições
+        // de disparo — sem recalcular, os cards podem "travar" a meio caminho
+        // da animação de entrada. Recalcula assim que tudo carrega.
+        const refresh = () => ScrollTrigger.refresh();
+        window.addEventListener('load', refresh);
+        const fallbackTimer = setTimeout(refresh, 1500);
+
+        return () => {
+            ctx.revert();
+            window.removeEventListener('load', refresh);
+            clearTimeout(fallbackTimer);
+        };
     }, []);
 
     useEffect(() => {
@@ -129,13 +181,17 @@ export default function LandingPage() {
         minHeight: '100vh',
         background: '#0a0e0d',
         // Degradê contínuo em toda a página: brilhos verdes suaves distribuídos
-        // no eixo vertical, sem quebras de cor entre seções.
+        // no eixo vertical, sem quebras de cor entre seções + o mesmo padrão de
+        // "rede de pontos" do vídeo do hero, mas como imagem estática (sem
+        // custo de bateria/GPU) repetida por baixo dos degradês.
         backgroundImage: `
             radial-gradient(1000px 550px at 68% 0%, rgba(16,185,129,0.12), transparent 55%),
             radial-gradient(900px 700px at 0% 28%, rgba(16,185,129,0.06), transparent 50%),
             radial-gradient(900px 700px at 100% 55%, rgba(16,185,129,0.06), transparent 50%),
-            radial-gradient(1000px 800px at 40% 85%, rgba(16,185,129,0.07), transparent 55%)
+            radial-gradient(1000px 800px at 40% 85%, rgba(16,185,129,0.07), transparent 55%),
+            ${NETWORK_PATTERN_URL}
         `,
+        backgroundRepeat: 'no-repeat, no-repeat, no-repeat, no-repeat, repeat',
         color: '#f8fafc',
         fontFamily: "'Inter', sans-serif",
         overflowX: 'hidden'
@@ -201,9 +257,12 @@ export default function LandingPage() {
             {/* Features */}
             <section id="features" style={{ padding: '6rem 2rem 4rem', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
                 {features.map((f) => (
-                    <div key={f.id} className="feature-card" style={cardStyle} onClick={() => { setActiveFeature(f); setActiveImageIndex(0); }}
-                        onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.borderColor = `rgb(${f.color})`; e.currentTarget.style.boxShadow = `0 12px 30px -10px rgba(${f.color}, 0.35)`; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                    <div
+                        key={f.id}
+                        className="feature-card"
+                        style={{ ...cardStyle, '--accent-rgb': f.color }}
+                        onClick={() => { setActiveFeature(f); setActiveImageIndex(0); }}
+                    >
                         <div>
                             <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: `rgba(${f.color}, 0.12)`, color: `rgb(${f.color})`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                                 <f.icon size={24} />
@@ -328,7 +387,27 @@ export default function LandingPage() {
                         <div style={{ position: 'absolute', width: '300px', height: '480px', background: ACCENT, filter: 'blur(120px)', opacity: 0.22, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 0 }} />
                         <div style={{ position: 'relative', width: '270px', height: '540px', background: '#0b0f0e', borderRadius: '40px', border: '8px solid #26332e', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', zIndex: 1, transform: 'rotateY(5deg) rotateX(5deg)' }}>
                             <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '110px', height: '22px', background: '#000', borderBottomLeftRadius: '14px', borderBottomRightRadius: '14px', zIndex: 10 }} />
-                            <img src="/img/app-aluno.png" alt="App do aluno" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            {['/img/AppTreino1.png', '/img/AppTreino2.png', '/img/AppTreino3.png'].map((src, i) => (
+                                <img
+                                    key={src}
+                                    src={src}
+                                    alt="App do aluno"
+                                    style={{
+                                        position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                                        opacity: appAlunoSlide === i ? 1 : 0,
+                                        transition: 'opacity 0.6s ease'
+                                    }}
+                                />
+                            ))}
+                            <div style={{ position: 'absolute', bottom: '14px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 10 }}>
+                                {[0, 1, 2].map((i) => (
+                                    <div key={i} style={{
+                                        width: appAlunoSlide === i ? '18px' : '6px', height: '6px', borderRadius: '99px',
+                                        background: appAlunoSlide === i ? ACCENT : 'rgba(255,255,255,0.35)',
+                                        transition: 'all 0.3s ease'
+                                    }} />
+                                ))}
+                            </div>
                         </div>
                     </div>
                     {/* Texto */}
@@ -371,6 +450,55 @@ export default function LandingPage() {
                                     {item}
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Bloqueio Automático (texto à esquerda) */}
+            <section style={{ padding: '5rem 2rem 7rem', background: 'transparent', overflow: 'hidden' }}>
+                <div style={{ maxWidth: '1150px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '4rem', alignItems: 'center' }}>
+                    {/* Texto */}
+                    <div style={{ textAlign: 'left' }}>
+                        <div style={{ display: 'inline-block', padding: '0.4rem 1rem', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', borderRadius: '99px', fontWeight: 700, fontSize: '0.85rem', marginBottom: '1.25rem', border: '1px solid rgba(245,158,11,0.2)' }}>🔒 Cobrança automática</div>
+                        <h2 style={{ fontSize: '2.6rem', fontWeight: 800, color: 'white', lineHeight: 1.12, marginBottom: '1.25rem' }}>Quem cobra é o <span style={{ color: '#f59e0b' }}>sistema</span>, não você</h2>
+                        <p style={{ color: '#9ca3af', fontSize: '1.05rem', lineHeight: 1.6, marginBottom: '2rem' }}>Quando a mensalidade vence, o acesso do aluno é bloqueado automaticamente — sem você precisar mandar aquela mensagem de cobrança que ninguém gosta de escrever. Se ele perguntar, é só dizer: "o sistema bloqueia sozinho, me manda o comprovante que eu libero na hora".</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+                            {['Bloqueio automático no vencimento, sem climão com o aluno', 'Aluno resolve na hora, já na academia — recuperação muito mais rápida', 'Você libera o acesso com um toque assim que recebe o pagamento'].map((item, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#e2e8f0' }}>
+                                    <div style={{ background: 'rgba(245,158,11,0.2)', borderRadius: '50%', padding: '5px', display: 'flex', color: '#f59e0b' }}><Check size={14} /></div>
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    {/* Celular */}
+                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', perspective: '1000px' }}>
+                        <div style={{ position: 'absolute', width: '300px', height: '480px', background: '#f59e0b', filter: 'blur(120px)', opacity: 0.18, top: '50%', left: '50%', transform: 'translate(-50%, -50%)', borderRadius: '50%', zIndex: 0 }} />
+                        <div style={{ position: 'relative', width: '270px', height: '540px', background: '#0b0f0e', borderRadius: '40px', border: '8px solid #26332e', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', zIndex: 1, transform: 'rotateY(-5deg) rotateX(5deg)' }}>
+                            <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '110px', height: '22px', background: '#000', borderBottomLeftRadius: '14px', borderBottomRightRadius: '14px', zIndex: 10 }} />
+                            {['/img/Bloqueado1.png', '/img/Bloqueado2.png'].map((src, i) => (
+                                <img
+                                    key={src}
+                                    src={src}
+                                    alt={i === 0 ? 'Acesso bloqueado' : 'Status da mensalidade pendente'}
+                                    style={{
+                                        position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+                                        opacity: blockedSlide === i ? 1 : 0,
+                                        transition: 'opacity 0.6s ease'
+                                    }}
+                                />
+                            ))}
+                            {/* Indicadores do slide */}
+                            <div style={{ position: 'absolute', bottom: '14px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '6px', zIndex: 10 }}>
+                                {[0, 1].map((i) => (
+                                    <div key={i} style={{
+                                        width: blockedSlide === i ? '18px' : '6px', height: '6px', borderRadius: '99px',
+                                        background: blockedSlide === i ? '#f59e0b' : 'rgba(255,255,255,0.35)',
+                                        transition: 'all 0.3s ease'
+                                    }} />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -540,6 +668,14 @@ export default function LandingPage() {
 
             {/* Responsivo */}
             <style>{`
+                /* Hover em CSS puro (não em JS) — não depende de re-render do
+                   React pra desfazer, então nunca fica "grudado" ao tirar o mouse. */
+                .feature-card:hover {
+                    transform: translateY(-5px);
+                    border-color: rgb(var(--accent-rgb));
+                    box-shadow: 0 12px 30px -10px rgba(var(--accent-rgb), 0.35);
+                }
+
                 @media (max-width: 768px) {
                     header { padding: 0.85rem 1rem !important; }
                     section { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }

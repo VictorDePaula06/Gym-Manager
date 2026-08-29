@@ -2212,6 +2212,9 @@ export default function StudentDetails() {
                                                 const cfgQs = settings?.checkinConfig?.questions?.length ? settings.checkinConfig.questions : DEFAULT_CHECKIN.questions;
                                                 const has = (v) => v !== undefined && v !== '' && v !== null;
                                                 const answered = cfgQs.filter((q) => has(c.answers?.[q.id]));
+                                                const scales = answered.filter((q) => q.type === 'scale');
+                                                const chips = answered.filter((q) => q.type === 'number' || q.type === 'choice');
+                                                const texts = answered.filter((q) => q.type === 'text');
                                                 let rel = '';
                                                 if (c.createdAt) {
                                                     const d = Math.floor((Date.now() - new Date(c.createdAt).getTime()) / 86400000);
@@ -2223,17 +2226,58 @@ export default function StudentDetails() {
                                                             <span style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-main)' }}>{c.createdAt ? new Date(c.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' }) : ''}</span>
                                                             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{rel}</span>
                                                         </div>
+
                                                         {answered.length === 0 ? (
                                                             <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enviado sem respostas.</span>
                                                         ) : (
-                                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
-                                                                {answered.map((q) => (
-                                                                    <span key={q.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--input-bg)', borderRadius: '20px', padding: '0.5rem 1rem', fontSize: '0.88rem' }}>
-                                                                        <span style={{ color: 'var(--text-muted)' }}>{q.label}:</span>
-                                                                        <strong style={{ color: 'var(--text-main)' }}>{String(c.answers[q.id])}</strong>
-                                                                    </span>
+                                                            <>
+                                                                {/* Escalas: barrinhas, com destaque quando a nota é baixa (≤2 de 5) */}
+                                                                {scales.length > 0 && (
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: (chips.length || texts.length) ? '1rem' : 0 }}>
+                                                                        {scales.map((q) => {
+                                                                            const val = Number(c.answers[q.id]);
+                                                                            const low = val > 0 && val <= 2;
+                                                                            const barColor = low ? '#ef4444' : 'var(--primary)';
+                                                                            return (
+                                                                                <div key={q.id} style={{
+                                                                                    background: low ? 'rgba(239, 68, 68, 0.08)' : 'var(--input-bg)',
+                                                                                    border: low ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid transparent',
+                                                                                    borderRadius: '10px', padding: '0.6rem 0.75rem'
+                                                                                }}>
+                                                                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.label}</div>
+                                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                                        <div style={{ display: 'flex', gap: '3px', flex: 1 }}>
+                                                                                            {[1, 2, 3, 4, 5].map((n) => (
+                                                                                                <span key={n} style={{ flex: 1, height: '6px', borderRadius: '3px', background: n <= val ? barColor : 'var(--border-glass)' }} />
+                                                                                            ))}
+                                                                                        </div>
+                                                                                        <span style={{ fontWeight: 800, fontSize: '0.85rem', color: barColor }}>{val}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Número / opções como chips */}
+                                                                {chips.length > 0 && (
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: texts.length ? '1rem' : 0 }}>
+                                                                        {chips.map((q) => (
+                                                                            <span key={q.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--input-bg)', borderRadius: '20px', padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+                                                                                <span style={{ color: 'var(--text-muted)' }}>{q.label}:</span>
+                                                                                <strong style={{ color: 'var(--text-main)' }}>{String(c.answers[q.id])}</strong>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Comentários */}
+                                                                {texts.map((q) => (
+                                                                    <div key={q.id} style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '0.75rem', margin: '0.5rem 0', fontStyle: 'italic', color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                                                                        “{String(c.answers[q.id])}”
+                                                                    </div>
                                                                 ))}
-                                                            </div>
+                                                            </>
                                                         )}
                                                     </div>
                                                 );

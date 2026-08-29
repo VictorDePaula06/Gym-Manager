@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
-import { Plus, Trash2, Save, ChevronLeft, Dumbbell, FileDown, Check, Video, Loader2, Library, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Save, ChevronLeft, ChevronUp, ChevronDown, Dumbbell, FileDown, Check, Video, Loader2, Library, GripVertical } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { storage } from '../firebase';
@@ -404,16 +404,24 @@ export default function WorkoutBuilder() {
                 
                 @media (max-width: 768px) {
                     .exercise-row {
-                        grid-template-columns: 1fr 1fr 1fr auto !important;
-                        gap: 0.5rem;
-                        padding: 0.75rem;
+                        grid-template-columns: 1fr 1fr !important;
+                        gap: 0.75rem;
+                        padding: 1rem;
                     }
-                    /* Exercise Name: Full width top row */
+                    /* Exercise Name: linha própria, largura toda */
                     .exercise-row > div:first-child {
                         grid-column: 1 / -1;
-                        margin-bottom: 0.5rem;
+                        margin-bottom: 0.25rem;
                     }
-                    /* Hide Delete Button text if any, keep icon */
+                    /* Botões (vídeo/excluir): linha própria, alinhados à direita */
+                    .exercise-row > div:last-child {
+                        grid-column: 1 / -1;
+                        display: flex !important;
+                        justify-content: flex-end;
+                        margin-top: 0.25rem;
+                    }
+                    .exercise-move-btn { display: flex !important; }
+                    .exercise-drag-handle { display: none !important; }
                 }
             `}</style>
 
@@ -590,11 +598,47 @@ export default function WorkoutBuilder() {
                                         outlineOffset: '2px'
                                     }}
                                 >
-                                    <div
-                                        style={{ display: 'flex', alignItems: 'center', cursor: 'grab', color: 'var(--text-muted)', flexShrink: 0 }}
-                                        title="Arrastar para reordenar"
-                                    >
-                                        <GripVertical size={18} />
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0, gap: '0.15rem' }}>
+                                        <div
+                                            className="exercise-drag-handle"
+                                            style={{ display: 'flex', alignItems: 'center', cursor: 'grab', color: 'var(--text-muted)' }}
+                                            title="Arrastar para reordenar"
+                                        >
+                                            <GripVertical size={18} />
+                                        </div>
+                                        {/* Setas: alternativa ao arrastar, essenciais no celular (drag nativo não funciona em touch) */}
+                                        <button
+                                            type="button"
+                                            className="exercise-move-btn"
+                                            onClick={() => reorderExercises(index, index - 1)}
+                                            disabled={index === 0}
+                                            title="Mover para cima"
+                                            style={{
+                                                display: 'none', alignItems: 'center', justifyContent: 'center',
+                                                width: '22px', height: '22px', padding: 0, borderRadius: '6px',
+                                                border: 'none', background: 'rgba(255,255,255,0.06)',
+                                                color: index === 0 ? 'var(--border-glass)' : 'var(--text-muted)',
+                                                cursor: index === 0 ? 'default' : 'pointer'
+                                            }}
+                                        >
+                                            <ChevronUp size={14} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="exercise-move-btn"
+                                            onClick={() => reorderExercises(index, index + 1)}
+                                            disabled={index === exercises.length - 1}
+                                            title="Mover para baixo"
+                                            style={{
+                                                display: 'none', alignItems: 'center', justifyContent: 'center',
+                                                width: '22px', height: '22px', padding: 0, borderRadius: '6px',
+                                                border: 'none', background: 'rgba(255,255,255,0.06)',
+                                                color: index === exercises.length - 1 ? 'var(--border-glass)' : 'var(--text-muted)',
+                                                cursor: index === exercises.length - 1 ? 'default' : 'pointer'
+                                            }}
+                                        >
+                                            <ChevronDown size={14} />
+                                        </button>
                                     </div>
                                     <div className="exercise-row" style={{ flex: 1, marginBottom: 0 }}>
                                     <div>
