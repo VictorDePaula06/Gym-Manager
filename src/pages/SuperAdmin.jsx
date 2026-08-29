@@ -329,6 +329,16 @@ const SuperAdmin = () => {
         t.id?.includes(searchTerm)
     );
 
+    // Mesma regra de expiração do AuthContext (createdAt + 15 dias), só pra
+    // exibir o aviso aqui — não afeta o bloqueio real do app.
+    const TRIAL_DAYS = 15;
+    const getTrialDaysLeft = (tenant) => {
+        if (!tenant.createdAt) return null;
+        const trialEnd = new Date(tenant.createdAt);
+        trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+        return Math.ceil((trialEnd - new Date()) / (1000 * 60 * 60 * 24));
+    };
+
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', padding: '1rem', color: 'white' }}>
             <style>{`
@@ -456,7 +466,10 @@ const SuperAdmin = () => {
                     </div>
                 ) : (
                     <div style={{ display: 'grid', gap: '1rem' }}>
-                        {filteredTenants.map(tenant => (
+                        {filteredTenants.map(tenant => {
+                            const daysLeft = getTrialDaysLeft(tenant);
+                            const isTrialExpired = !tenant.lifetimeAccess && tenant.subscriptionStatus !== 'active' && daysLeft !== null && daysLeft <= 0;
+                            return (
                             <div key={tenant.id} className="sa-card">
                                 <div style={{ flex: 1, minWidth: '300px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -471,6 +484,32 @@ const SuperAdmin = () => {
                                         }}>
                                             {tenant.subscriptionStatus?.toUpperCase() || 'TRIAL'}
                                         </span>
+                                        {isTrialExpired && (
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '2px 8px',
+                                                borderRadius: '999px',
+                                                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                                                color: '#f87171',
+                                                border: '1px solid #ef4444',
+                                                fontWeight: 'bold',
+                                                display: 'flex', alignItems: 'center', gap: '4px'
+                                            }}>
+                                                <AlertTriangle size={10} /> EXPIRADO {Math.abs(daysLeft)}d ATRÁS
+                                            </span>
+                                        )}
+                                        {!isTrialExpired && tenant.subscriptionStatus !== 'active' && !tenant.lifetimeAccess && daysLeft !== null && (
+                                            <span style={{
+                                                fontSize: '0.75rem',
+                                                padding: '2px 8px',
+                                                borderRadius: '999px',
+                                                backgroundColor: 'rgba(148, 163, 184, 0.15)',
+                                                color: '#94a3b8',
+                                                border: '1px solid #475569'
+                                            }}>
+                                                {daysLeft}d restantes
+                                            </span>
+                                        )}
                                         {tenant.lifetimeAccess && (
                                             <span style={{
                                                 fontSize: '0.75rem',
@@ -735,7 +774,8 @@ const SuperAdmin = () => {
                                     </button>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
 
                         {filteredTenants.length === 0 && (
                             <div style={{ textAlign: 'center', color: '#64748b', padding: '2rem' }}>
