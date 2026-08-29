@@ -58,7 +58,7 @@ const SuperAdmin = () => {
                 plan: planType // Saving the plan type
             };
 
-            // If reverting to trial, reset the "Created At" date so the 7-day counter restarts
+            // If reverting to trial, reset the "Created At" date so the 15-day counter restarts
             // AND clear any existing legacy subscription end date logic
             if (newStatus === 'trial') {
                 updates.createdAt = new Date().toISOString();
@@ -99,7 +99,7 @@ const SuperAdmin = () => {
                 // Add default settings if needed
             });
 
-            const statusLabel = newTenant.initialStatus === 'active' ? 'PRO (Ativo)' : 'TRIAL (7 Dias)';
+            const statusLabel = newTenant.initialStatus === 'active' ? 'PRO (Ativo)' : 'TRIAL (15 Dias)';
             alert(`Academia criada com sucesso!\nLogin: ${newTenant.email}\nStatus: ${statusLabel}`);
 
             setShowModal(false);
@@ -128,6 +128,34 @@ const SuperAdmin = () => {
         } catch (error) {
             console.error("Error deleting tenant:", error);
             alert("Erro ao remover.");
+        }
+    };
+
+    // Reativa um trial bloqueado: reseta a data de criação pra hoje, o que
+    // reinicia a contagem dos 15 dias. Pura manipulação no Firestore — não
+    // depende de Stripe nem de pagamento real, é o mesmo mecanismo do "Voltar
+    // p/ Trial", só que disponível pra quem já está travado (não virou PRO).
+    const handleReactivateTrial = async (tenantId) => {
+        if (!confirm("Reativar o acesso deste usuário com +15 dias de teste a partir de agora?")) return;
+
+        try {
+            const tenantRef = doc(db, 'tenants', tenantId);
+            const updates = {
+                createdAt: new Date().toISOString(),
+                subscriptionStatus: 'trial',
+                active: true,
+                current_period_end: null,
+            };
+            await updateDoc(tenantRef, updates);
+
+            setTenants(prev => prev.map(t =>
+                t.id === tenantId ? { ...t, ...updates } : t
+            ));
+
+            alert("Trial reativado com sucesso! O usuário tem mais 15 dias de acesso.");
+        } catch (error) {
+            console.error("Erro ao reativar trial:", error);
+            alert("Erro ao reativar: " + error.message);
         }
     };
 
@@ -188,7 +216,7 @@ const SuperAdmin = () => {
 
         try {
             const pastDate = new Date();
-            pastDate.setDate(pastDate.getDate() - 8); // 8 days ago (trial is 7 days)
+            pastDate.setDate(pastDate.getDate() - 16); // 16 days ago (trial is 15 days)
 
             const tenantRef = doc(db, 'tenants', tenantId);
             await updateDoc(tenantRef, {
@@ -572,6 +600,26 @@ const SuperAdmin = () => {
                                         <Clock size={16} /> Expirar Trial
                                     </button>
 
+                                    {tenant.subscriptionStatus !== 'active' && (
+                                        <button
+                                            onClick={() => handleReactivateTrial(tenant.id)}
+                                            style={{
+                                                backgroundColor: '#0891b2', // Cyan
+                                                color: 'white',
+                                                border: 'none',
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem'
+                                            }}
+                                            title="Reativar acesso com +15 dias de teste"
+                                        >
+                                            <RefreshCw size={16} /> Reativar (+15 dias)
+                                        </button>
+                                    )}
+
                                     {tenant.termsAccepted && (
                                         <button
                                             onClick={() => window.open(`/admin/certificate/${tenant.id}`, '_blank')}
@@ -772,7 +820,7 @@ const SuperAdmin = () => {
                                                 checked={newTenant.initialStatus === 'trial'}
                                                 onChange={() => setNewTenant({ ...newTenant, initialStatus: 'trial' })}
                                             />
-                                            Trial 7 Dias
+                                            Trial 15 Dias
                                         </label>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: newTenant.initialStatus === 'active' ? '#10b981' : '#94a3b8' }}>
                                             <input

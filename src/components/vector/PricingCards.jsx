@@ -72,7 +72,7 @@ const PricingCards = () => {
                         Planos Simples
                     </h2>
                     <p className="text-gray-400 text-lg">
-                        Comece grátis por 7 dias. Cancele quando quiser.
+                        Comece grátis por 15 dias. Cancele quando quiser.
                     </p>
                 </div>
 

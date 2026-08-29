@@ -48,7 +48,7 @@ const Login = () => {
     };
 
     // Login do GESTOR (personal) via Google. O tenant é criado no 1º acesso
-    // (AuthContext) já em teste de 7 dias.
+    // (AuthContext) já em teste de 15 dias.
     const handleGoogleLogin = async () => {
         setError('');
         setLoadingLocal(true);
@@ -303,7 +303,7 @@ const Login = () => {
                                 )}
                             </button>
                             <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', lineHeight: 1.5 }}>
-                                Personais entram com a conta Google. Novo por aqui? Seu acesso é criado na hora, com <strong style={{ color: '#cbd5e1' }}>7 dias grátis</strong>.
+                                Personais entram com a conta Google. Novo por aqui? Seu acesso é criado na hora, com <strong style={{ color: '#cbd5e1' }}>15 dias grátis</strong>.
                             </p>
                         </>
                     )}

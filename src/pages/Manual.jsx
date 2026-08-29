@@ -103,9 +103,9 @@ export default function Manual() {
                         <Steps items={[
                             <>Na tela de login, deixe selecionado <strong>Sou Personal</strong>.</>,
                             <>Toque em <strong>Entrar com Google</strong> e escolha a conta que vai usar.</>,
-                            <>Sua conta é criada na hora, já com <strong>7 dias de teste grátis</strong> no plano Ouro (tudo liberado).</>,
+                            <>Sua conta é criada na hora, já com <strong>15 dias de teste grátis</strong> no plano Ouro (tudo liberado).</>,
                         ]} />
-                        <p>Quando o teste termina, <strong>o acesso não é bloqueado</strong> — sua conta cai automaticamente para o plano Bronze e você continua usando o sistema, incluindo a IA, só limitado a 15 alunos até assinar um plano pago.</p>
+                        <p>Quando o teste termina, <strong>o acesso é bloqueado</strong> até você assinar um plano — a tela mostra os planos disponíveis e um botão para assinar na hora.</p>
                     </Card>
 
                     <Card icon={CreditCard} title="Planos e assinatura">

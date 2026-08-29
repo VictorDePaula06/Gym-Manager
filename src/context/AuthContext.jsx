@@ -168,7 +168,7 @@ export const AuthProvider = ({ children }) => {
                                 // Calculate days since creation of the GYM
                                 const createdDate = new Date(data.createdAt);
                                 const now = new Date();
-                                const TRIAL_DAYS = 7;
+                                const TRIAL_DAYS = 15;
 
                                 const trialEndDate = new Date(createdDate);
                                 trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DAYS);
@@ -238,11 +238,11 @@ export const AuthProvider = ({ children }) => {
                             subscriptionStatus: 'trial',
                             termsAccepted: false // New owners must accept terms
                         });
-                        setTrialInfo({ isTrial: true, daysRemaining: 7, totalDays: 7 }); // Corrected initial trial
+                        setTrialInfo({ isTrial: true, daysRemaining: 15, totalDays: 15 }); // Corrected initial trial
                         setAccessDenied(false);
                         setTrialExpired(false);
                         setTermsAccepted(false);
-                        resolvedPlan = 'ouro'; // teste de 7 dias começa com tudo liberado
+                        resolvedPlan = 'ouro'; // teste de 15 dias começa com tudo liberado
                         setPlan('ouro');
                     }
 

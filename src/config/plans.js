@@ -37,7 +37,7 @@ export function planLimits(planId) {
 // - `tier` é o campo do tenant (bronze/prata/ouro) — definido pelo admin ou
 //   pelo pagamento. Tem prioridade máxima (ex: admin dá Ouro de brinde).
 // - Acesso vitalício ou assinante pago legado (plano único antigo) => Ouro.
-// - Durante o teste de 7 dias => Ouro (sente o produto completo).
+// - Durante o teste de 15 dias => Ouro (sente o produto completo).
 // - Teste expirado sem tier/pagamento => cai pro Bronze grátis.
 // Obs: NÃO confundir com o campo `plan` do tenant, que guarda o ciclo de
 // cobrança (monthly/annual/trial) usado no faturamento.

@@ -18,8 +18,12 @@ export default function PrivateRoute({ children, roleRequired }) {
         return <Navigate to="/payment-required" />;
     }
 
-    // Fim do teste NÃO tranca mais: o personal cai pro plano Bronze (grátis,
-    // limitado) e segue usando. O upsell aparece nas telas, não bloqueia o app.
+    // Fim do teste bloqueia o app e manda pra tela de assinatura — exceto a
+    // própria página de assinatura, senão o botão "Assinar Agora" de lá vira
+    // um loop (redireciona de volta pra si mesma).
+    if (trialExpired && location.pathname !== '/app/subscription') {
+        return <Navigate to="/trial-expired" />;
+    }
 
     if (accessDenied) {
         return <Navigate to="/access-denied" />;

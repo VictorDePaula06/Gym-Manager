@@ -205,7 +205,7 @@ export default function LandingPage() {
             <header style={{ padding: '1.25rem 2rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', position: 'fixed', width: '100%', top: 0, zIndex: 40, boxSizing: 'border-box', backdropFilter: 'blur(12px)', background: scrolled ? 'rgba(11,15,14,0.85)' : 'transparent', borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent', transition: 'all 0.3s' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                     <button onClick={() => navigate('/login')} style={{ background: 'transparent', color: 'white', border: '1px solid rgba(255,255,255,0.2)', padding: '0.6rem 1.2rem', borderRadius: '99px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: '600' }}>Entrar</button>
-                    <button onClick={() => navigate('/login')} style={{ ...btnPrimary, padding: '0.6rem 1.5rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Teste grátis (7 dias)</button>
+                    <button onClick={() => navigate('/login')} style={{ ...btnPrimary, padding: '0.6rem 1.5rem', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>Teste grátis (15 dias)</button>
                 </div>
             </header>
 
@@ -220,7 +220,7 @@ export default function LandingPage() {
                 >
                     <source src="/FAF2.mp4" type="video/mp4" />
                 </video>
-                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(5,7,5,0.55) 0%, rgba(5,7,5,0.75) 60%, #050705 100%)', zIndex: 0, pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(5,7,5,0.4) 0%, rgba(5,7,5,0.7) 40%, #0a0e0d 100%)', zIndex: 0, pointerEvents: 'none' }} />
                 <div style={{ position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)', width: '90%', height: '140%', background: 'radial-gradient(ellipse, rgba(16,185,129,0.16) 0%, rgba(0,0,0,0) 60%)', zIndex: 0, pointerEvents: 'none' }} />
 
                 <div className="hero-content" style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '1380px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(360px, 680px) 1fr', gap: '1.5rem', alignItems: 'center' }}>
@@ -255,7 +255,10 @@ export default function LandingPage() {
             </section>
 
             {/* Features */}
-            <section id="features" style={{ padding: '6rem 2rem 4rem', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+            <section id="features" style={{ position: 'relative', padding: '6rem 2rem 4rem', maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
+                {/* Estende o fade do hero pra dentro dessa seção — suaviza o corte
+                    entre o fundo com vídeo e o resto da página. */}
+                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '100vw', height: '480px', background: 'linear-gradient(180deg, #0a0e0d 0%, rgba(10,14,13,0.6) 45%, transparent 100%)', zIndex: 0, pointerEvents: 'none' }} />
                 {features.map((f) => (
                     <div
                         key={f.id}
@@ -507,9 +510,9 @@ export default function LandingPage() {
             {/* Planos */}
             <section id="planos" style={{ padding: '6rem 2rem', background: 'transparent', textAlign: 'center' }}>
                 <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-                    <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.1)', color: ACCENT, padding: '0.4rem 1rem', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', border: '1px solid rgba(16,185,129,0.2)' }}>⚡ 7 dias grátis com tudo liberado</div>
+                    <div style={{ display: 'inline-block', background: 'rgba(16,185,129,0.1)', color: ACCENT, padding: '0.4rem 1rem', borderRadius: '99px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', border: '1px solid rgba(16,185,129,0.2)' }}>⚡ 15 dias grátis com tudo liberado</div>
                     <h2 style={{ fontSize: '2.6rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>Escolha seu plano</h2>
-                    <p style={{ color: '#9ca3af', marginBottom: '2rem', fontSize: '1.05rem' }}>Teste 7 dias grátis. Sem fidelidade, cancele quando precisar.</p>
+                    <p style={{ color: '#9ca3af', marginBottom: '2rem', fontSize: '1.05rem' }}>Teste 15 dias grátis. Sem fidelidade, cancele quando precisar.</p>
 
                     {/* Toggle Mensal / Anual */}
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '99px', padding: '0.3rem', marginBottom: '3rem' }}>
@@ -610,7 +613,7 @@ export default function LandingPage() {
                             );
                         })}
                     </div>
-                    <p style={{ color: '#64748b', marginTop: '2rem', fontSize: '0.85rem' }}>Todo novo cadastro começa com 7 dias grátis no plano Ouro.</p>
+                    <p style={{ color: '#64748b', marginTop: '2rem', fontSize: '0.85rem' }}>Todo novo cadastro começa com 15 dias grátis no plano Ouro.</p>
                 </div>
             </section>
 
@@ -646,7 +649,7 @@ export default function LandingPage() {
                         { q: 'Preciso instalar algum programa?', a: 'Não! É 100% online (nas nuvens). Você acessa pelo navegador de qualquer computador, tablet ou celular. Se seu aparelho estragar, seus dados continuam salvos.' },
                         { q: 'Funciona em iPhone e Android?', a: 'Sim. É otimizado para celular e funciona como um aplicativo. Não precisa baixar da loja — basta acessar pelo navegador e adicionar à tela inicial.' },
                         { q: 'Meus dados estão seguros?', a: 'Muito mais que no papel ou planilha. Criptografia de ponta e backups automáticos. Ninguém além de você acessa os dados dos seus alunos.' },
-                        { q: 'Como funciona o teste grátis?', a: 'Todo novo cadastro começa com 7 dias grátis no plano Ouro (tudo liberado). Depois, é só escolher o plano que faz mais sentido pra você — a Inteligência Artificial está incluída em todos os planos.' },
+                        { q: 'Como funciona o teste grátis?', a: 'Todo novo cadastro começa com 15 dias grátis no plano Ouro (tudo liberado). Depois, é só escolher o plano que faz mais sentido pra você — a Inteligência Artificial está incluída em todos os planos.' },
                     ].map((faq, i) => (
                         <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', overflow: 'hidden' }}>
                             <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: openFaq === i ? ACCENT : '#e2e8f0' }}>
