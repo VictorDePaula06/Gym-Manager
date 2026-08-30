@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
-import { Check, X, Star, Shield, Dumbbell, Sparkles, Crown, RefreshCw } from 'lucide-react';
+import { Check, X, Star, Shield, Dumbbell, Sparkles, Crown, RefreshCw, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
-
-const WHATS = 'https://wa.me/5521982626387';
+import { STRIPE_PRICE_IDS, startCheckout } from '../utils/stripe';
 
 const PLANS = [
-    { name: 'Bronze', color: '#c2803f', icon: Dumbbell, badge: null, highlight: false, monthly: '39,90', annual: '29,90', annualTotal: '358,80', save: '120', features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos com Inteligência Artificial', 'Comunidade e desafios'], note: null },
-    { name: 'Prata', color: '#94a3b8', icon: Sparkles, badge: 'Mais popular', highlight: true, monthly: '79,90', annual: '59,90', annualTotal: '718,80', save: '240', features: ['Até 40 alunos', 'Tudo do Bronze', 'Relatórios de evolução', 'Suporte prioritário'], note: null },
-    { name: 'Ouro', color: '#eab308', icon: Crown, badge: null, highlight: false, monthly: '149,90', annual: '119,90', annualTotal: '1.438,80', save: '360', features: ['Alunos ilimitados', 'Tudo do Prata', 'Suporte VIP no WhatsApp'], note: null },
+    { id: 'bronze', name: 'Bronze', color: '#c2803f', icon: Dumbbell, badge: null, highlight: false, monthly: '39,90', annual: '29,90', annualTotal: '358,80', save: '120', features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos com Inteligência Artificial', 'Comunidade e desafios'], note: null },
+    { id: 'prata', name: 'Prata', color: '#94a3b8', icon: Sparkles, badge: 'Mais popular', highlight: true, monthly: '79,90', annual: '59,90', annualTotal: '718,80', save: '240', features: ['Até 40 alunos', 'Tudo do Bronze', 'Relatórios de evolução', 'Suporte prioritário'], note: null },
+    { id: 'ouro', name: 'Ouro', color: '#eab308', icon: Crown, badge: null, highlight: false, monthly: '149,90', annual: '119,90', annualTotal: '1.438,80', save: '360', features: ['Alunos ilimitados', 'Tudo do Prata', 'Suporte VIP no WhatsApp'], note: null },
 ];
 
 const Subscription = () => {
     const { user, trialInfo } = useAuth();
     const [billing, setBilling] = useState('annual');
+    const [loadingPlan, setLoadingPlan] = useState(null);
 
     const handleSimulatePayment = async () => {
         if (!confirm('[DEV ONLY] Simular pagamento bem-sucedido via Stripe?')) return;
@@ -30,11 +30,17 @@ const Subscription = () => {
         }
     };
 
-    const planLink = (plan) => {
-        const cycle = billing === 'annual' ? 'Anual' : 'Mensal';
-        const price = billing === 'annual' ? `R$ ${plan.annual}/mês (anual)` : `R$ ${plan.monthly}/mês`;
-        const txt = `Olá! Quero assinar o plano ${plan.name} (${cycle} — ${price}) do Alivia Fitness. Meu e-mail: ${user?.email || ''}`;
-        return `${WHATS}?text=${encodeURIComponent(txt)}`;
+    const handleSubscribe = async (plan) => {
+        const priceId = STRIPE_PRICE_IDS[plan.id]?.[billing === 'annual' ? 'annual' : 'monthly'];
+        if (!priceId) return;
+        setLoadingPlan(plan.id);
+        try {
+            await startCheckout(priceId);
+        } catch (error) {
+            console.error(error);
+            alert('Não foi possível iniciar o pagamento. Tente novamente em instantes.');
+            setLoadingPlan(null);
+        }
     };
 
     return (
@@ -126,12 +132,23 @@ const Subscription = () => {
                                     )}
                                 </ul>
 
-                                <a href={planLink(plan)} target="_blank" rel="noopener noreferrer" className={featured ? 'btn-primary' : ''} style={{
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '0.9rem', borderRadius: '12px', fontWeight: 700, textDecoration: 'none', boxSizing: 'border-box',
-                                    background: featured ? undefined : 'transparent',
-                                    border: featured ? undefined : `1px solid ${plan.color}66`,
-                                    color: featured ? 'white' : 'var(--text-main)',
-                                }}>Assinar {plan.name}</a>
+                                <button
+                                    onClick={() => handleSubscribe(plan)}
+                                    disabled={loadingPlan !== null}
+                                    className={featured ? 'btn-primary' : ''}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', padding: '0.9rem', borderRadius: '12px', fontWeight: 700, boxSizing: 'border-box', cursor: loadingPlan !== null ? 'default' : 'pointer',
+                                        background: featured ? undefined : 'transparent',
+                                        border: featured ? undefined : `1px solid ${plan.color}66`,
+                                        color: featured ? 'white' : 'var(--text-main)',
+                                        opacity: loadingPlan !== null && loadingPlan !== plan.id ? 0.5 : 1,
+                                    }}>
+                                    {loadingPlan === plan.id ? (
+                                        <><Loader2 size={16} style={{ animation: 'spin 0.8s linear infinite' }} /> Redirecionando...</>
+                                    ) : (
+                                        <>Assinar {plan.name}</>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     );

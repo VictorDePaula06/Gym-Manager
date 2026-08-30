@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Lock, LogOut, Check, Shield, Star, MessageCircle } from 'lucide-react';
 
 export default function PaymentRequired() {
-    const { logout, user } = useAuth();
+    const { logout } = useAuth();
     const navigate = useNavigate();
 
     const handleLogout = async () => {
@@ -11,12 +11,11 @@ export default function PaymentRequired() {
         navigate('/login');
     };
 
-    // LINKS DE TESTE - SUBSTITUIR
     const PLANS = [
         {
             id: 'monthly',
             name: 'Mensal',
-            price: '97,00',
+            price: 'a partir de 39,90',
             period: '/mês',
             features: [
                 'Gestão Ilimitada de Alunos',
@@ -25,22 +24,20 @@ export default function PaymentRequired() {
                 'Acesso para Professores',
                 'Suporte via WhatsApp'
             ],
-            link: 'https://buy.stripe.com/test_9B69AUfuT3NUggA1jDbo400',
             recommended: false
         },
         {
             id: 'annual',
             name: 'Anual (Oferta)',
-            price: '900,00',
-            period: '/ano',
-            save: 'Economize R$ 264,00',
+            price: 'a partir de 29,90',
+            period: '/mês',
+            save: 'Economize até 25%',
             features: [
                 'Todo o Pacote Mensal Incluso',
-                '2 Meses de Acesso Grátis',
+                'Preço reduzido no plano anual',
                 'Prioridade Máxima no Suporte',
                 'Consultoria de Setup Inicial'
             ],
-            link: 'https://buy.stripe.com/test_8x28wQfuT5W25BW1jDbo401',
             recommended: true
         }
     ];
@@ -129,10 +126,8 @@ export default function PaymentRequired() {
                             ))}
                         </div>
 
-                        <a
-                            href={`${plan.link}?client_reference_id=${user?.uid}&prefilled_email=${encodeURIComponent(user?.email)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <button
+                            onClick={() => navigate('/app/subscription')}
                             style={{
                                 display: 'block',
                                 width: '100%',
@@ -141,13 +136,14 @@ export default function PaymentRequired() {
                                 background: plan.recommended ? '#3b82f6' : 'rgba(255,255,255,0.1)',
                                 color: 'white',
                                 textAlign: 'center',
-                                textDecoration: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
                                 fontWeight: 'bold',
                                 transition: 'all 0.2s'
                             }}
                         >
-                            Assinar Agora
-                        </a>
+                            Escolher Plano
+                        </button>
                     </div>
                 ))}
             </div>
