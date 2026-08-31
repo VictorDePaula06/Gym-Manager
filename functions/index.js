@@ -11,8 +11,6 @@ const db = admin.firestore();
 const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
 const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
 
-// TODO: preencher com os Price IDs reais do Stripe (Dashboard > Catálogo de produtos)
-// depois que o usuário enviar os 6 IDs (bronze/prata/ouro x mensal/anual).
 const PRICE_TIER_MAP = {
   "price_1UAHGXLOoGy5dacxvh5TrcZY": { tier: "bronze", billingCycle: "monthly" },
   "price_1UAHJ1LOoGy5dacxDBNyToyb": { tier: "bronze", billingCycle: "annual" },
@@ -78,6 +76,33 @@ exports.createCheckoutSession = onCall(
           billingCycle: priceInfo.billingCycle,
         },
       },
+    });
+
+    return { url: session.url };
+  }
+);
+
+exports.createPortalSession = onCall(
+  { secrets: [STRIPE_SECRET_KEY] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Faça login para gerenciar a assinatura.");
+    }
+
+    const tenantId = request.auth.uid;
+    const tenantSnap = await db.collection("tenants").doc(tenantId).get();
+    const stripeCustomerId = tenantSnap.exists ? tenantSnap.data().stripeCustomerId : null;
+
+    if (!stripeCustomerId) {
+      throw new HttpsError("failed-precondition", "Nenhuma assinatura encontrada para essa conta.");
+    }
+
+    const stripe = new Stripe(STRIPE_SECRET_KEY.value());
+    const origin = (request.data && request.data.origin) || "https://aliviafitness.com.br";
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: stripeCustomerId,
+      return_url: `${origin}/app/settings`,
     });
 
     return { url: session.url };

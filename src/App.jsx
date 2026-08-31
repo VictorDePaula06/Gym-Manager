@@ -36,6 +36,7 @@ import VectorGymHub from './pages/VectorGymHub';
 import InstallPrompt from './components/InstallPrompt';
 import Subscription from './pages/Subscription';
 import Manual from './pages/Manual';
+import HelpCenter from './pages/HelpCenter';
 
 // Student Portal Imports
 import StudentLayout from './components/StudentLayout';
@@ -74,6 +75,7 @@ function App() {
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/trial-expired" element={<TrialExpired />} />
                 <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/central-de-ajuda" element={<HelpCenter />} />
                 <Route path="/access-denied" element={<AccessDenied />} />
                 <Route path="/admin" element={
                   <PrivateRoute>

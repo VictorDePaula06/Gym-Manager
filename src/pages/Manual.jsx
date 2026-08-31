@@ -125,8 +125,10 @@ export default function Manual() {
                                 </tbody>
                             </table>
                         </div>
-                        <p>No plano anual, o valor mensal equivalente sai mais barato do que pagar mês a mês. Em <strong>Configurações → Assinatura</strong>, escolha o plano e toque em <strong>Assinar</strong> — isso abre uma conversa no WhatsApp com os dados já preenchidos.</p>
+                        <p>No plano anual, o valor mensal equivalente sai mais barato do que pagar mês a mês. Em <strong>Configurações → Assinatura</strong>, escolha o plano e toque em <strong>Assinar</strong> — o pagamento é feito direto pelo Checkout do Stripe, com cartão de crédito. O acesso é liberado automaticamente assim que o pagamento é confirmado.</p>
                         <Callout tone="warn">Atingiu o limite de alunos do plano? O cadastro de um novo aluno é bloqueado com aviso, até fazer upgrade.</Callout>
+                        <p style={{ marginTop: '0.75rem' }}>Você pode <strong>trocar de plano</strong> (upgrade ou downgrade) ou <strong>cancelar a assinatura</strong> a qualquer momento, sem multa: em <strong>Configurações → Assinatura</strong>, toque em <strong>Gerenciar Assinatura</strong> para abrir o portal seguro do Stripe, onde também dá para trocar o cartão salvo e ver o histórico de faturas.</p>
+                        <p style={{ marginTop: '0.5rem' }}>No upgrade, a diferença é cobrada proporcionalmente e o plano novo já é liberado na hora. No downgrade, a troca só vale a partir do próximo ciclo de cobrança — você continua com os benefícios do plano atual até lá.</p>
                     </Card>
 
                     <Card icon={Users} title="Cadastrar alunos">

@@ -17,3 +17,13 @@ export const startCheckout = async (priceId) => {
         throw new Error('Não foi possível iniciar o checkout.');
     }
 };
+
+export const openBillingPortal = async () => {
+    const createPortalSession = httpsCallable(functions, 'createPortalSession');
+    const { data } = await createPortalSession({ origin: window.location.origin });
+    if (data?.url) {
+        window.location.href = data.url;
+    } else {
+        throw new Error('Não foi possível abrir o portal de assinatura.');
+    }
+};

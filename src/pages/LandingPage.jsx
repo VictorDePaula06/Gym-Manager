@@ -650,6 +650,7 @@ export default function LandingPage() {
                         { q: 'Funciona em iPhone e Android?', a: 'Sim. É otimizado para celular e funciona como um aplicativo. Não precisa baixar da loja — basta acessar pelo navegador e adicionar à tela inicial.' },
                         { q: 'Meus dados estão seguros?', a: 'Muito mais que no papel ou planilha. Criptografia de ponta e backups automáticos. Ninguém além de você acessa os dados dos seus alunos.' },
                         { q: 'Como funciona o teste grátis?', a: 'Todo novo cadastro começa com 15 dias grátis no plano Ouro (tudo liberado). Depois, é só escolher o plano que faz mais sentido pra você — a Inteligência Artificial está incluída em todos os planos.' },
+                        { q: 'Posso cancelar quando quiser?', a: 'Sim, sem multa e sem fidelidade. O cancelamento é feito direto no app, em Configurações → Assinatura, sem precisar falar com ninguém. Seu acesso continua ativo até o fim do período já pago.' },
                     ].map((faq, i) => (
                         <div key={i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer', overflow: 'hidden' }}>
                             <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700, color: openFaq === i ? ACCENT : '#e2e8f0' }}>
@@ -662,11 +663,21 @@ export default function LandingPage() {
                         </div>
                     ))}
                 </div>
+                <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                    <a href="/central-de-ajuda" style={{ color: ACCENT, textDecoration: 'none', fontWeight: 700, fontSize: '0.95rem' }}>
+                        Ver central de ajuda completa (privacidade, dados e faturamento) →
+                    </a>
+                </div>
             </section>
 
             {/* Footer (sem nome) */}
             <footer style={{ padding: '3rem 2rem', textAlign: 'center', color: '#64748b', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <p style={{ margin: 0 }}>&copy; {new Date().getFullYear()} Alivia Fitness · Todos os direitos reservados.</p>
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem' }}>
+                    <a href="/central-de-ajuda" style={{ color: '#64748b', textDecoration: 'underline' }}>Central de Ajuda</a>
+                    {' · '}
+                    <a href="/terms" style={{ color: '#64748b', textDecoration: 'underline' }}>Termos de Uso e Privacidade</a>
+                </p>
             </footer>
 
             {/* Responsivo */}

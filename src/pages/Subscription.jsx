@@ -156,7 +156,12 @@ const Subscription = () => {
             </div>
 
             <div style={{ textAlign: 'center', marginTop: '2.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                <p style={{ margin: 0 }}><Shield size={15} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '5px' }} /> Pagamento seguro · cancele quando quiser.</p>
+                <p style={{ margin: 0 }}><Shield size={15} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '5px' }} /> Pagamento seguro · cancele quando quiser, sem multa.</p>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', maxWidth: '520px', marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                    Troque de plano a qualquer momento em Configurações → Assinatura. No upgrade, cobramos só a diferença proporcional e o acesso é liberado na hora; no downgrade, a troca vale a partir do próximo ciclo de cobrança.
+                    {' '}
+                    <a href="/central-de-ajuda" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>Saiba mais sobre privacidade e faturamento</a>.
+                </p>
                 <button onClick={handleSimulatePayment} style={{ marginTop: '1.25rem', background: 'transparent', border: '1px dashed var(--border-glass)', color: 'var(--text-muted)', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                     <RefreshCw size={12} /> [DEV] Simular pagamento
                 </button>

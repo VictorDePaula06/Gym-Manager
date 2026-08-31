@@ -8,6 +8,7 @@ import { storage, db } from '../firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, getDocs, getDoc, doc, setDoc, deleteDoc, query, where, updateDoc } from 'firebase/firestore';
 import { validateApiKey } from '../services/gemini';
+import { openBillingPortal } from '../utils/stripe';
 import CheckinSettings from './CheckinSettings';
 
 export default function Settings() {
@@ -28,6 +29,7 @@ export default function Settings() {
     const [uploadingLogo, setUploadingLogo] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [subscription, setSubscription] = useState(null); // Subscription state
+    const [loadingPortal, setLoadingPortal] = useState(false);
 
     useEffect(() => {
         if (settings) {
@@ -97,6 +99,17 @@ export default function Settings() {
             addToast("Erro ao enviar a imagem. Tente novamente.", 'error');
         } finally {
             setUploadingLogo(false);
+        }
+    };
+
+    const handleManageSubscription = async () => {
+        setLoadingPortal(true);
+        try {
+            await openBillingPortal();
+        } catch (error) {
+            console.error(error);
+            addToast('Não foi possível abrir o portal de assinatura. Tente novamente.', 'error');
+            setLoadingPortal(false);
         }
     };
 
@@ -373,13 +386,10 @@ export default function Settings() {
                                         </span>
                                     ) : (
                                         subscription?.subscriptionStatus === 'active' ? (
-                                            subscription?.plan === 'annual' ? (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981' }}>
-                                                    <Star size={20} fill="#10b981" /> PRO (Anual)
-                                                </span>
-                                            ) : (
-                                                'PRO (Mensal)'
-                                            )
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: planInfo?.color }}>
+                                                <Star size={20} fill={planInfo?.color} />
+                                                {planInfo?.name} ({subscription?.plan === 'annual' ? 'Anual' : 'Mensal'})
+                                            </span>
                                         ) :
                                             subscription?.subscriptionStatus === 'trial' ? 'Período de Teste' :
                                                 subscription?.subscriptionStatus === 'past_due' ? 'Pagamento Pendente' : 'Inativo / Gratuito'
@@ -419,6 +429,25 @@ export default function Settings() {
                                 </div>
                             </div>
                         </div>
+
+                        {subscription?.stripeCustomerId && (
+                            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button
+                                    onClick={handleManageSubscription}
+                                    disabled={loadingPortal}
+                                    style={{
+                                        background: 'transparent', color: 'var(--text-muted)',
+                                        border: '1px solid var(--border-glass)', padding: '0.6rem 1.1rem',
+                                        borderRadius: '8px', cursor: loadingPortal ? 'default' : 'pointer',
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem',
+                                        opacity: loadingPortal ? 0.6 : 1,
+                                    }}
+                                >
+                                    {loadingPortal ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
+                                    Gerenciar Assinatura (trocar cartão, cancelar)
+                                </button>
+                            </div>
+                        )}
 
                         {subscription?.subscriptionStatus === 'past_due' && (
                             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444' }}>
