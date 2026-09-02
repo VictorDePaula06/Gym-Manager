@@ -491,7 +491,7 @@ export default function StudentForm() {
                                     placeholder="joao@gmail.com"
                                 />
                                 <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.35rem 0 0', lineHeight: 1.4 }}>
-                                    Se for o <strong>Gmail</strong> do aluno, ele entra com <strong>Google sem código</strong>. Não sabe o Gmail? Deixe em branco e passe o código de acesso da ficha.
+                                    Opcional. Se o aluno tem Gmail, ele entra com <strong>Google + o código de acesso</strong> da ficha (pedido sempre na primeira vez, mesmo com o e-mail certo aqui). Sem Gmail, preencha e-mail e senha abaixo — aí ele entra direto com isso, sem precisar de código.
                                 </p>
                             </div>
                         </div>

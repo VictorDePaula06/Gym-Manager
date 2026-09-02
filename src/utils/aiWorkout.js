@@ -3,11 +3,13 @@ import { askGemini, isGeminiConfigured } from '../services/gemini';
 // ── O "cérebro" do personal: regras de especialista por tipo de aluno ─────────
 const SYSTEM_INSTRUCTION = `Você é um personal trainer experiente, especialista em prescrição de treino de musculação. Monte fichas seguras, coerentes e personalizadas para CADA tipo de aluno, raciocinando como um profissional.
 
-DIVISÃO (split) conforme a frequência semanal:
+DIVISÃO (split) conforme a frequência semanal — REGRA RÍGIDA: o número de itens em "divisions" deve ser EXATAMENTE igual ao número de treinos/semana informado no perfil (ex.: frequência "4x" → exatamente 4 divisões, nunca 2 ou 3). Isso vale mesmo que o professor peça foco em grupos específicos — o foco muda QUAIS exercícios entram e a ênfase de cada dia, nunca reduz a quantidade de dias.
 - 1 a 2x: Full Body (corpo inteiro por treino).
 - 3x: ABC (ex.: A Empurrar, B Puxar, C Pernas) ou ABC por grupos.
 - 4x: ABCD (ex.: A Costas/Bíceps, B Peito/Tríceps, C Pernas, D Ombros/Core) ou Superiores/Inferiores 2x.
-- 5x: ABCDE. 6x: PPL repetido 2x. NUNCA crie mais divisões do que a frequência semanal permite.
+- 5x: ABCDE. 6x: PPL repetido 2x. NUNCA crie menos nem mais divisões do que a frequência semanal informada.
+
+FOCO pedido pelo professor (ex.: "foco em pernas e lombar"): distribua esse foco DENTRO da divisão correta pra frequência informada — priorize esses grupos em mais dias e com mais volume, mas sem eliminar os demais grupos do corpo nem reduzir a quantidade de treinos da semana. Ex.: 4x com foco em pernas/lombar → pode ser 2 dias de pernas/posterior + 1 de superiores + 1 full/core, mas SEMPRE 4 divisões no total.
 EXCEÇÕES com PRIORIDADE sobre o mapa acima — para idosos (60+), iniciantes absolutos, obesidade acentuada (IMC ≥ 35) ou objetivo de saúde/qualidade de vida/reabilitação: prefira Full Body ou Superiores/Inferiores (AB), MESMO que treine 4x ou mais. NÃO use splits de isolamento/fisiculturismo (Empurrar/Puxar, ABCD por grupo), que concentram volume demais e não servem a esse perfil. Distribua o corpo de forma equilibrada entre as sessões, com volume conservador.
 
 VOLUME, REPETIÇÕES e DESCANSO conforme o objetivo:
@@ -156,6 +158,12 @@ const parseJson = (text) => {
     return JSON.parse(t);
 };
 
+// Quantos treinos/semana o texto da frequência pede (ex.: "4x" -> 4). null se não der pra saber.
+const parseFrequency = (freq) => {
+    const n = parseInt((freq || '').toString().replace(/\D/g, ''), 10);
+    return Number.isFinite(n) && n > 0 && n <= 7 ? n : null;
+};
+
 // Gera uma ficha via IA, retornando o MESMO contrato de generateWorkout:
 // { name, workouts, needsProfessionalReview, reviewReason }
 export const generateWorkoutAI = async (student, instruction = '', trainingLogs = []) => {
@@ -163,8 +171,22 @@ export const generateWorkoutAI = async (student, instruction = '', trainingLogs 
 
     const prev = summarizePreviousSheet(student);
     const adherence = summarizeAdherence(trainingLogs);
-    const raw = await askGemini(buildPrompt(student, instruction, prev, adherence), { json: true, systemInstruction: SYSTEM_INSTRUCTION });
-    const data = parseJson(raw);
+    const expectedDays = parseFrequency(student.trainingFrequency);
+    const prompt = buildPrompt(student, instruction, prev, adherence);
+
+    let data = parseJson(await askGemini(prompt, { json: true, systemInstruction: SYSTEM_INSTRUCTION }));
+
+    // A IA às vezes ignora a frequência pedida (gera menos/mais dias do que o combinado).
+    // Detectamos e pedimos de novo UMA vez, sendo bem explícitos sobre o erro.
+    if (expectedDays && Array.isArray(data.divisions) && data.divisions.length !== expectedDays) {
+        const correction = `${prompt}\n\nATENÇÃO: na tentativa anterior você gerou ${data.divisions.length} divisões, mas o aluno treina ${expectedDays}x por semana. Gere novamente com EXATAMENTE ${expectedDays} divisões em "divisions", respeitando o foco pedido dentro desses ${expectedDays} dias.`;
+        try {
+            const retryData = parseJson(await askGemini(correction, { json: true, systemInstruction: SYSTEM_INSTRUCTION }));
+            if (Array.isArray(retryData.divisions) && retryData.divisions.length === expectedDays) {
+                data = retryData;
+            }
+        } catch { /* mantém a primeira resposta se a nova tentativa falhar */ }
+    }
 
     if (!Array.isArray(data.divisions) || data.divisions.length === 0) {
         throw new Error('A IA não retornou divisões válidas.');

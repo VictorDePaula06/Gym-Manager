@@ -457,7 +457,13 @@ function StudentCodeScreen({ email, onSubmit, onCancel }) {
         try {
             await onSubmit(code);
         } catch (err) {
-            setError(err.message || 'Não foi possível vincular.');
+            const msg = err.message || '';
+            // Erro cru do Firestore quando o celular está sem internet (Wi-Fi fraco/sem
+            // dados) — a mensagem original em inglês não ajuda o aluno, então traduzimos.
+            const isOffline = err.code === 'unavailable' || msg.includes('client is offline') || msg.includes('client-offline');
+            setError(isOffline
+                ? 'Sem conexão com a internet no momento. Verifique o Wi-Fi ou os dados móveis e tente de novo.'
+                : (msg || 'Não foi possível vincular.'));
             setLoading(false);
         }
     };
