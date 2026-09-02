@@ -1820,26 +1820,14 @@ export default function StudentDetails() {
                 }
             `}</style>
 
-            {/* Header */}
+            {/* Header — só voltar + ações. Nome e status já aparecem no card do aluno,
+                logo abaixo, então não precisam se repetir aqui. */}
             <div className="student-header">
                 <div className="student-info">
                     <button onClick={() => navigate('/app/students')} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0 }}>
                         <ArrowLeft size={24} />
+                        <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Voltar</span>
                     </button>
-                    <div>
-                        <h1 style={{ fontSize: '1.8rem', marginBottom: '0.25rem', lineHeight: 1.2 }}>{student.name}</h1>
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            <span style={{
-                                fontSize: '0.85rem',
-                                padding: '0.2rem 0.8rem',
-                                borderRadius: '20px',
-                                background: student.status === 'Active' ? 'rgba(16, 185, 129, 0.2)' : student.status === 'Pending' ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                                color: student.status === 'Active' ? '#10b981' : student.status === 'Pending' ? '#eab308' : '#ef4444',
-                            }}>
-                                {student.status === 'Active' ? 'Ativo' : student.status === 'Pending' ? 'Pendente' : 'Inativo'}
-                            </span>
-                        </div>
-                    </div>
                 </div>
                 <div className="student-actions">
                     {student.phone && (
@@ -2139,8 +2127,36 @@ export default function StudentDetails() {
                                 })()}
                             </div>
 
-                            {/* Resumo de Atividade */}
-                            {(() => {
+                            {/* Aluno recém-cadastrado: sem treino, check-in ou avaliação ainda —
+                                em vez da parede de "0" + caixa vazia do check-in + card separado
+                                de avaliação, mostra um único estado inicial mais acolhedor. */}
+                            {trainingLogs.length === 0 && checkins.length === 0 && assessments.length === 0 && (
+                                <div className="glass-panel" style={{
+                                    padding: '3rem 2rem',
+                                    textAlign: 'center',
+                                    background: 'rgba(255,255,255,0.02)',
+                                    border: '2px dashed var(--border-glass)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                }}>
+                                    <div style={{
+                                        width: '64px', height: '64px', borderRadius: '50%',
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        marginBottom: '1rem'
+                                    }}>
+                                        <Sparkles size={30} color="#10b981" />
+                                    </div>
+                                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>{student.name?.split(' ')[0] || 'Aluno'} ainda está começando</h3>
+                                    <p style={{ color: 'var(--text-muted)', maxWidth: '460px', margin: 0 }}>
+                                        Assim que {student.name?.split(' ')[0] || 'o aluno'} concluir o primeiro treino ou responder um check-in, o resumo de atividade aparece aqui automaticamente.
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Resumo de Atividade — só quando já existe alguma atividade */}
+                            {(trainingLogs.length > 0 || checkins.length > 0 || assessments.length > 0) && (() => {
                                 const total = trainingLogs.length;
                                 const now = Date.now();
                                 const last30 = trainingLogs.filter(l => l.timestamp && (now - new Date(l.timestamp).getTime()) <= 30 * 24 * 3600 * 1000).length;
@@ -2196,7 +2212,7 @@ export default function StudentDetails() {
                                         </div>
 
                                         {/* Último check-in */}
-                                        <div className="glass-panel" style={{ padding: '1.75rem 2rem', minHeight: '320px' }}>
+                                        <div className="glass-panel" style={{ padding: '1.75rem 2rem', minHeight: checkins.length ? '320px' : 'auto' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: checkins.length ? '1.1rem' : 0 }}>
                                                 <h4 style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'uppercase' }}>Último check-in</h4>
                                                 {checkins.length > 0 && (
@@ -2287,8 +2303,9 @@ export default function StudentDetails() {
                                 );
                             })()}
 
-                            {/* ZERO ASSESSMENTS PLACEHOLDER */}
-                            {assessments.length === 0 && (
+                            {/* ZERO ASSESSMENTS PLACEHOLDER — pulado se for aluno recém-cadastrado
+                                (já coberto pelo estado combinado acima) */}
+                            {assessments.length === 0 && (trainingLogs.length > 0 || checkins.length > 0) && (
                                 <div className="glass-panel" style={{
                                     padding: '3rem',
                                     textAlign: 'center',
