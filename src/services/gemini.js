@@ -36,8 +36,10 @@ export const validateApiKey = async (apiKey) => {
     }
 };
 
-// Poucas tentativas curtas por modelo (o fallback de modelo cobre o resto).
-const withRetry = async (fn, retries = 2, delay = 1200) => {
+// Poucas tentativas curtas por modelo (o fallback de modelo — e depois o
+// gerador padrão baseado em regras — cobrem o resto). Mantido enxuto pra
+// não deixar o personal esperando muito antes de cair no fallback.
+const withRetry = async (fn, retries = 1, delay = 800) => {
     try {
         return await fn();
     } catch (error) {
