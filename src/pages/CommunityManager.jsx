@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
-import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3 } from 'lucide-react';
+import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause } from 'lucide-react';
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../services/community';
 
 const timeAgo = (iso) => {
@@ -55,6 +55,8 @@ function PostCard({ tenantId, post, me, canModerate }) {
     const [showComments, setShowComments] = useState(false);
     const [comments, setComments] = useState([]);
     const [commentText, setCommentText] = useState('');
+    const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+    const previewAudioRef = useRef(null);
     const liked = Array.isArray(post.likes) && post.likes.includes(me.id);
     const likeCount = Array.isArray(post.likes) ? post.likes.length : 0;
 
@@ -62,6 +64,22 @@ function PostCard({ tenantId, post, me, canModerate }) {
         if (!showComments) return;
         return subscribeComments(tenantId, post.id, setComments);
     }, [showComments, tenantId, post.id]);
+
+    useEffect(() => () => previewAudioRef.current?.pause(), []);
+
+    const togglePreview = () => {
+        if (!post.song?.previewUrl) return;
+        if (isPlayingPreview) {
+            previewAudioRef.current?.pause();
+            setIsPlayingPreview(false);
+            return;
+        }
+        const audio = new Audio(post.song.previewUrl);
+        audio.onended = () => setIsPlayingPreview(false);
+        previewAudioRef.current = audio;
+        audio.play();
+        setIsPlayingPreview(true);
+    };
 
     const handleComment = async () => {
         if (!commentText.trim()) return;
@@ -87,6 +105,26 @@ function PostCard({ tenantId, post, me, canModerate }) {
             </div>
             {post.text && <p style={{ margin: '0 0 0.75rem 0', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{post.text}</p>}
             {post.imageUrl && <img src={post.imageUrl} alt="post" style={{ width: '100%', maxHeight: '440px', objectFit: 'cover', borderRadius: '14px', marginBottom: '0.75rem', display: 'block' }} />}
+            {post.song && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.6rem',
+                    borderRadius: '10px', background: 'rgba(29,185,84,0.08)', border: '1px solid rgba(29,185,84,0.25)',
+                    marginBottom: '0.75rem',
+                }}>
+                    {post.song.previewUrl && (
+                        <button onClick={togglePreview} title="Ouvir prévia" style={{ background: '#1db954', border: 'none', color: 'white', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', flexShrink: 0, display: 'flex' }}>
+                            {isPlayingPreview ? <Pause size={13} /> : <Play size={13} />}
+                        </button>
+                    )}
+                    {post.song.albumArt && (
+                        <img src={post.song.albumArt} alt="" style={{ width: '36px', height: '36px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
+                    )}
+                    <a href={post.song.spotifyUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1db954', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎵 {post.song.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.song.artist}</div>
+                    </a>
+                </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', paddingTop: '0.25rem' }}>
                 <button onClick={() => toggleLike(tenantId, post.id, me.id, liked)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', color: liked ? '#ef4444' : 'var(--text-muted)', fontWeight: 600 }}>
                     <Heart size={20} fill={liked ? '#ef4444' : 'none'} /> {likeCount > 0 && likeCount}

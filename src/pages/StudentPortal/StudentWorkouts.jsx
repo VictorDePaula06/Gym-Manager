@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
-import { Dumbbell, ChevronRight, Play, X, Info, ChevronLeft, CheckCircle2, Clock, Trophy } from 'lucide-react';
+import { Dumbbell, ChevronRight, Play, Pause, X, Info, ChevronLeft, CheckCircle2, Clock, Trophy } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
 import RestTimer from '../../components/RestTimer';
 import { createPost, uploadPostImage } from '../../services/community';
+import { searchSpotifyTracks } from '../../utils/spotify';
 import { workoutVolumeLoad } from '../../utils/volumeLoad';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -28,6 +29,36 @@ export default function StudentWorkouts() {
     const [sharePhotoPreview, setSharePhotoPreview] = useState(null);
     const [shareDesc, setShareDesc] = useState('');
     const shareFileRef = useRef(null);
+    const [songQuery, setSongQuery] = useState('');
+    const [songResults, setSongResults] = useState([]);
+    const [isSearchingSong, setIsSearchingSong] = useState(false);
+    const [selectedSong, setSelectedSong] = useState(null);
+    const songSearchTimeout = useRef(null);
+    const [playingPreviewId, setPlayingPreviewId] = useState(null);
+    const previewAudioRef = useRef(null);
+
+    // Toca/pausa o preview de 30s (nem toda faixa tem — a API do Spotify só
+    // retorna quando disponível). Um único <audio> por vez: tocar outro para
+    // o anterior automaticamente.
+    const togglePreview = (track) => {
+        if (!track.previewUrl) return;
+        if (playingPreviewId === track.id) {
+            previewAudioRef.current?.pause();
+            setPlayingPreviewId(null);
+            return;
+        }
+        if (previewAudioRef.current) previewAudioRef.current.pause();
+        const audio = new Audio(track.previewUrl);
+        audio.onended = () => setPlayingPreviewId(null);
+        previewAudioRef.current = audio;
+        audio.play();
+        setPlayingPreviewId(track.id);
+    };
+
+    // Para o preview se o aluno sair da tela de compartilhar.
+    useEffect(() => {
+        return () => previewAudioRef.current?.pause();
+    }, []);
     const [isWorkoutActive, setIsWorkoutActive] = useState(false);
     const [workoutStartTime, setWorkoutStartTime] = useState(null);
     const [currentExIndex, setCurrentExIndex] = useState(0);
@@ -193,9 +224,28 @@ export default function StudentWorkouts() {
         setSharePhoto(file);
         setSharePhotoPreview(URL.createObjectURL(file));
         setShareDesc(`✅ ${div}${nome} concluído! 💪`);
+        setSelectedSong(null);
+        setSongQuery('');
+        setSongResults([]);
     };
 
-    // Passo 2: publicar com a descrição escrita.
+    // Busca com debounce — evita chamar a function a cada tecla digitada.
+    const handleSongQueryChange = (value) => {
+        setSongQuery(value);
+        if (songSearchTimeout.current) clearTimeout(songSearchTimeout.current);
+        if (!value.trim()) {
+            setSongResults([]);
+            return;
+        }
+        songSearchTimeout.current = setTimeout(async () => {
+            setIsSearchingSong(true);
+            const tracks = await searchSpotifyTracks(value);
+            setSongResults(tracks);
+            setIsSearchingSong(false);
+        }, 450);
+    };
+
+    // Passo 2: publicar com a descrição escrita (e a música, se escolhida).
     const handlePublishShare = async () => {
         if (!sharePhoto || !user?.tenantId) return;
         setIsSharing(true);
@@ -207,10 +257,14 @@ export default function StudentWorkouts() {
                 authorPhoto: studentData?.profilePictureUrl || null,
                 text: shareDesc,
                 imageUrl,
+                song: selectedSong,
             });
             setShared(true);
             setSharePhoto(null);
             setSharePhotoPreview(null);
+            setSelectedSong(null);
+            setSongQuery('');
+            setSongResults([]);
             addToast('Compartilhado na comunidade! 🎉', 'success');
         } catch (err) {
             console.error(err);
@@ -612,6 +666,74 @@ export default function StudentWorkouts() {
                                     placeholder="Escreva uma legenda..."
                                     style={{ width: '100%', padding: '0.85rem', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem', resize: 'none', fontFamily: 'inherit', marginBottom: '1rem', boxSizing: 'border-box' }}
                                 />
+
+                                {/* Música do treino (opcional) — busca no Spotify */}
+                                <div style={{ textAlign: 'left', marginBottom: '1rem' }}>
+                                    {selectedSong ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem', borderRadius: '12px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)' }}>
+                                            {selectedSong.albumArt && (
+                                                <img src={selectedSong.albumArt} alt="" style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
+                                            )}
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎵 {selectedSong.name}</div>
+                                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedSong.artist}</div>
+                                            </div>
+                                            {selectedSong.previewUrl && (
+                                                <button onClick={() => togglePreview(selectedSong)} title="Ouvir prévia" style={{ background: 'var(--primary)', border: 'none', color: 'white', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', flexShrink: 0, display: 'flex' }}>
+                                                    {playingPreviewId === selectedSong.id ? <Pause size={14} /> : <Play size={14} />}
+                                                </button>
+                                            )}
+                                            <button onClick={() => { previewAudioRef.current?.pause(); setPlayingPreviewId(null); setSelectedSong(null); }} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.3rem', flexShrink: 0 }}>
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <input
+                                                value={songQuery}
+                                                onChange={e => handleSongQueryChange(e.target.value)}
+                                                placeholder="🎵 Adicionar a música do treino (opcional)"
+                                                style={{ width: '100%', padding: '0.75rem 0.85rem', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                                            />
+                                            {isSearchingSong && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.5rem 0.2rem' }}>Buscando...</div>
+                                            )}
+                                            {songResults.length > 0 && (
+                                                <div style={{ marginTop: '0.5rem', maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                    {songResults.map(track => (
+                                                        <div
+                                                            key={track.id}
+                                                            style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)' }}
+                                                        >
+                                                            <button
+                                                                onClick={() => { setSelectedSong(track); setSongResults([]); setSongQuery(''); }}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: 0, background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                                                            >
+                                                                {track.albumArt && (
+                                                                    <img src={track.albumArt} alt="" style={{ width: '34px', height: '34px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
+                                                                )}
+                                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.name}</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.artist}</div>
+                                                                </div>
+                                                            </button>
+                                                            {track.previewUrl && (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); togglePreview(track); }}
+                                                                    title="Ouvir prévia"
+                                                                    style={{ background: 'var(--primary)', border: 'none', color: 'white', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', flexShrink: 0, display: 'flex' }}
+                                                                >
+                                                                    {playingPreviewId === track.id ? <Pause size={13} /> : <Play size={13} />}
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
                                 <button
                                     onClick={handlePublishShare}
                                     disabled={isSharing}

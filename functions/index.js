@@ -10,6 +10,8 @@ const db = admin.firestore();
 
 const STRIPE_SECRET_KEY = defineSecret("STRIPE_SECRET_KEY");
 const STRIPE_WEBHOOK_SECRET = defineSecret("STRIPE_WEBHOOK_SECRET");
+const SPOTIFY_CLIENT_ID = defineSecret("SPOTIFY_CLIENT_ID");
+const SPOTIFY_CLIENT_SECRET = defineSecret("SPOTIFY_CLIENT_SECRET");
 
 const PRICE_TIER_MAP = {
   "price_1UAHGXLOoGy5dacxvh5TrcZY": { tier: "bronze", billingCycle: "monthly" },
@@ -213,5 +215,64 @@ exports.stripeWebhook = onRequest(
       logger.error("Erro ao processar evento do webhook", err);
       res.status(500).send("Webhook handler error");
     }
+  }
+);
+
+// Token de app do Spotify (Client Credentials — não precisa o aluno logar).
+// Guardado em memória entre chamadas (instância "quente" do Cloud Run);
+// se a instância reiniciar, é só buscar de novo.
+let spotifyTokenCache = { token: null, expiresAt: 0 };
+
+const getSpotifyToken = async () => {
+  if (spotifyTokenCache.token && Date.now() < spotifyTokenCache.expiresAt) {
+    return spotifyTokenCache.token;
+  }
+  const basic = Buffer.from(`${SPOTIFY_CLIENT_ID.value()}:${SPOTIFY_CLIENT_SECRET.value()}`).toString("base64");
+  const resp = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${basic}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!resp.ok) throw new Error(`Spotify auth falhou: ${resp.status}`);
+  const data = await resp.json();
+  spotifyTokenCache = {
+    token: data.access_token,
+    // Margem de 60s antes de expirar de verdade.
+    expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+  };
+  return spotifyTokenCache.token;
+};
+
+exports.spotifySearch = onCall(
+  { secrets: [SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET] },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Faça login para buscar músicas.");
+    }
+
+    const query = (request.data && request.data.query || "").trim();
+    if (!query) return { tracks: [] };
+
+    const token = await getSpotifyToken();
+    const resp = await fetch(
+      `https://api.spotify.com/v1/search?type=track&limit=8&q=${encodeURIComponent(query)}`,
+      { headers: { "Authorization": `Bearer ${token}` } }
+    );
+    if (!resp.ok) throw new HttpsError("internal", "Busca no Spotify falhou.");
+    const data = await resp.json();
+
+    const tracks = (data.tracks && data.tracks.items || []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      artist: (t.artists || []).map((a) => a.name).join(", "),
+      albumArt: t.album && t.album.images && t.album.images[t.album.images.length - 1]?.url,
+      previewUrl: t.preview_url || null,
+      spotifyUrl: t.external_urls && t.external_urls.spotify,
+    }));
+
+    return { tracks };
   }
 );

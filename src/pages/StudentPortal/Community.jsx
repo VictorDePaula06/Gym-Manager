@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
-import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check } from 'lucide-react';
+import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check, Play, Pause } from 'lucide-react';
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../../services/community';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -49,9 +49,27 @@ function PostCard({ tenantId, post, me }) {
     const [commentText, setCommentText] = useState('');
     const [editing, setEditing] = useState(false);
     const [editText, setEditText] = useState(post.text || '');
+    const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+    const previewAudioRef = useRef(null);
 
     const liked = Array.isArray(post.likes) && post.likes.includes(me.id);
     const likeCount = Array.isArray(post.likes) ? post.likes.length : 0;
+
+    useEffect(() => () => previewAudioRef.current?.pause(), []);
+
+    const togglePreview = () => {
+        if (!post.song?.previewUrl) return;
+        if (isPlayingPreview) {
+            previewAudioRef.current?.pause();
+            setIsPlayingPreview(false);
+            return;
+        }
+        const audio = new Audio(post.song.previewUrl);
+        audio.onended = () => setIsPlayingPreview(false);
+        previewAudioRef.current = audio;
+        audio.play();
+        setIsPlayingPreview(true);
+    };
 
     useEffect(() => {
         if (!showComments) return;
@@ -125,6 +143,27 @@ function PostCard({ tenantId, post, me }) {
 
             {post.imageUrl && (
                 <img src={post.imageUrl} alt="post" style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', borderRadius: '14px', marginBottom: '0.75rem', display: 'block' }} />
+            )}
+
+            {post.song && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.6rem',
+                    borderRadius: '10px', background: 'rgba(29,185,84,0.08)', border: '1px solid rgba(29,185,84,0.25)',
+                    marginBottom: '0.75rem',
+                }}>
+                    {post.song.previewUrl && (
+                        <button onClick={togglePreview} title="Ouvir prévia" style={{ background: '#1db954', border: 'none', color: 'white', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', flexShrink: 0, display: 'flex' }}>
+                            {isPlayingPreview ? <Pause size={13} /> : <Play size={13} />}
+                        </button>
+                    )}
+                    {post.song.albumArt && (
+                        <img src={post.song.albumArt} alt="" style={{ width: '36px', height: '36px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
+                    )}
+                    <a href={post.song.spotifyUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1db954', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎵 {post.song.name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.song.artist}</div>
+                    </a>
+                </div>
             )}
 
             <div style={{ display: 'flex', gap: '1.5rem', paddingTop: '0.25rem' }}>

@@ -36,6 +36,7 @@ export const createPost = async (tenantId, post) => {
         authorPhoto: post.authorPhoto || null,
         text: (post.text || '').trim(),
         imageUrl: post.imageUrl || null,
+        song: post.song || null,
         likes: [],
         commentCount: 0,
         createdAt: new Date().toISOString(),
