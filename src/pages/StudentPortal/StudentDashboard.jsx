@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
-import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2, Weight, User, Camera, Loader2 } from 'lucide-react';
+import { Dumbbell, Calendar, CreditCard, ChevronRight, TrendingUp, MessageCircle, CheckCircle2, Weight, User, Camera, Loader2, X, Clock, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { db, storage } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
@@ -17,6 +17,7 @@ export default function StudentDashboard() {
     const [allLogs, setAllLogs] = useState([]);
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const photoInputRef = useRef(null);
+    const [selectedDay, setSelectedDay] = useState(null); // { label, logs } — resumo do dia clicado
 
     const studentData = students.find(s => s.id === user?.studentId);
 
@@ -148,7 +149,7 @@ export default function StudentDashboard() {
         const dayIndex = date.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
         // Map 0 -> 6 (Dom), 1 -> 0 (Seg), 2 -> 1 (Ter), etc.
         const mappedIndex = dayIndex === 0 ? 6 : dayIndex - 1;
-        acc[mappedIndex] = true;
+        acc[mappedIndex] = [...(acc[mappedIndex] || []), log];
         return acc;
     }, {});
 
@@ -259,17 +260,26 @@ export default function StudentDashboard() {
                         const isToday = new Date().getDay() === (idx === 6 ? 0 : idx + 1);
 
                         return (
-                            <div key={day} style={{ 
-                                flex: 1, 
-                                display: 'flex', 
-                                flexDirection: 'column', 
-                                alignItems: 'center', 
-                                gap: '0.5rem' 
-                            }}>
-                                <div style={{ 
-                                    width: '100%', 
-                                    aspectRatio: '1', 
-                                    borderRadius: '12px', 
+                            <button
+                                key={day}
+                                onClick={() => trained && setSelectedDay({ label: day, logs: trained })}
+                                disabled={!trained}
+                                style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    padding: 0,
+                                    cursor: trained ? 'pointer' : 'default',
+                                }}
+                            >
+                                <div style={{
+                                    width: '100%',
+                                    aspectRatio: '1',
+                                    borderRadius: '12px',
                                     background: trained ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.03)',
                                     border: trained ? '1px solid var(--primary)' : isToday ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
                                     display: 'flex',
@@ -286,7 +296,7 @@ export default function StudentDashboard() {
                                 <span style={{ fontSize: '0.65rem', color: isToday ? 'var(--primary)' : 'var(--text-muted)', fontWeight: isToday ? 'bold' : 'normal' }}>
                                     {day}
                                 </span>
-                            </div>
+                            </button>
                         );
                     })}
                 </div>
@@ -453,6 +463,73 @@ export default function StudentDashboard() {
                 </div>
             </div>
             </div>
+
+            {/* Resumo do dia — clicado no tracker de Atividade Semanal */}
+            {selectedDay && (
+                <div
+                    onClick={() => setSelectedDay(null)}
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 99999, background: 'rgba(0,0,0,0.7)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+                        backdropFilter: 'blur(6px)',
+                    }}
+                >
+                    <div
+                        className="glass-panel"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ padding: 0, borderRadius: '24px', maxWidth: '380px', width: '100%', maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                    >
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '1.5rem',
+                            background: 'linear-gradient(135deg, rgba(16,185,129,0.14), transparent)',
+                            borderBottom: '1px solid var(--border-glass)', flexShrink: 0,
+                        }}>
+                            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <Dumbbell size={21} color="var(--primary)" />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Treino de {selectedDay.label}</h3>
+                                <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                    {selectedDay.logs.length} {selectedDay.logs.length > 1 ? 'sessões concluídas' : 'sessão concluída'}
+                                </p>
+                            </div>
+                            <button onClick={() => setSelectedDay(null)} style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.4rem', borderRadius: '8px', flexShrink: 0, display: 'flex' }}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+                            {selectedDay.logs.map((log, i) => (
+                                <div key={i} style={{ borderRadius: '16px', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
+                                    <div style={{ padding: '1rem 1.1rem 0.85rem', borderBottom: '1px solid var(--border-glass)' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+                                            {log.sheetName}{log.variation ? ` — Treino ${log.variation}` : ''}
+                                        </div>
+                                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                                            Concluído às {new Date(log.completedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                                        {[
+                                            { icon: Clock, color: '#a855f7', value: log.duration != null ? `${log.duration}` : '—', unit: 'min' },
+                                            { icon: Layers, color: '#3b82f6', value: log.exercisesCompleted ?? '—', unit: 'exercícios' },
+                                            { icon: Weight, color: '#f59e0b', value: log.volumeLoad != null ? log.volumeLoad.toLocaleString('pt-BR') : '—', unit: 'kg' },
+                                        ].map((stat, si) => (
+                                            <div key={si} style={{ padding: '0.9rem 0.5rem', textAlign: 'center', borderLeft: si > 0 ? '1px solid var(--border-glass)' : 'none' }}>
+                                                <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: `${stat.color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.5rem' }}>
+                                                    <stat.icon size={15} color={stat.color} />
+                                                </div>
+                                                <div style={{ fontWeight: 800, fontSize: '1.05rem', lineHeight: 1.1 }}>{stat.value}</div>
+                                                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{stat.unit}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

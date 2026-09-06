@@ -36,6 +36,12 @@ export default function StudentWorkouts() {
     const songSearchTimeout = useRef(null);
     const [playingPreviewId, setPlayingPreviewId] = useState(null);
     const previewAudioRef = useRef(null);
+    const hasTriedRestore = useRef(false);
+
+    // Persistência do treino em andamento: se o app fechar/recarregar no meio
+    // (celular mata a aba em segundo plano, atualização do PWA, etc.), o
+    // aluno retoma de onde parou em vez de perder tudo e ter que recomeçar.
+    const activeWorkoutKey = user?.studentId ? `alivia_active_workout_${user.studentId}` : null;
 
     // Toca/pausa o preview de 30s (nem toda faixa tem — a API do Spotify só
     // retorna quando disponível). Um único <audio> por vez: tocar outro para
@@ -99,6 +105,47 @@ export default function StudentWorkouts() {
             }
         }
     }, [studentData]);
+
+    // Restaura um treino que ficou em andamento (uma vez só, ao abrir a tela).
+    useEffect(() => {
+        if (hasTriedRestore.current || !activeWorkoutKey) return;
+        hasTriedRestore.current = true;
+        try {
+            const saved = localStorage.getItem(activeWorkoutKey);
+            if (!saved) return;
+            const state = JSON.parse(saved);
+            if (!state?.isWorkoutActive) return;
+            setSelectedSheetId(state.selectedSheetId);
+            setCurrentVariation(state.currentVariation);
+            setWorkoutStartTime(new Date(state.workoutStartTime));
+            setCurrentExIndex(state.currentExIndex);
+            setCompletedSets(state.completedSets);
+            setWorkoutProgress(state.workoutProgress || []);
+            setIsWorkoutActive(true);
+            setIsTrainingMode(true);
+            addToast('Treino retomado de onde você parou. 💪', 'info');
+        } catch { /* localStorage indisponível ou dado corrompido — ignora */ }
+    }, [activeWorkoutKey]);
+
+    // Salva o progresso a cada mudança, enquanto o treino estiver ativo.
+    useEffect(() => {
+        if (!activeWorkoutKey) return;
+        if (!isWorkoutActive) {
+            localStorage.removeItem(activeWorkoutKey);
+            return;
+        }
+        try {
+            localStorage.setItem(activeWorkoutKey, JSON.stringify({
+                isWorkoutActive: true,
+                selectedSheetId,
+                currentVariation,
+                workoutStartTime,
+                currentExIndex,
+                completedSets,
+                workoutProgress,
+            }));
+        } catch { /* localStorage indisponível — segue sem persistir */ }
+    }, [activeWorkoutKey, isWorkoutActive, selectedSheetId, currentVariation, workoutStartTime, currentExIndex, completedSets, workoutProgress]);
 
     if (!studentData) {
         return <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Buscando seus treinos...</div>;
@@ -455,16 +502,24 @@ export default function StudentWorkouts() {
                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Série {completedSets + 1} de {parseInt(exercises[currentExIndex].sets) || 0}</div>
                     </div>
 
-                    {/* Progress Percentage */}
-                    <div style={{ marginTop: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                            <span>Progresso Total</span>
-                            <span>{Math.round((currentExIndex / exercises.length) * 100)}%</span>
-                        </div>
-                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${(currentExIndex / exercises.length) * 100}%`, height: '100%', background: 'var(--primary)', transition: 'width 0.3s ease' }} />
-                        </div>
-                    </div>
+                    {/* Progress Percentage — conta por série concluída (inclusive as do
+                        exercício atual), não só por exercício inteiro fechado. */}
+                    {(() => {
+                        const totalSets = workoutProgress.reduce((sum, p) => sum + (p.totalSets || 0), 0);
+                        const doneSets = workoutProgress.reduce((sum, p, i) => sum + (i === currentExIndex ? completedSets : Math.min(p.done, p.totalSets)), 0);
+                        const pct = totalSets > 0 ? Math.round((doneSets / totalSets) * 100) : 0;
+                        return (
+                            <div style={{ marginTop: 'auto' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                    <span>Progresso Total</span>
+                                    <span>{pct}%</span>
+                                </div>
+                                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${pct}%`, height: '100%', background: 'var(--primary)', transition: 'width 0.3s ease' }} />
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     <button 
                         onClick={handleNextSet}
@@ -626,6 +681,11 @@ export default function StudentWorkouts() {
                             <Trophy size={40} color="#10b981" />
                         </div>
                         <h2 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Treino Concluído!</h2>
+                        {finishedInfo?.duration != null && (
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                                <Clock size={15} /> {finishedInfo.duration} min de treino
+                            </div>
+                        )}
                         {finishedInfo?.isNewPR && (
                             <div style={{
                                 display: 'inline-flex', alignItems: 'center', gap: '0.4rem',

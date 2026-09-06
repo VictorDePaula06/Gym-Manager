@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
-import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause } from 'lucide-react';
+import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause, ChevronDown } from 'lucide-react';
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../services/community';
 
 const timeAgo = (iso) => {
@@ -173,6 +173,7 @@ export default function CommunityManager() {
     const [form, setForm] = useState({ title: '', description: '', prize: '', startDate: '', endDate: '' });
     const [saving, setSaving] = useState(false);
     const [history, setHistory] = useState(null); // null = ainda não carregado
+    const [showHistory, setShowHistory] = useState(false);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
     // Composer do personal
@@ -441,14 +442,21 @@ export default function CommunityManager() {
 
                     {/* Histórico: desafios de meses anteriores, com o ranking final de cada um */}
                     <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ margin: '0 0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
-                            <Clock size={18} color="var(--text-muted)" /> Histórico de desafios
-                        </h3>
-                        {loadingHistory && <p style={{ color: 'var(--text-muted)', margin: 0 }}>Carregando...</p>}
-                        {!loadingHistory && history && history.length === 0 && (
+                        <button
+                            onClick={() => setShowHistory(v => !v)}
+                            style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, margin: showHistory ? '0 0 1rem' : 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)' }}
+                        >
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', fontWeight: 600 }}>
+                                <Clock size={18} color="var(--text-muted)" /> Histórico de desafios
+                                {history && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>({history.length})</span>}
+                            </span>
+                            <ChevronDown size={18} color="var(--text-muted)" style={{ transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                        </button>
+                        {showHistory && loadingHistory && <p style={{ color: 'var(--text-muted)', margin: 0 }}>Carregando...</p>}
+                        {showHistory && !loadingHistory && history && history.length === 0 && (
                             <p style={{ color: 'var(--text-muted)', margin: 0 }}>Nenhum desafio anterior ainda.</p>
                         )}
-                        {!loadingHistory && history && history.length > 0 && (
+                        {showHistory && !loadingHistory && history && history.length > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 {history.map((ch) => (
                                     <div key={ch.id} style={{ padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-glass)', background: 'var(--card-bg)' }}>

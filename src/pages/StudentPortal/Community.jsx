@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useGym } from '../../context/GymContext';
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
-import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check, Play, Pause } from 'lucide-react';
+import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check, Play, Pause, ChevronDown } from 'lucide-react';
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../../services/community';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -223,6 +223,7 @@ export default function Community() {
     const [board, setBoard] = useState({});
     const [challengeCfg, setChallengeCfg] = useState(null);
     const [history, setHistory] = useState(null);
+    const [showHistory, setShowHistory] = useState(false);
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
@@ -554,9 +555,17 @@ export default function Community() {
             {/* Histórico de desafios anteriores */}
             {history && history.length > 0 && (
                 <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Trophy size={17} color="var(--text-muted)" /> Histórico de desafios
-                    </h3>
+                    <button
+                        onClick={() => setShowHistory(v => !v)}
+                        style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, margin: showHistory ? '0 0 1rem' : 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)' }}
+                    >
+                        <span style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                            <Trophy size={17} color="var(--text-muted)" /> Histórico de desafios
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>({history.length})</span>
+                        </span>
+                        <ChevronDown size={18} color="var(--text-muted)" style={{ transform: showHistory ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                    </button>
+                    {showHistory && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {history.map((ch) => {
                             const won = ch.ranking?.[0]?.id === me.id;
@@ -585,6 +594,7 @@ export default function Community() {
                             );
                         })}
                     </div>
+                    )}
                 </div>
             )}
 
