@@ -331,7 +331,7 @@ export default function Settings() {
                 <>
                     {/* General Settings Content (Existing) */}
                     {/* Subscription Card */}
-                    <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', background: 'linear-gradient(145deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.4))' }}>
+                    <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem' }}>
                         <h2 style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border-glass)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <CreditCard size={24} color="var(--primary)" />
                             Assinatura
