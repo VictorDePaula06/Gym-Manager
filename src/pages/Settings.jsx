@@ -593,37 +593,18 @@ export default function Settings() {
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between',
+                                gap: '0.75rem',
                                 padding: '1rem',
                                 background: 'var(--card-bg)',
-                                border: '1px solid var(--border-glass)',
+                                border: '1px dashed var(--border-glass)',
                                 borderRadius: '8px'
                             }}>
                                 <div>
                                     <span style={{ display: 'block', fontWeight: '500', color: 'var(--text-main)' }}>Gestão de Professores</span>
                                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                                        Habilite se você possui outros instrutores na academia (ex: Arena, Box).
+                                        Em breve — gerencie vários instrutores com login e alunos próprios.
                                     </span>
                                 </div>
-                                <label className="switch" style={{ position: 'relative', display: 'inline-block', width: '50px', height: '28px' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={settings?.enableTeachers ?? true}
-                                        onChange={(e) => updateSettings({ ...settings, enableTeachers: e.target.checked })}
-                                        style={{ opacity: 0, width: 0, height: 0 }}
-                                    />
-                                    <span style={{
-                                        position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
-                                        backgroundColor: (settings?.enableTeachers ?? true) ? '#10b981' : '#ccc',
-                                        transition: '.4s', borderRadius: '34px'
-                                    }}>
-                                        <span style={{
-                                            position: 'absolute', content: '""', height: '20px', width: '20px',
-                                            left: (settings?.enableTeachers ?? true) ? '26px' : '4px', bottom: '4px',
-                                            backgroundColor: 'white', transition: '.4s', borderRadius: '50%'
-                                        }}></span>
-                                    </span>
-                                </label>
                             </div>
                         </div>
 
@@ -827,15 +808,15 @@ export default function Settings() {
             )}
 
             {activeTab === 'team' && (
-                user?.role === 'owner' || user?.isSuperAdmin ? (
-                    <TeamSettings />
-                ) : (
-                    <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        <AlertCircle size={48} style={{ marginBottom: '1rem', color: '#ef4444' }} />
-                        <h3>Acesso Restrito</h3>
-                        <p>Somente o usuário <strong>Master</strong> pode gerenciar a equipe.</p>
+                <div className="glass-panel" style={{ padding: '2.5rem', textAlign: 'center' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem' }}>
+                        <Sparkles size={28} color="var(--primary)" />
                     </div>
-                )
+                    <h3 style={{ margin: '0 0 0.5rem' }}>Em breve</h3>
+                    <p style={{ color: 'var(--text-muted)', maxWidth: '420px', margin: '0 auto' }}>
+                        Convide professores com login próprio, cada um vendo só os alunos atribuídos a ele — sem acesso ao financeiro ou aos alunos dos outros.
+                    </p>
+                </div>
             )}
         </div>
     );

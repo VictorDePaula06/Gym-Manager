@@ -206,13 +206,8 @@ export default function Layout() {
                         <Users size={20} style={{ minWidth: '20px' }} />
                         <span className="sidebar-text">Alunos</span>
                     </Link>
-                    {/* Teachers Link - Configurable */}
-                    {(settings?.enableTeachers ?? true) && (
-                        <Link to="/app/teachers" style={linkStyle('/app/teachers')} onClick={() => setSidebarOpen(false)}>
-                            <Briefcase size={20} style={{ minWidth: '20px' }} />
-                            <span className="sidebar-text">Professores</span>
-                        </Link>
-                    )}
+                    {/* Professores: recurso pausado (fica pro módulo Academia, futuro) —
+                        escondido do menu por enquanto, mesmo se enableTeachers estiver true. */}
 
                     {/* Only Owner or Admin sees Financials */}
                     {(!user?.role || user.role === 'owner' || user.role === 'admin') && (
