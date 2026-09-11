@@ -4,7 +4,7 @@ import { useGym } from '../../context/GymContext';
 import { useToast } from '../../context/ToastContext';
 import { useDialog } from '../../context/DialogContext';
 import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Pencil, Check, Play, Pause, ChevronDown } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../../services/community';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth, hasMultiPerDay } from '../../services/community';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -294,7 +294,7 @@ export default function Community() {
     const challenge = useMemo(() => {
         const month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
         const all = Object.entries(board || {})
-            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, challengeCfg?.startDate, challengeCfg?.endDate) }))
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, challengeCfg?.startDate, challengeCfg?.endDate), multi: hasMultiPerDay(e.dates) }))
             .filter(e => e.n > 0 && participants.includes(e.id))
             .sort((a, b) => b.n - a.n);
         const myIndex = all.findIndex(e => e.id === me.id);
@@ -310,7 +310,7 @@ export default function Community() {
     const general = useMemo(() => {
         const month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
         const all = Object.entries(board || {})
-            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 }))
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0, multi: hasMultiPerDay(e.dates) }))
             .filter(e => e.n > 0)
             .sort((a, b) => b.n - a.n);
         const myIndex = all.findIndex(e => e.id === me.id);
@@ -470,8 +470,13 @@ export default function Community() {
                                 }}>
                                     <span style={{ fontSize: '1.2rem', width: '26px', textAlign: 'center' }}>{['🥇', '🥈', '🥉'][i]}</span>
                                     <Avatar name={t.name} photo={t.photo} size={34} />
-                                    <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                         {t.name}{isMe && <span style={{ color: '#a855f7', fontWeight: 700 }}> (você)</span>}
+                                        {t.multi && (
+                                            <span title="Treinou mais de uma vez no mesmo dia esse mês" style={{ fontSize: '0.62rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', padding: '0.05rem 0.4rem', borderRadius: '99px', flexShrink: 0 }}>
+                                                2x/dia
+                                            </span>
+                                        )}
                                     </span>
                                     <span style={{ fontWeight: 800, color: '#a855f7', fontSize: '0.95rem' }}>
                                         {t.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{t.n > 1 ? 's' : ''}</span>
@@ -528,8 +533,13 @@ export default function Community() {
                                         {i < 3 ? ['🥇', '🥈', '🥉'][i] : `${i + 1}º`}
                                     </span>
                                     <Avatar name={t.name} photo={t.photo} size={34} />
-                                    <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <span style={{ flex: 1, fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                         {t.name}{isMe && <span style={{ color: '#10b981', fontWeight: 700 }}> (você)</span>}
+                                        {t.multi && (
+                                            <span title="Treinou mais de uma vez no mesmo dia esse mês" style={{ fontSize: '0.62rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', padding: '0.05rem 0.4rem', borderRadius: '99px', flexShrink: 0 }}>
+                                                2x/dia
+                                            </span>
+                                        )}
                                     </span>
                                     <span style={{ fontWeight: 800, color: '#10b981', fontSize: '0.95rem' }}>
                                         {t.n}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-muted)' }}> treino{t.n > 1 ? 's' : ''}</span>

@@ -4,7 +4,7 @@ import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause, ChevronDown } from 'lucide-react';
-import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth } from '../services/community';
+import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth, hasMultiPerDay } from '../services/community';
 
 const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -226,7 +226,7 @@ export default function CommunityManager() {
     const ranking = useMemo(() => {
         const parts = challenge?.participants || [];
         return Object.entries(board || {})
-            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, challenge?.startDate, challenge?.endDate) }))
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: countWorkoutsInRange(e.dates, challenge?.startDate, challenge?.endDate), multi: hasMultiPerDay(e.dates) }))
             .filter(e => e.n > 0 && parts.includes(e.id))
             .sort((a, b) => b.n - a.n);
     }, [board, challenge]);
@@ -234,7 +234,7 @@ export default function CommunityManager() {
     // Ranking GERAL: todos os alunos por treinos no mês (sempre ligado).
     const generalRanking = useMemo(() => (
         Object.entries(board || {})
-            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0 }))
+            .map(([id, e]) => ({ id, name: e.name, photo: e.photo, n: e.count || 0, multi: hasMultiPerDay(e.dates) }))
             .filter(e => e.n > 0)
             .sort((a, b) => b.n - a.n)
     ), [board]);
@@ -299,7 +299,14 @@ export default function CommunityManager() {
                         <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.5rem 0.4rem' }}>
                             <span style={{ width: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', color: i < 3 ? '#111' : 'var(--text-muted)', background: ['#fbbf24', '#cbd5e1', '#d19a5c'][i] || 'var(--input-bg)' }}>{i + 1}</span>
                             <Avatar name={t.name} photo={t.photo} size={32} />
-                            <span style={{ flex: 1, fontWeight: 600, fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</span>
+                            <span style={{ flex: 1, fontWeight: 600, fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                {t.name}
+                                {t.multi && (
+                                    <span title="Treinou mais de uma vez no mesmo dia esse mês" style={{ fontSize: '0.62rem', fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', padding: '0.05rem 0.4rem', borderRadius: '99px', flexShrink: 0 }}>
+                                        2x/dia
+                                    </span>
+                                )}
+                            </span>
                             <span style={{ textAlign: 'right', fontWeight: 700, fontSize: '0.9rem' }}>{t.n}<div style={{ fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)' }}>treino{t.n > 1 ? 's' : ''}</div></span>
                         </div>
                     ))}

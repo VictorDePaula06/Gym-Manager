@@ -196,11 +196,13 @@ export default function StudentWorkouts() {
 
         if (completedSets + 1 < totalSets) {
             setCompletedSets(prev => prev + 1);
-            // Update progress
+            // Update progress — trava em totalSets pra não passar do combinado
+            // quando o aluno revisita um exercício já concluído (via "Trocar
+            // exercício") e clica em "Concluir Série" de novo.
             const newProgress = [...workoutProgress];
-            newProgress[currentExIndex].done += 1;
+            newProgress[currentExIndex].done = Math.min(newProgress[currentExIndex].done + 1, totalSets);
             setWorkoutProgress(newProgress);
-            
+
             // Only show timer if restTime > 0
             if ((currentEx.restTime ?? 60) > 0) {
                 setShowRestTimer(true);
@@ -208,7 +210,7 @@ export default function StudentWorkouts() {
         } else {
             // Finished all sets for this exercise
             const newProgress = [...workoutProgress];
-            newProgress[currentExIndex].done += 1;
+            newProgress[currentExIndex].done = Math.min(newProgress[currentExIndex].done + 1, totalSets);
             setWorkoutProgress(newProgress);
             
             if (currentExIndex + 1 < exercises.length) {

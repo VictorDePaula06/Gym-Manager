@@ -130,6 +130,19 @@ export const countWorkoutsInRange = (dates, startDate, endDate) => {
     }).length;
 };
 
+// Aluno treinou mais de uma vez no mesmo dia em algum momento do mês? Não é
+// necessariamente trapaça (tem gente que treina 2x/dia de verdade) — só
+// deixa visível pros outros alunos e pro personal, pra ficar transparente.
+export const hasMultiPerDay = (dates) => {
+    if (!Array.isArray(dates)) return false;
+    const perDay = {};
+    dates.forEach((d) => {
+        const day = String(d).slice(0, 10);
+        perDay[day] = (perDay[day] || 0) + 1;
+    });
+    return Object.values(perDay).some((c) => c > 1);
+};
+
 // Status do desafio a partir das datas (YYYY-MM-DD).
 export const getChallengeStatus = (ch) => {
     if (!ch || (!ch.startDate && !ch.endDate)) return null;

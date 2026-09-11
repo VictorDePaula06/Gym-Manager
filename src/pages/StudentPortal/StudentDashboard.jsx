@@ -292,6 +292,17 @@ export default function StudentDashboard() {
                                     {isToday && !trained && (
                                         <div style={{ position: 'absolute', bottom: '-2px', width: '12px', height: '2px', background: 'var(--text-muted)', borderRadius: '1px' }} />
                                     )}
+                                    {/* Treinou mais de uma vez no mesmo dia — deixa isso bem claro. */}
+                                    {trained && trained.length > 1 && (
+                                        <div style={{
+                                            position: 'absolute', top: '-6px', right: '-6px',
+                                            background: '#f59e0b', color: '#1a1a1a', fontWeight: 800, fontSize: '0.6rem',
+                                            borderRadius: '99px', padding: '1px 5px', lineHeight: 1.4,
+                                            border: '2px solid var(--bg-app, #121214)',
+                                        }}>
+                                            {trained.length}×
+                                        </div>
+                                    )}
                                 </div>
                                 <span style={{ fontSize: '0.65rem', color: isToday ? 'var(--primary)' : 'var(--text-muted)', fontWeight: isToday ? 'bold' : 'normal' }}>
                                     {day}
