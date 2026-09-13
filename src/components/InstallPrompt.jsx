@@ -143,7 +143,7 @@ const InstallPrompt = () => {
                     overflow: 'hidden',
                     padding: '8px'
                 }}>
-                    <img src="/logo.png" alt="Instalar" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    <img src="/icon-alivia.png" alt="Instalar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px' }} />
                     {new URLSearchParams(location.search).get('pwa-debug') === 'true' && (
                         <span style={{
                             position: 'absolute',

@@ -50,7 +50,18 @@ function PostCard({ tenantId, post, me }) {
     const [editing, setEditing] = useState(false);
     const [editText, setEditText] = useState(post.text || '');
     const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+    const [songExpanded, setSongExpanded] = useState(false);
     const previewAudioRef = useRef(null);
+    // Mini player "grande" (capa 130px, empilhado) só em telas estreitas —
+    // em telas largas o card fica proporcionalmente enorme, então no desktop
+    // só cresce um pouco, mantendo o formato horizontal (pílula).
+    const [isNarrowScreen, setIsNarrowScreen] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+    useEffect(() => {
+        const onResize = () => setIsNarrowScreen(window.innerWidth < 640);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+    const songBig = songExpanded && isNarrowScreen;
 
     const liked = Array.isArray(post.likes) && post.likes.includes(me.id);
     const likeCount = Array.isArray(post.likes) ? post.likes.length : 0;
@@ -107,11 +118,11 @@ function PostCard({ tenantId, post, me }) {
     };
 
     return (
-        <div className="glass-panel" style={{ padding: '1.1rem', marginBottom: '1rem' }}>
+        <div className="glass-panel" style={{ padding: '1.1rem', marginBottom: '1.1rem', borderRadius: '20px', boxShadow: '0 12px 32px -18px rgba(0,0,0,0.5)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <Avatar name={post.authorName} photo={post.authorPhoto} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{post.authorName}</div>
+                    <div style={{ fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.01em' }}>{post.authorName}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{timeAgo(post.createdAt)}</div>
                 </div>
                 {post.authorId === me.id && !editing && (
@@ -142,27 +153,84 @@ function PostCard({ tenantId, post, me }) {
             )}
 
             {post.imageUrl && (
-                <img src={post.imageUrl} alt="post" style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', borderRadius: '14px', marginBottom: '0.75rem', display: 'block' }} />
-            )}
+                <div style={{ position: 'relative', marginBottom: post.song ? '1.6rem' : '0.75rem' }}>
+                    <img src={post.imageUrl} alt="post" style={{ width: '100%', maxHeight: '480px', objectFit: 'cover', borderRadius: '16px', display: 'block' }} />
 
-            {post.song && (
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.6rem',
-                    borderRadius: '10px', background: 'rgba(29,185,84,0.08)', border: '1px solid rgba(29,185,84,0.25)',
-                    marginBottom: '0.75rem',
-                }}>
-                    {post.song.previewUrl && (
-                        <button onClick={togglePreview} title="Ouvir prévia" style={{ background: '#1db954', border: 'none', color: 'white', cursor: 'pointer', padding: '0.4rem', borderRadius: '50%', flexShrink: 0, display: 'flex' }}>
-                            {isPlayingPreview ? <Pause size={13} /> : <Play size={13} />}
-                        </button>
+                    {/* "Sticker" de música flutuando sobre a foto — estilo story do Instagram.
+                        Hover (mouse) ou clique (touch) expande num mini player: capa grande,
+                        nome e artista embaixo, centralizado. */}
+                    {post.song && (
+                        <div
+                            onMouseEnter={() => setSongExpanded(true)}
+                            onMouseLeave={() => setSongExpanded(false)}
+                            onClick={() => setSongExpanded(v => !v)}
+                            style={{
+                                position: 'absolute', left: '0.85rem', right: '0.85rem', bottom: '-1.1rem',
+                                display: 'flex',
+                                flexDirection: songBig ? 'column' : 'row',
+                                alignItems: 'center',
+                                justifyContent: songBig ? 'center' : 'flex-start',
+                                gap: songBig ? '0.6rem' : '0.7rem',
+                                padding: songBig ? '1.5rem 1.25rem 1.25rem' : songExpanded ? '0.7rem 0.85rem' : '0.5rem',
+                                borderRadius: songBig ? '26px' : songExpanded ? '20px' : '99px',
+                                background: 'rgba(10,10,12,0.78)', cursor: 'pointer',
+                                backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+                                border: '1px solid rgba(255,255,255,0.12)',
+                                boxShadow: songExpanded ? '0 20px 44px -14px rgba(0,0,0,0.75)' : '0 10px 28px -10px rgba(0,0,0,0.6)',
+                                transition: 'all 0.32s cubic-bezier(0.2,0.8,0.2,1)',
+                            }}>
+                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                                {post.song.albumArt && (
+                                    <img src={post.song.albumArt} alt="" style={{
+                                        width: songBig ? '130px' : songExpanded ? '58px' : '38px',
+                                        height: songBig ? '130px' : songExpanded ? '58px' : '38px',
+                                        borderRadius: songBig ? '18px' : songExpanded ? '14px' : '10px', objectFit: 'cover', display: 'block',
+                                        boxShadow: songBig ? '0 12px 28px -8px rgba(0,0,0,0.6)' : '0 3px 10px rgba(0,0,0,0.4)',
+                                        transition: 'all 0.32s cubic-bezier(0.2,0.8,0.2,1)',
+                                    }} />
+                                )}
+                                {post.song.previewUrl && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); togglePreview(); }}
+                                        title="Ouvir prévia"
+                                        style={{
+                                            position: 'absolute', inset: 0, margin: 'auto',
+                                            width: songBig ? '44px' : songExpanded ? '28px' : '22px',
+                                            height: songBig ? '44px' : songExpanded ? '28px' : '22px',
+                                            background: 'rgba(0,0,0,0.6)', border: '2px solid rgba(255,255,255,0.85)', boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+                                            borderRadius: '50%', color: 'white', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+                                            transition: 'all 0.32s cubic-bezier(0.2,0.8,0.2,1)',
+                                        }}
+                                    >
+                                        {isPlayingPreview ? <Pause size={songBig ? 19 : songExpanded ? 14 : 11} /> : <Play size={songBig ? 19 : songExpanded ? 14 : 11} style={{ marginLeft: '2px' }} />}
+                                    </button>
+                                )}
+                            </div>
+                            <a href={post.song.spotifyUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{
+                                flex: songBig ? 'none' : 1, minWidth: 0, maxWidth: '100%', textDecoration: 'none',
+                                textAlign: songBig ? 'center' : 'left',
+                            }}>
+                                <div style={{
+                                    fontSize: songBig ? '1.05rem' : songExpanded ? '1rem' : '0.82rem', fontWeight: 700, color: 'white',
+                                    whiteSpace: songBig ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                    transition: 'font-size 0.28s ease',
+                                }}>{post.song.name}</div>
+                                <div style={{
+                                    fontSize: songBig ? '0.86rem' : songExpanded ? '0.82rem' : '0.72rem', color: 'rgba(255,255,255,0.65)',
+                                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: songBig ? '0.2rem' : 0,
+                                    transition: 'font-size 0.28s ease',
+                                }}>{post.song.artist}</div>
+                            </a>
+                            {isPlayingPreview && (
+                                <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '14px', flexShrink: 0, marginRight: songBig ? 0 : '0.3rem', marginTop: songBig ? '0.2rem' : 0 }}>
+                                    {[0, 1, 2].map((i) => (
+                                        <span key={i} className="eq-bar" style={{ width: '3px', background: '#1db954', borderRadius: '2px', animationDelay: `${i * 0.15}s` }} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     )}
-                    {post.song.albumArt && (
-                        <img src={post.song.albumArt} alt="" style={{ width: '36px', height: '36px', borderRadius: '5px', objectFit: 'cover', flexShrink: 0 }} />
-                    )}
-                    <a href={post.song.spotifyUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, textDecoration: 'none' }}>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1db954', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>🎵 {post.song.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{post.song.artist}</div>
-                    </a>
                 </div>
             )}
 
