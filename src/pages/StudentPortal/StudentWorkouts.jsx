@@ -190,7 +190,7 @@ export default function StudentWorkouts() {
         setIsTrainingMode(true);
     };
 
-    const handleNextSet = () => {
+    const handleNextSet = async () => {
         const currentEx = exercises[currentExIndex];
         const totalSets = parseInt(currentEx.sets) || 0;
 
@@ -212,19 +212,38 @@ export default function StudentWorkouts() {
             const newProgress = [...workoutProgress];
             newProgress[currentExIndex].done = Math.min(newProgress[currentExIndex].done + 1, totalSets);
             setWorkoutProgress(newProgress);
-            
+
             if (currentExIndex + 1 < exercises.length) {
                 setCurrentExIndex(prev => prev + 1);
-                setCompletedSets(0);
-                
+                // Respeita progresso já feito (ex: aluno pulou pra frente, voltou
+                // e completou um exercício do meio — o próximo pode já ter séries).
+                setCompletedSets(newProgress[currentExIndex + 1]?.done || 0);
+
                 // Show timer if next exercise restTime > 0 (or use current for transition)
                 const nextEx = exercises[currentExIndex + 1];
                 if ((nextEx?.restTime ?? 60) > 0) {
                     setShowRestTimer(true);
                 }
-            } else {
-                finishWorkout();
+                return;
             }
+
+            // Chegou no último exercício da lista — mas será que pulou algum no
+            // meio (via "Trocar exercício") sem terminar as séries dele?
+            const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && p.done < p.totalSets);
+            if (skippedIndex !== -1) {
+                const goBack = await confirm({
+                    title: 'Exercício pulado',
+                    message: `Você pulou "${newProgress[skippedIndex].name}" — ainda faltam séries nele (${newProgress[skippedIndex].done}/${newProgress[skippedIndex].totalSets}). Quer fazer agora ou finalizar o treino assim mesmo?`,
+                    confirmText: 'Fazer agora',
+                    cancelText: 'Finalizar mesmo assim',
+                });
+                if (goBack) {
+                    jumpToExercise(skippedIndex);
+                    return;
+                }
+            }
+
+            finishWorkout();
         }
     };
 
