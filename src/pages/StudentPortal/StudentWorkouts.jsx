@@ -185,7 +185,7 @@ export default function StudentWorkouts() {
         setWorkoutStartTime(new Date());
         setCurrentExIndex(0);
         setCompletedSets(0);
-        setWorkoutProgress(exercises.map(ex => ({ name: ex.name, totalSets: parseInt(ex.sets) || 0, done: 0 })));
+        setWorkoutProgress(exercises.map(ex => ({ name: ex.name, totalSets: parseInt(ex.sets) || 0, done: 0, skipped: false })));
         setIsFinished(false);
         setIsTrainingMode(true);
     };
@@ -228,8 +228,10 @@ export default function StudentWorkouts() {
             }
 
             // Chegou no último exercício da lista — mas será que pulou algum no
-            // meio (via "Trocar exercício") sem terminar as séries dele?
-            const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && p.done < p.totalSets);
+            // meio (via "Trocar exercício") sem terminar as séries dele? Um
+            // exercício marcado como "não consegui fazer" não conta como
+            // pulado por engano — o aluno já foi honesto sobre ele.
+            const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && !p.skipped && p.done < p.totalSets);
             if (skippedIndex !== -1) {
                 const goBack = await confirm({
                     title: 'Exercício pulado',
@@ -247,15 +249,57 @@ export default function StudentWorkouts() {
         }
     };
 
+    // Aluno não consegue/não quer fazer o exercício atual (aparelho ocupado,
+    // dor, lesão, etc.) — marca honestamente como não realizado em vez de
+    // forçar ele a "fingir" que completou as séries, e segue pro próximo.
+    const markExerciseSkipped = async () => {
+        const confirmed = await confirm({
+            title: 'Não consegui fazer',
+            message: `Tudo bem! "${exercises[currentExIndex].name}" vai ficar marcado como não realizado neste treino — sem problema, seu personal vai ver certinho o que rolou.`,
+            confirmText: 'Confirmar',
+            cancelText: 'Voltar',
+        });
+        if (!confirmed) return;
+
+        const newProgress = [...workoutProgress];
+        newProgress[currentExIndex] = { ...newProgress[currentExIndex], skipped: true };
+        setWorkoutProgress(newProgress);
+        setShowRestTimer(false);
+
+        if (currentExIndex + 1 < exercises.length) {
+            setCurrentExIndex(prev => prev + 1);
+            setCompletedSets(newProgress[currentExIndex + 1]?.done || 0);
+            return;
+        }
+
+        const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && !p.skipped && p.done < p.totalSets);
+        if (skippedIndex !== -1) {
+            const goBack = await confirm({
+                title: 'Exercício pulado',
+                message: `Você pulou "${newProgress[skippedIndex].name}" — ainda faltam séries nele (${newProgress[skippedIndex].done}/${newProgress[skippedIndex].totalSets}). Quer fazer agora ou finalizar o treino assim mesmo?`,
+                confirmText: 'Fazer agora',
+                cancelText: 'Finalizar mesmo assim',
+            });
+            if (goBack) {
+                jumpToExercise(skippedIndex);
+                return;
+            }
+        }
+
+        finishWorkout();
+    };
+
     const finishWorkout = async () => {
         const endTime = new Date();
         const durationMinutes = Math.round((endTime - workoutStartTime) / 60000);
-        
+        const skippedExercises = workoutProgress.filter(p => p.skipped).map(p => p.name);
+
         const logData = {
             sheetName: selectedSheetId === 'legacy' ? 'Treinos Base' : sheets[selectedSheetId]?.name || 'Sua Ficha',
             variation: activeVar,
             duration: durationMinutes,
-            exercisesCompleted: exercises.length,
+            exercisesCompleted: exercises.length - skippedExercises.length,
+            skippedExercises,
             // Volume Load (séries × reps × carga) a partir da ficha prescrita —
             // usado pra acompanhar a progressão semanal de carga do aluno.
             volumeLoad: workoutVolumeLoad(exercises),
@@ -436,6 +480,7 @@ export default function StudentWorkouts() {
                                 const done = workoutProgress[idx]?.done || 0;
                                 const isCurrent = idx === currentExIndex;
                                 const isComplete = total > 0 && done >= total;
+                                const isSkipped = workoutProgress[idx]?.skipped;
                                 return (
                                     <button
                                         key={idx}
@@ -458,7 +503,7 @@ export default function StudentWorkouts() {
                                             {isComplete ? <CheckCircle2 size={16} color="var(--primary)" /> : <span style={{ width: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</span>}
                                             {ex.name}
                                         </span>
-                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{done}/{total} séries</span>
+                                        <span style={{ fontSize: '0.75rem', color: isSkipped ? '#f97316' : 'var(--text-muted)', flexShrink: 0 }}>{isSkipped ? 'Não realizado' : `${done}/${total} séries`}</span>
                                     </button>
                                 );
                             })}
@@ -550,13 +595,19 @@ export default function StudentWorkouts() {
                         Concluir Série
                     </button>
                     {completedSets > 0 && (
-                         <button 
+                         <button
                             onClick={() => setCompletedSets(prev => Math.max(0, prev - 1))}
                             style={{ width: '100%', padding: '0.75rem', color: 'var(--text-muted)', background: 'none', border: 'none', fontSize: '0.9rem' }}
                         >
                             Corrigir (Voltar 1 série)
                         </button>
                     )}
+                    <button
+                        onClick={markExerciseSkipped}
+                        style={{ width: '100%', padding: '0.75rem', color: '#f97316', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600 }}
+                    >
+                        Não consegui fazer esse exercício
+                    </button>
                 </div>
 
                 {/* Rest Timer Modal */}

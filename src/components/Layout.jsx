@@ -414,6 +414,14 @@ export default function Layout() {
                         .main-content {
                             padding-top: 80px !important;
                         }
+
+                        .sidebar-header { padding: 1.25rem 1rem 1rem !important; }
+                        .sidebar-logo { width: 60px !important; height: 60px !important; margin-bottom: 0.5rem !important; }
+                        .sidebar-header h1 { font-size: 1.15rem !important; }
+                        .sidebar-nav { padding: 0 0.75rem !important; }
+                        .sidebar-nav a { padding: 0.6rem 0.85rem !important; margin-bottom: 0.3rem !important; }
+                        .sidebar-footer { padding: 0.75rem !important; }
+                        .sidebar-user-card { padding: 0.6rem !important; margin-bottom: 0.75rem !important; }
                     }
                 `}</style>
                 <Outlet />
