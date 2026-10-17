@@ -31,6 +31,7 @@ export default function StudentWorkouts() {
     const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
     const [shareDesc, setShareDesc] = useState('');
     const shareFileRef = useRef(null);
+    const shareCameraRef = useRef(null);
     const [songQuery, setSongQuery] = useState('');
     const [songResults, setSongResults] = useState([]);
     const [isSearchingSong, setIsSearchingSong] = useState(false);
@@ -782,18 +783,41 @@ export default function StudentWorkouts() {
                             </div>
                         )}
                         <input ref={shareFileRef} type="file" accept="image/*" onChange={handlePickPhoto} style={{ display: 'none' }} />
+                        <input ref={shareCameraRef} type="file" accept="image/*" capture="environment" onChange={handlePickPhoto} style={{ display: 'none' }} />
 
                         {!sharePhotoPreview ? (
                             <>
                                 <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Boa! Já contou pro <strong style={{ color: '#a855f7' }}>desafio do mês</strong> 🏆. Quer compartilhar com a galera?</p>
-                                <button
-                                    onClick={() => shareFileRef.current?.click()}
-                                    disabled={shared || isProcessingPhoto}
-                                    className="btn-primary"
-                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: (shared || isProcessingPhoto) ? 0.75 : 1 }}
-                                >
-                                    {isProcessingPhoto ? 'Processando foto...' : shared ? '✓ Compartilhado!' : '📸 Postar foto do treino'}
-                                </button>
+                                {isProcessingPhoto ? (
+                                    <button
+                                        disabled
+                                        className="btn-primary"
+                                        style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: 0.75 }}
+                                    >
+                                        Processando foto...
+                                    </button>
+                                ) : shared ? (
+                                    <button disabled className="btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: 0.75 }}>
+                                        ✓ Compartilhado!
+                                    </button>
+                                ) : (
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                                        <button
+                                            onClick={() => shareCameraRef.current?.click()}
+                                            className="btn-primary"
+                                            style={{ flex: 1, padding: '1rem', borderRadius: '16px', fontWeight: 'bold' }}
+                                        >
+                                            📷 Tirar foto
+                                        </button>
+                                        <button
+                                            onClick={() => shareFileRef.current?.click()}
+                                            className="btn-primary"
+                                            style={{ flex: 1, padding: '1rem', borderRadius: '16px', fontWeight: 'bold' }}
+                                        >
+                                            🖼️ Galeria
+                                        </button>
+                                    </div>
+                                )}
                                 <button
                                     onClick={() => setIsFinished(false)}
                                     disabled={isProcessingPhoto}

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGym } from '../context/GymContext';
 import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
-import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause, ChevronDown } from 'lucide-react';
+import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause, ChevronDown, Camera } from 'lucide-react';
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth, hasMultiPerDay } from '../services/community';
 import { normalizeImageFile } from '../utils/imageOptimizer';
 
@@ -251,6 +251,7 @@ export default function CommunityManager() {
     const [processingPhoto, setProcessingPhoto] = useState(false);
     const [publishing, setPublishing] = useState(false);
     const fileRef = useRef(null);
+    const cameraRef = useRef(null);
 
     const me = { id: tenantId, name: settings?.gymName || 'Personal', photo: settings?.logoUrl || null };
 
@@ -490,7 +491,11 @@ export default function CommunityManager() {
                                 </div>
                             )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', borderTop: '1px solid var(--border-glass)', paddingTop: '0.75rem' }}>
-                                <button onClick={() => fileRef.current?.click()} disabled={processingPhoto} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: processingPhoto ? 'not-allowed' : 'pointer', opacity: processingPhoto ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}><ImagePlus size={20} /> Foto</button>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button onClick={() => cameraRef.current?.click()} disabled={processingPhoto} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: processingPhoto ? 'not-allowed' : 'pointer', opacity: processingPhoto ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}><Camera size={20} /> Câmera</button>
+                                    <button onClick={() => fileRef.current?.click()} disabled={processingPhoto} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: processingPhoto ? 'not-allowed' : 'pointer', opacity: processingPhoto ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}><ImagePlus size={20} /> Galeria</button>
+                                </div>
+                                <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={pickImage} style={{ display: 'none' }} />
                                 <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} style={{ display: 'none' }} />
                                 <button onClick={handlePublish} disabled={publishing || processingPhoto || (!text.trim() && !imageFile)} className="btn-primary" style={{ padding: '0.6rem 1.5rem', opacity: (publishing || processingPhoto || (!text.trim() && !imageFile)) ? 0.6 : 1 }}>
                                     {publishing ? 'Publicando...' : 'Publicar'}
