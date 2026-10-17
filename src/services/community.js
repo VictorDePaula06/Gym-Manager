@@ -17,15 +17,24 @@ export const subscribeFeed = (tenantId, cb) => {
 };
 
 export const uploadPostImage = async (tenantId, file) => {
-    let toUpload = file;
+    // Sempre reconverte pra JPEG via canvas — o fallback antigo de subir o
+    // arquivo original quebrava no Android com fotos em formato que o
+    // <img> não exibe (ex: HEIC) ou grandes demais, resultando em post com
+    // "foto quebrada". Se a compressão falhar de verdade, melhor avisar o
+    // aluno do que publicar uma imagem que não carrega.
+    let blob;
     try {
-        const blob = await compressImage(file, 1080, 0.8);
-        toUpload = new File([blob], file.name, { type: 'image/jpeg' });
+        blob = await compressImage(file, 1080, 0.8);
     } catch (e) {
-        console.warn('Compressão falhou, usando original', e);
+        try {
+            blob = await compressImage(file, 720, 0.75); // tenta menor, pode ser limite de memória
+        } catch (e2) {
+            throw new Error('Não foi possível processar essa foto. Tente outra imagem.');
+        }
     }
-    const storageRef = ref(storage, `community/${tenantId}/${Date.now()}_${toUpload.name}`);
-    await uploadBytes(storageRef, toUpload);
+    const toUpload = new File([blob], `${Date.now()}.jpg`, { type: 'image/jpeg' });
+    const storageRef = ref(storage, `community/${tenantId}/${toUpload.name}`);
+    await uploadBytes(storageRef, toUpload, { contentType: 'image/jpeg' });
     return getDownloadURL(storageRef);
 };
 

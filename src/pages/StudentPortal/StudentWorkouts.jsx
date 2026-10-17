@@ -336,9 +336,10 @@ export default function StudentWorkouts() {
         setSharePhoto(file);
         setSharePhotoPreview(URL.createObjectURL(file));
         setShareDesc(`✅ ${div}${nome} concluído! 💪`);
-        setSelectedSong(null);
-        setSongQuery('');
-        setSongResults([]);
+        // Não mexe em selectedSong aqui — a música escolhida é independente
+        // da foto. Resetava sempre que o input disparava, inclusive ao
+        // "Trocar foto" depois de já ter selecionado uma música, apagando
+        // ela sem o aluno perceber.
     };
 
     // Busca com debounce — evita chamar a function a cada tecla digitada.
