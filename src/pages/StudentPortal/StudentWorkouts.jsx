@@ -381,7 +381,7 @@ export default function StudentWorkouts() {
             addToast('Compartilhado na comunidade! 🎉', 'success');
         } catch (err) {
             console.error(err);
-            addToast('Erro ao compartilhar.', 'error');
+            addToast(`Erro ao compartilhar: ${err?.message || 'tente de novo'}`, 'error');
         } finally {
             setIsSharing(false);
         }
