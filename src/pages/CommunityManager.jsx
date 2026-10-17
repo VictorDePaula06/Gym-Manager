@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { Trophy, Heart, MessageCircle, Trash2, Save, Users, Medal, Pencil, X, ImagePlus, Send, Gift, Clock, BarChart3, Play, Pause, ChevronDown } from 'lucide-react';
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, subscribeLeaderboard, subscribeChallenge, saveChallenge, getChallengeStatus, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth, hasMultiPerDay } from '../services/community';
+import { normalizeImageFile } from '../utils/imageOptimizer';
 
 const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -335,7 +336,18 @@ export default function CommunityManager() {
         catch (e) { console.error(e); addToast('Erro ao salvar.', 'error'); } finally { setSaving(false); }
     };
 
-    const pickImage = (e) => { const f = e.target.files?.[0]; if (!f) return; setImageFile(f); setImagePreview(URL.createObjectURL(f)); };
+    const pickImage = async (e) => {
+        const f = e.target.files?.[0];
+        if (e.target) e.target.value = '';
+        if (!f) return;
+        try {
+            const normalized = await normalizeImageFile(f);
+            setImageFile(normalized);
+            setImagePreview(URL.createObjectURL(normalized));
+        } catch {
+            addToast('Não foi possível processar essa foto. Tente outra.', 'error');
+        }
+    };
     const handlePublish = async () => {
         if (!text.trim() && !imageFile) return;
         setPublishing(true);

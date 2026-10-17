@@ -2,7 +2,7 @@
 // HEIC/HEIF — formato que <img>/<canvas> não decodificam no navegador.
 // Detecta pelo mime type (quando o Android informa certo) ou pela extensão
 // do arquivo (quando vem como application/octet-stream).
-const isHeic = (file) => {
+export const isHeic = (file) => {
     const type = (file.type || '').toLowerCase();
     const name = (file.name || '').toLowerCase();
     return type.includes('heic') || type.includes('heif') || name.endsWith('.heic') || name.endsWith('.heif');
@@ -14,6 +14,16 @@ const convertHeicToJpeg = async (file) => {
     const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
     // heic2any pode devolver um array de blobs (HEIC com múltiplas imagens) — pega a primeira.
     return Array.isArray(result) ? result[0] : result;
+};
+
+// Pra usar logo que o aluno escolhe a foto (antes de publicar): se for
+// HEIC/HEIF, converte pra JPEG — senão a PRÉ-VISUALIZAÇÃO já quebra (o
+// <img> não decodifica HEIC), antes mesmo de chegar no upload. Se não for
+// HEIC, devolve o arquivo original sem reprocessar (mais rápido).
+export const normalizeImageFile = async (file) => {
+    if (!isHeic(file)) return file;
+    const blob = await convertHeicToJpeg(file);
+    return new File([blob], `${Date.now()}.jpg`, { type: 'image/jpeg' });
 };
 
 // Decodifica o arquivo numa bitmap. createImageBitmap é bem mais leve de

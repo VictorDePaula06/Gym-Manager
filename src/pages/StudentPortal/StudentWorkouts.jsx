@@ -8,6 +8,7 @@ import RestTimer from '../../components/RestTimer';
 import { createPost, uploadPostImage } from '../../services/community';
 import { searchSpotifyTracks } from '../../utils/spotify';
 import { workoutVolumeLoad } from '../../utils/volumeLoad';
+import { normalizeImageFile } from '../../utils/imageOptimizer';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 
@@ -327,14 +328,21 @@ export default function StudentWorkouts() {
     };
 
     // Passo 1: escolher a foto (câmera/biblioteca) e pré-preencher a descrição.
-    const handlePickPhoto = (e) => {
+    const handlePickPhoto = async (e) => {
         const file = e.target.files?.[0];
         if (e.target) e.target.value = ''; // permite reescolher a mesma foto
         if (!file) return;
+        let normalized;
+        try {
+            normalized = await normalizeImageFile(file);
+        } catch {
+            addToast('Não foi possível processar essa foto. Tente outra.', 'error');
+            return;
+        }
         const nome = finishedInfo?.sheetName || 'meu treino';
         const div = finishedInfo?.variation ? `Treino ${finishedInfo.variation} — ` : '';
-        setSharePhoto(file);
-        setSharePhotoPreview(URL.createObjectURL(file));
+        setSharePhoto(normalized);
+        setSharePhotoPreview(URL.createObjectURL(normalized));
         setShareDesc(`✅ ${div}${nome} concluído! 💪`);
         // Não mexe em selectedSong aqui — a música escolhida é independente
         // da foto. Resetava sempre que o input disparava, inclusive ao

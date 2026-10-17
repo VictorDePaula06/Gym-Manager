@@ -7,6 +7,7 @@ import { Heart, MessageCircle, ImagePlus, Send, Trophy, Loader2, Trash2, X, Penc
 import { subscribeFeed, createPost, uploadPostImage, toggleLike, subscribeComments, addComment, deletePost, updatePost, subscribeLeaderboard, subscribeChallenge, getChallengeStatus, joinChallenge, declineChallenge, countWorkoutsInRange, getChallengeHistory, getLeaderboardForMonth, hasMultiPerDay } from '../../services/community';
 import { auth } from '../../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { normalizeImageFile } from '../../utils/imageOptimizer';
 
 const timeAgo = (iso) => {
     const diff = Date.now() - new Date(iso).getTime();
@@ -409,11 +410,17 @@ export default function Community() {
         }
     };
 
-    const pickImage = (e) => {
+    const pickImage = async (e) => {
         const f = e.target.files?.[0];
+        if (e.target) e.target.value = '';
         if (!f) return;
-        setImageFile(f);
-        setImagePreview(URL.createObjectURL(f));
+        try {
+            const normalized = await normalizeImageFile(f);
+            setImageFile(normalized);
+            setImagePreview(URL.createObjectURL(normalized));
+        } catch {
+            addToast('Não foi possível processar essa foto. Tente outra.', 'error');
+        }
     };
 
     const handlePublish = async () => {
