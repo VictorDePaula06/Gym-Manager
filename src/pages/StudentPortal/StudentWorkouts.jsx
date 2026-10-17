@@ -28,6 +28,7 @@ export default function StudentWorkouts() {
     const [shared, setShared] = useState(false);
     const [sharePhoto, setSharePhoto] = useState(null);
     const [sharePhotoPreview, setSharePhotoPreview] = useState(null);
+    const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
     const [shareDesc, setShareDesc] = useState('');
     const shareFileRef = useRef(null);
     const [songQuery, setSongQuery] = useState('');
@@ -332,13 +333,16 @@ export default function StudentWorkouts() {
         const file = e.target.files?.[0];
         if (e.target) e.target.value = ''; // permite reescolher a mesma foto
         if (!file) return;
+        setIsProcessingPhoto(true);
         let normalized;
         try {
             normalized = await normalizeImageFile(file);
         } catch {
             addToast('Não foi possível processar essa foto. Tente outra.', 'error');
+            setIsProcessingPhoto(false);
             return;
         }
+        setIsProcessingPhoto(false);
         const nome = finishedInfo?.sheetName || 'meu treino';
         const div = finishedInfo?.variation ? `Treino ${finishedInfo.variation} — ` : '';
         setSharePhoto(normalized);
@@ -784,14 +788,15 @@ export default function StudentWorkouts() {
                                 <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Boa! Já contou pro <strong style={{ color: '#a855f7' }}>desafio do mês</strong> 🏆. Quer compartilhar com a galera?</p>
                                 <button
                                     onClick={() => shareFileRef.current?.click()}
-                                    disabled={shared}
+                                    disabled={shared || isProcessingPhoto}
                                     className="btn-primary"
-                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: shared ? 0.75 : 1 }}
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', marginBottom: '0.75rem', opacity: (shared || isProcessingPhoto) ? 0.75 : 1 }}
                                 >
-                                    {shared ? '✓ Compartilhado!' : '📸 Postar foto do treino'}
+                                    {isProcessingPhoto ? 'Processando foto...' : shared ? '✓ Compartilhado!' : '📸 Postar foto do treino'}
                                 </button>
                                 <button
                                     onClick={() => setIsFinished(false)}
+                                    disabled={isProcessingPhoto}
                                     style={{ width: '100%', padding: '1rem', borderRadius: '16px', fontWeight: 'bold', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-glass)', cursor: 'pointer' }}
                                 >
                                     {shared ? 'Fechar' : 'Voltar ao Início'}

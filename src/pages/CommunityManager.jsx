@@ -248,6 +248,7 @@ export default function CommunityManager() {
     const [text, setText] = useState('');
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [processingPhoto, setProcessingPhoto] = useState(false);
     const [publishing, setPublishing] = useState(false);
     const fileRef = useRef(null);
 
@@ -340,12 +341,15 @@ export default function CommunityManager() {
         const f = e.target.files?.[0];
         if (e.target) e.target.value = '';
         if (!f) return;
+        setProcessingPhoto(true);
         try {
             const normalized = await normalizeImageFile(f);
             setImageFile(normalized);
             setImagePreview(URL.createObjectURL(normalized));
         } catch {
             addToast('Não foi possível processar essa foto. Tente outra.', 'error');
+        } finally {
+            setProcessingPhoto(false);
         }
     };
     const handlePublish = async () => {
@@ -474,16 +478,21 @@ export default function CommunityManager() {
                                 <Avatar name={me.name} photo={me.photo} />
                                 <textarea value={text} onChange={e => setText(e.target.value)} rows={2} placeholder="Compartilhe algo com a comunidade..." style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', resize: 'none', outline: 'none', fontSize: '1rem', fontFamily: 'inherit' }} />
                             </div>
-                            {imagePreview && (
+                            {processingPhoto && (
+                                <div style={{ marginTop: '0.75rem', padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                                    Processando foto...
+                                </div>
+                            )}
+                            {imagePreview && !processingPhoto && (
                                 <div style={{ position: 'relative', marginTop: '0.75rem' }}>
                                     <img src={imagePreview} alt="preview" style={{ width: '100%', maxHeight: '320px', objectFit: 'cover', borderRadius: '12px', display: 'block' }} />
                                     <button onClick={() => { setImageFile(null); setImagePreview(null); }} style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', background: 'rgba(0,0,0,0.6)', border: 'none', color: '#fff', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer' }}><X size={16} /></button>
                                 </div>
                             )}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', borderTop: '1px solid var(--border-glass)', paddingTop: '0.75rem' }}>
-                                <button onClick={() => fileRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}><ImagePlus size={20} /> Foto</button>
+                                <button onClick={() => fileRef.current?.click()} disabled={processingPhoto} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: processingPhoto ? 'not-allowed' : 'pointer', opacity: processingPhoto ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}><ImagePlus size={20} /> Foto</button>
                                 <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} style={{ display: 'none' }} />
-                                <button onClick={handlePublish} disabled={publishing || (!text.trim() && !imageFile)} className="btn-primary" style={{ padding: '0.6rem 1.5rem', opacity: (publishing || (!text.trim() && !imageFile)) ? 0.6 : 1 }}>
+                                <button onClick={handlePublish} disabled={publishing || processingPhoto || (!text.trim() && !imageFile)} className="btn-primary" style={{ padding: '0.6rem 1.5rem', opacity: (publishing || processingPhoto || (!text.trim() && !imageFile)) ? 0.6 : 1 }}>
                                     {publishing ? 'Publicando...' : 'Publicar'}
                                 </button>
                             </div>

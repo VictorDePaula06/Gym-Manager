@@ -282,6 +282,7 @@ export default function Community() {
     const [text, setText] = useState('');
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
+    const [processingPhoto, setProcessingPhoto] = useState(false);
     const [publishing, setPublishing] = useState(false);
     const fileRef = useRef(null);
 
@@ -414,12 +415,15 @@ export default function Community() {
         const f = e.target.files?.[0];
         if (e.target) e.target.value = '';
         if (!f) return;
+        setProcessingPhoto(true);
         try {
             const normalized = await normalizeImageFile(f);
             setImageFile(normalized);
             setImagePreview(URL.createObjectURL(normalized));
         } catch {
             addToast('Não foi possível processar essa foto. Tente outra.', 'error');
+        } finally {
+            setProcessingPhoto(false);
         }
     };
 
@@ -695,7 +699,13 @@ export default function Community() {
                         style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', resize: 'none', outline: 'none', fontSize: '1rem', fontFamily: 'inherit' }}
                     />
                 </div>
-                {imagePreview && (
+                {processingPhoto && (
+                    <div style={{ marginTop: '0.75rem', padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px' }}>
+                        <Loader2 size={20} className="animate-spin" style={{ marginBottom: '0.4rem' }} /><br />
+                        Processando foto...
+                    </div>
+                )}
+                {imagePreview && !processingPhoto && (
                     <div style={{ position: 'relative', marginTop: '0.75rem' }}>
                         <img src={imagePreview} alt="preview" style={{ width: '100%', borderRadius: '12px', display: 'block' }} />
                         <button onClick={() => { setImageFile(null); setImagePreview(null); }}
@@ -705,14 +715,14 @@ export default function Community() {
                     </div>
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', borderTop: '1px solid var(--border-glass)', paddingTop: '0.75rem' }}>
-                    <button onClick={() => fileRef.current?.click()} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                    <button onClick={() => fileRef.current?.click()} disabled={processingPhoto} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: processingPhoto ? 'not-allowed' : 'pointer', opacity: processingPhoto ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
                         <ImagePlus size={20} /> Foto
                     </button>
                     <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} style={{ display: 'none' }} />
                     <button
                         onClick={handlePublish}
-                        disabled={publishing || (!text.trim() && !imageFile)}
-                        style={{ background: 'var(--primary)', border: 'none', color: '#fff', padding: '0.6rem 1.5rem', borderRadius: '20px', fontWeight: 600, cursor: (publishing || (!text.trim() && !imageFile)) ? 'not-allowed' : 'pointer', opacity: (publishing || (!text.trim() && !imageFile)) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                        disabled={publishing || processingPhoto || (!text.trim() && !imageFile)}
+                        style={{ background: 'var(--primary)', border: 'none', color: '#fff', padding: '0.6rem 1.5rem', borderRadius: '20px', fontWeight: 600, cursor: (publishing || processingPhoto || (!text.trim() && !imageFile)) ? 'not-allowed' : 'pointer', opacity: (publishing || processingPhoto || (!text.trim() && !imageFile)) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                     >
                         {publishing ? <><Loader2 size={16} className="animate-spin" /> Publicando</> : 'Publicar'}
                     </button>
