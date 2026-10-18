@@ -6,9 +6,9 @@ import { db } from '../firebase';
 import { STRIPE_PRICE_IDS, startCheckout } from '../utils/stripe';
 
 const PLANS = [
-    { id: 'bronze', name: 'Bronze', color: '#c2803f', icon: Dumbbell, badge: null, highlight: false, monthly: '39,90', annual: '29,90', annualTotal: '358,80', save: '120', features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos com Inteligência Artificial', 'Comunidade e desafios'], note: null },
-    { id: 'prata', name: 'Prata', color: '#94a3b8', icon: Sparkles, badge: 'Mais popular', highlight: true, monthly: '79,90', annual: '59,90', annualTotal: '718,80', save: '240', features: ['Até 40 alunos', 'Tudo do Bronze', 'Relatórios de evolução', 'Suporte prioritário'], note: null },
-    { id: 'ouro', name: 'Ouro', color: '#eab308', icon: Crown, badge: null, highlight: false, monthly: '149,90', annual: '119,90', annualTotal: '1.438,80', save: '360', features: ['Alunos ilimitados', 'Tudo do Prata', 'Suporte VIP no WhatsApp'], note: null },
+    { id: 'bronze', name: 'Bronze', color: '#c2803f', icon: Dumbbell, badge: null, highlight: false, monthly: '39,90', quarterly: '34,90', quarterlyTotal: '104,70', saveQuarter: '15', annual: '29,90', annualTotal: '358,80', save: '120', features: ['Até 15 alunos', 'Gestão completa de alunos', 'Controle financeiro', 'Treinos com Inteligência Artificial', 'Comunidade e desafios'], note: null },
+    { id: 'prata', name: 'Prata', color: '#94a3b8', icon: Sparkles, badge: 'Mais popular', highlight: true, monthly: '59,90', quarterly: '51,90', quarterlyTotal: '155,70', saveQuarter: '24', annual: '44,90', annualTotal: '538,80', save: '180', features: ['Até 40 alunos', 'Tudo do Bronze', 'Relatórios de evolução', 'Suporte prioritário'], note: null },
+    { id: 'ouro', name: 'Ouro', color: '#eab308', icon: Crown, badge: null, highlight: false, monthly: '109,90', quarterly: '94,90', quarterlyTotal: '284,70', saveQuarter: '45', annual: '82,90', annualTotal: '994,80', save: '324', features: ['Alunos ilimitados', 'Tudo do Prata', 'Suporte VIP no WhatsApp'], note: null },
 ];
 
 const Subscription = () => {
@@ -31,7 +31,7 @@ const Subscription = () => {
     };
 
     const handleSubscribe = async (plan) => {
-        const priceId = STRIPE_PRICE_IDS[plan.id]?.[billing === 'annual' ? 'annual' : 'monthly'];
+        const priceId = STRIPE_PRICE_IDS[plan.id]?.[billing];
         if (!priceId) return;
         setLoadingPlan(plan.id);
         try {
@@ -57,10 +57,10 @@ const Subscription = () => {
                     </div>
                 )}
 
-                {/* Toggle Mensal / Anual */}
+                {/* Toggle Mensal / Trimestral / Anual */}
                 <div style={{ marginTop: '1.75rem', display: 'flex', justifyContent: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '99px', padding: '0.3rem' }}>
-                        {[{ k: 'monthly', l: 'Mensal' }, { k: 'annual', l: 'Anual' }].map((opt) => {
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'var(--input-bg)', border: '1px solid var(--border-glass)', borderRadius: '99px', padding: '0.3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {[{ k: 'monthly', l: 'Mensal' }, { k: 'quarterly', l: 'Trimestral', badge: '-13%' }, { k: 'annual', l: 'Anual', badge: '-25%' }].map((opt) => {
                             const on = billing === opt.k;
                             return (
                                 <button key={opt.k} onClick={() => setBilling(opt.k)} style={{
@@ -69,7 +69,7 @@ const Subscription = () => {
                                     color: on ? 'white' : 'var(--text-muted)', transition: 'all 0.2s',
                                 }}>
                                     {opt.l}
-                                    {opt.k === 'annual' && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '99px', background: on ? 'rgba(255,255,255,0.2)' : 'rgba(16,185,129,0.15)', color: on ? 'white' : 'var(--primary)' }}>-25%</span>}
+                                    {opt.badge && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '99px', background: on ? 'rgba(255,255,255,0.2)' : 'rgba(16,185,129,0.15)', color: on ? 'white' : 'var(--primary)' }}>{opt.badge}</span>}
                                 </button>
                             );
                         })}
@@ -81,7 +81,8 @@ const Subscription = () => {
                 {PLANS.map((plan) => {
                     const featured = plan.highlight;
                     const isAnnual = billing === 'annual';
-                    const value = isAnnual ? plan.annual : plan.monthly;
+                    const isQuarterly = billing === 'quarterly';
+                    const value = isAnnual ? plan.annual : isQuarterly ? plan.quarterly : plan.monthly;
                     return (
                         <div key={plan.name} className="glass-panel" style={{
                             padding: 0, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -112,6 +113,8 @@ const Subscription = () => {
                                 <div style={{ minHeight: '20px', marginTop: '0.5rem' }}>
                                     {isAnnual
                                         ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>R$ {plan.annualTotal} à vista/ano · <span style={{ color: 'var(--primary)', fontWeight: 700 }}>economize R$ {plan.save}</span></span>
+                                        : isQuarterly
+                                        ? <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>R$ {plan.quarterlyTotal} à vista/trimestre · <span style={{ color: 'var(--primary)', fontWeight: 700 }}>economize R$ {plan.saveQuarter}</span></span>
                                         : <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No anual sai R$ {plan.annual}/mês</span>}
                                 </div>
 

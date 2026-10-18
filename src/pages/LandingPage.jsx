@@ -36,11 +36,14 @@ const NETWORK_PATTERN_SVG = `
 `;
 const NETWORK_PATTERN_URL = `url("data:image/svg+xml,${encodeURIComponent(NETWORK_PATTERN_SVG)}")`;
 
-// Planos (Bronze/Prata/Ouro). Preço mensal e anual (valor por mês no plano anual).
+// Planos (Bronze/Prata/Ouro). Preço mensal, trimestral e anual (valor por mês em cada período).
 const PLANS = [
     {
         name: 'Bronze',
         monthly: '39,90',
+        quarterly: '34,90',
+        quarterlyTotal: '104,70',
+        saveQuarter: '15',
         annual: '29,90',
         annualTotal: '358,80',
         saveYear: '120',
@@ -54,10 +57,13 @@ const PLANS = [
     },
     {
         name: 'Prata',
-        monthly: '79,90',
-        annual: '59,90',
-        annualTotal: '718,80',
-        saveYear: '240',
+        monthly: '59,90',
+        quarterly: '51,90',
+        quarterlyTotal: '155,70',
+        saveQuarter: '24',
+        annual: '44,90',
+        annualTotal: '538,80',
+        saveYear: '180',
         color: '#94a3b8',
         highlight: true,
         badge: 'Mais popular',
@@ -68,10 +74,13 @@ const PLANS = [
     },
     {
         name: 'Ouro',
-        monthly: '149,90',
-        annual: '119,90',
-        annualTotal: '1.438,80',
-        saveYear: '360',
+        monthly: '109,90',
+        quarterly: '94,90',
+        quarterlyTotal: '284,70',
+        saveQuarter: '45',
+        annual: '82,90',
+        annualTotal: '994,80',
+        saveYear: '324',
         color: '#eab308',
         highlight: false,
         badge: null,
@@ -514,9 +523,9 @@ export default function LandingPage() {
                     <h2 style={{ fontSize: '2.6rem', fontWeight: 800, marginBottom: '0.75rem', color: 'white' }}>Escolha seu plano</h2>
                     <p style={{ color: '#9ca3af', marginBottom: '2rem', fontSize: '1.05rem' }}>Teste 15 dias grátis. Sem fidelidade, cancele quando precisar.</p>
 
-                    {/* Toggle Mensal / Anual */}
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '99px', padding: '0.3rem', marginBottom: '3rem' }}>
-                        {[{ k: 'monthly', l: 'Mensal' }, { k: 'annual', l: 'Anual' }].map((opt) => {
+                    {/* Toggle Mensal / Trimestral / Anual */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '99px', padding: '0.3rem', marginBottom: '3rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                        {[{ k: 'monthly', l: 'Mensal' }, { k: 'quarterly', l: 'Trimestral', badge: '-13%' }, { k: 'annual', l: 'Anual', badge: '-25%' }].map((opt) => {
                             const on = billing === opt.k;
                             return (
                                 <button key={opt.k} onClick={() => setBilling(opt.k)} style={{
@@ -525,7 +534,7 @@ export default function LandingPage() {
                                     color: on ? 'white' : '#9ca3af', transition: 'all 0.2s',
                                 }}>
                                     {opt.l}
-                                    {opt.k === 'annual' && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '99px', background: on ? 'rgba(255,255,255,0.2)' : 'rgba(16,185,129,0.15)', color: on ? 'white' : ACCENT }}>-25%</span>}
+                                    {opt.badge && <span style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.15rem 0.5rem', borderRadius: '99px', background: on ? 'rgba(255,255,255,0.2)' : 'rgba(16,185,129,0.15)', color: on ? 'white' : ACCENT }}>{opt.badge}</span>}
                                 </button>
                             );
                         })}
@@ -535,7 +544,8 @@ export default function LandingPage() {
                         {PLANS.map((plan) => {
                             const featured = plan.highlight;
                             const isAnnual = billing === 'annual';
-                            const value = isAnnual ? plan.annual : plan.monthly;
+                            const isQuarterly = billing === 'quarterly';
+                            const value = isAnnual ? plan.annual : isQuarterly ? plan.quarterly : plan.monthly;
                             return (
                                 <div key={plan.name} className="plan-card" style={{
                                     background: featured
@@ -575,6 +585,10 @@ export default function LandingPage() {
                                             {isAnnual ? (
                                                 <span style={{ fontSize: '0.82rem', color: '#9ca3af' }}>
                                                     R$ {plan.annualTotal} à vista/ano · <span style={{ color: ACCENT, fontWeight: 700 }}>economize R$ {plan.saveYear}</span>
+                                                </span>
+                                            ) : isQuarterly ? (
+                                                <span style={{ fontSize: '0.82rem', color: '#9ca3af' }}>
+                                                    R$ {plan.quarterlyTotal} à vista/trimestre · <span style={{ color: ACCENT, fontWeight: 700 }}>economize R$ {plan.saveQuarter}</span>
                                                 </span>
                                             ) : (
                                                 <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>

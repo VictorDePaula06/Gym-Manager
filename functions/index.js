@@ -15,11 +15,20 @@ const SPOTIFY_CLIENT_SECRET = defineSecret("SPOTIFY_CLIENT_SECRET");
 
 const PRICE_TIER_MAP = {
   "price_1UAHGXLOoGy5dacxvh5TrcZY": { tier: "bronze", billingCycle: "monthly" },
+  "price_1US1TvLOoGy5dacxiw3p8TlJ": { tier: "bronze", billingCycle: "quarterly" },
   "price_1UAHJ1LOoGy5dacxDBNyToyb": { tier: "bronze", billingCycle: "annual" },
+  // Prata/Ouro mensal e anual mudaram de valor — price_id antigos continuam
+  // mapeados pra quem já era assinante neles (renovação não deve quebrar).
   "price_1UAHKdLOoGy5dacxbBMQXXLh": { tier: "prata", billingCycle: "monthly" },
   "price_1UAHL4LOoGy5dacxupSkrmTj": { tier: "prata", billingCycle: "annual" },
   "price_1UAHLyLOoGy5dacx3RsUj17N": { tier: "ouro", billingCycle: "monthly" },
   "price_1UAHN1LOoGy5dacxgyLoxMqG": { tier: "ouro", billingCycle: "annual" },
+  "price_1US1V0LOoGy5dacxDFVWDO74": { tier: "prata", billingCycle: "monthly" },
+  "price_1US1W0LOoGy5dacxFk7MIijI": { tier: "prata", billingCycle: "quarterly" },
+  "price_1US1WsLOoGy5dacxsh2q1hQd": { tier: "prata", billingCycle: "annual" },
+  "price_1US1XcLOoGy5dacxFg8vW4xM": { tier: "ouro", billingCycle: "monthly" },
+  "price_1US1YxLOoGy5dacxJOICieY4": { tier: "ouro", billingCycle: "quarterly" },
+  "price_1US1ZbLOoGy5dacxwE9Do7L0": { tier: "ouro", billingCycle: "annual" },
 };
 
 exports.createCheckoutSession = onCall(
