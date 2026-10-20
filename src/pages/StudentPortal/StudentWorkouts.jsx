@@ -77,6 +77,8 @@ export default function StudentWorkouts() {
     const [isFinished, setIsFinished] = useState(false);
     const [showExerciseList, setShowExerciseList] = useState(false);
     const [allTrainingLogs, setAllTrainingLogs] = useState([]);
+    const [showSubstituteInput, setShowSubstituteInput] = useState(false);
+    const [substituteName, setSubstituteName] = useState('');
 
     const studentData = students.find(s => s.id === user?.studentId);
 
@@ -120,7 +122,12 @@ export default function StudentWorkouts() {
             if (!state?.isWorkoutActive) return;
             setSelectedSheetId(state.selectedSheetId);
             setCurrentVariation(state.currentVariation);
-            setWorkoutStartTime(new Date(state.workoutStartTime));
+            // Se ficou parado por muito tempo (aluno fechou e só voltou dias
+            // depois), reconta a duração a partir de agora — senão o treino
+            // salva com uma duração absurda (ex: "5304 min").
+            const savedStart = new Date(state.workoutStartTime);
+            const hoursSinceStart = (Date.now() - savedStart.getTime()) / 3600000;
+            setWorkoutStartTime(hoursSinceStart > 4 ? new Date() : savedStart);
             setCurrentExIndex(state.currentExIndex);
             setCompletedSets(state.completedSets);
             setWorkoutProgress(state.workoutProgress || []);
@@ -183,6 +190,23 @@ export default function StudentWorkouts() {
         return ex;
     });
 
+    // Última vez que essa variação específica foi concluída — ajuda o aluno
+    // a saber se já treinou hoje ou faz tempo que não repete esse treino.
+    const currentSheetName = selectedSheetId === 'legacy' ? 'Treinos Base' : sheets[selectedSheetId]?.name || 'Sua Ficha';
+    const lastLogForVariation = allTrainingLogs
+        .filter(l => l.sheetName === currentSheetName && l.variation === activeVar)
+        .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0];
+    const lastWorkoutLabel = (() => {
+        if (!lastLogForVariation?.completedAt) return null;
+        const done = new Date(lastLogForVariation.completedAt);
+        const today = new Date();
+        const diffDays = Math.floor((today.setHours(0, 0, 0, 0) - new Date(done).setHours(0, 0, 0, 0)) / 86400000);
+        if (diffDays === 0) return 'Você já treinou isso hoje ✓';
+        if (diffDays === 1) return 'Último treino: ontem';
+        if (diffDays > 1) return `Último treino: há ${diffDays} dias`;
+        return null;
+    })();
+
     const startWorkout = () => {
         setIsWorkoutActive(true);
         setWorkoutStartTime(new Date());
@@ -234,7 +258,7 @@ export default function StudentWorkouts() {
             // meio (via "Trocar exercício") sem terminar as séries dele? Um
             // exercício marcado como "não consegui fazer" não conta como
             // pulado por engano — o aluno já foi honesto sobre ele.
-            const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && !p.skipped && p.done < p.totalSets);
+            const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && !p.skipped && !p.substitutedWith && p.done < p.totalSets);
             if (skippedIndex !== -1) {
                 const goBack = await confirm({
                     title: 'Exercício pulado',
@@ -255,18 +279,10 @@ export default function StudentWorkouts() {
     // Aluno não consegue/não quer fazer o exercício atual (aparelho ocupado,
     // dor, lesão, etc.) — marca honestamente como não realizado em vez de
     // forçar ele a "fingir" que completou as séries, e segue pro próximo.
-    const markExerciseSkipped = async () => {
-        const confirmed = await confirm({
-            title: 'Não consegui fazer',
-            message: `Tudo bem! "${exercises[currentExIndex].name}" vai ficar marcado como não realizado neste treino — sem problema, seu personal vai ver certinho o que rolou.`,
-            confirmText: 'Confirmar',
-            cancelText: 'Voltar',
-        });
-        if (!confirmed) return;
-
-        const newProgress = [...workoutProgress];
-        newProgress[currentExIndex] = { ...newProgress[currentExIndex], skipped: true };
-        setWorkoutProgress(newProgress);
+    // Compartilhado por "não consegui fazer" e "substituir" — avança pro
+    // próximo exercício, ou (se for o último) checa se ficou algo pulado
+    // pra trás antes de finalizar o treino.
+    const advancePastResolvedExercise = async (newProgress) => {
         setShowRestTimer(false);
 
         if (currentExIndex + 1 < exercises.length) {
@@ -275,7 +291,7 @@ export default function StudentWorkouts() {
             return;
         }
 
-        const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && !p.skipped && p.done < p.totalSets);
+        const skippedIndex = newProgress.findIndex((p, i) => i !== currentExIndex && !p.skipped && !p.substitutedWith && p.done < p.totalSets);
         if (skippedIndex !== -1) {
             const goBack = await confirm({
                 title: 'Exercício pulado',
@@ -292,10 +308,51 @@ export default function StudentWorkouts() {
         finishWorkout();
     };
 
+    const markExerciseSkipped = async () => {
+        const confirmed = await confirm({
+            title: 'Não consegui fazer',
+            message: `Tudo bem! "${exercises[currentExIndex].name}" vai ficar marcado como não realizado neste treino — sem problema, seu personal vai ver certinho o que rolou.`,
+            confirmText: 'Confirmar',
+            cancelText: 'Voltar',
+        });
+        if (!confirmed) return;
+
+        const newProgress = [...workoutProgress];
+        newProgress[currentExIndex] = { ...newProgress[currentExIndex], skipped: true };
+        setWorkoutProgress(newProgress);
+        await advancePastResolvedExercise(newProgress);
+    };
+
+    // Aluno fez um exercício diferente do prescrito (aparelho ocupado, etc.)
+    // — registra o que foi feito de verdade em vez de só marcar como pulado,
+    // pra o personal saber exatamente o que rolou.
+    const confirmSubstitute = () => {
+        const name = substituteName.trim();
+        if (!name) return;
+
+        // Só marca a troca — o aluno continua nesse mesmo slot fazendo as
+        // séries do substituto normalmente (não é um "pulei", é "fiz outro").
+        const newProgress = [...workoutProgress];
+        newProgress[currentExIndex] = { ...newProgress[currentExIndex], substitutedWith: name };
+        setWorkoutProgress(newProgress);
+        setShowSubstituteInput(false);
+        setSubstituteName('');
+    };
+
     const finishWorkout = async () => {
         const endTime = new Date();
         const durationMinutes = Math.round((endTime - workoutStartTime) / 60000);
         const skippedExercises = workoutProgress.filter(p => p.skipped).map(p => p.name);
+        const substitutedExercises = workoutProgress.filter(p => p.substitutedWith).map(p => `${p.name} → ${p.substitutedWith}`);
+        // Detalhe por exercício — alimenta o histórico detalhado que o
+        // personal vê (séries feitas vs. prescritas, pulado, substituído).
+        const exercisesDetail = workoutProgress.map(p => ({
+            name: p.name,
+            totalSets: p.totalSets,
+            done: Math.min(p.done, p.totalSets),
+            skipped: !!p.skipped,
+            substitutedWith: p.substitutedWith || null,
+        }));
 
         const logData = {
             sheetName: selectedSheetId === 'legacy' ? 'Treinos Base' : sheets[selectedSheetId]?.name || 'Sua Ficha',
@@ -303,6 +360,8 @@ export default function StudentWorkouts() {
             duration: durationMinutes,
             exercisesCompleted: exercises.length - skippedExercises.length,
             skippedExercises,
+            substitutedExercises,
+            exercisesDetail,
             // Volume Load (séries × reps × carga) a partir da ficha prescrita —
             // usado pra acompanhar a progressão semanal de carga do aluno.
             volumeLoad: workoutVolumeLoad(exercises),
@@ -495,6 +554,7 @@ export default function StudentWorkouts() {
                                 const isCurrent = idx === currentExIndex;
                                 const isComplete = total > 0 && done >= total;
                                 const isSkipped = workoutProgress[idx]?.skipped;
+                                const substitutedWith = workoutProgress[idx]?.substitutedWith;
                                 return (
                                     <button
                                         key={idx}
@@ -517,7 +577,9 @@ export default function StudentWorkouts() {
                                             {isComplete ? <CheckCircle2 size={16} color="var(--primary)" /> : <span style={{ width: '16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{idx + 1}</span>}
                                             {ex.name}
                                         </span>
-                                        <span style={{ fontSize: '0.75rem', color: isSkipped ? '#f97316' : 'var(--text-muted)', flexShrink: 0 }}>{isSkipped ? 'Não realizado' : `${done}/${total} séries`}</span>
+                                        <span style={{ fontSize: '0.75rem', color: isSkipped ? '#f97316' : substitutedWith ? '#60a5fa' : 'var(--text-muted)', flexShrink: 0 }}>
+                                            {isSkipped ? 'Não realizado' : substitutedWith ? `Substituído: ${substitutedWith}` : `${done}/${total} séries`}
+                                        </span>
                                     </button>
                                 );
                             })}
@@ -531,8 +593,15 @@ export default function StudentWorkouts() {
                         <div style={{ color: 'var(--primary)', fontWeight: 'bold', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
                             EXERCÍCIO {currentExIndex + 1} DE {exercises.length}
                         </div>
-                        <h2 style={{ fontSize: '1.75rem', margin: '0 0 1rem 0' }}>{exercises[currentExIndex].name}</h2>
-                        
+                        {workoutProgress[currentExIndex]?.substitutedWith ? (
+                            <>
+                                <h2 style={{ fontSize: '1.75rem', margin: '0 0 0.25rem 0', color: '#60a5fa' }}>{workoutProgress[currentExIndex].substitutedWith}</h2>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>no lugar de {exercises[currentExIndex].name}</div>
+                            </>
+                        ) : (
+                            <h2 style={{ fontSize: '1.75rem', margin: '0 0 1rem 0' }}>{exercises[currentExIndex].name}</h2>
+                        )}
+
                         <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem' }}>
                             <div style={{ textAlign: 'center' }}>
                                 <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{exercises[currentExIndex].sets}</div>
@@ -554,11 +623,13 @@ export default function StudentWorkouts() {
                     {/* Video Player */}
                     {exercises[currentExIndex].videoUrl ? (
                         <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000', marginBottom: '1rem', aspectRatio: '16/9' }}>
-                            <video 
-                                src={exercises[currentExIndex].videoUrl} 
-                                controls 
+                            <video
+                                src={exercises[currentExIndex].videoUrl}
+                                controls
                                 autoPlay
                                 loop
+                                muted
+                                playsInline
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                             />
                         </div>
@@ -616,9 +687,45 @@ export default function StudentWorkouts() {
                             Corrigir (Voltar 1 série)
                         </button>
                     )}
+                    {showSubstituteInput ? (
+                        <div style={{ marginTop: '0.5rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '14px' }}>
+                            <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                                Qual exercício você fez no lugar?
+                            </label>
+                            <input
+                                autoFocus
+                                value={substituteName}
+                                onChange={e => setSubstituteName(e.target.value)}
+                                placeholder="Ex: Leg Press (aparelho ocupado)"
+                                style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border-glass)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '0.95rem', boxSizing: 'border-box', marginBottom: '0.75rem' }}
+                            />
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                    onClick={() => { setShowSubstituteInput(false); setSubstituteName(''); }}
+                                    style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', background: 'transparent', border: '1px solid var(--border-glass)', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmSubstitute}
+                                    disabled={!substituteName.trim()}
+                                    style={{ flex: 1, padding: '0.65rem', borderRadius: '10px', background: '#3b82f6', border: 'none', color: 'white', fontWeight: 600, cursor: substituteName.trim() ? 'pointer' : 'not-allowed', opacity: substituteName.trim() ? 1 : 0.6 }}
+                                >
+                                    Confirmar
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setShowSubstituteInput(true)}
+                            style={{ width: '100%', padding: '0.6rem', color: '#60a5fa', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600 }}
+                        >
+                            Substituir por outro exercício
+                        </button>
+                    )}
                     <button
                         onClick={markExerciseSkipped}
-                        style={{ width: '100%', padding: '0.75rem', color: '#f97316', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600 }}
+                        style={{ width: '100%', padding: '0.6rem', color: '#f97316', background: 'none', border: 'none', fontSize: '0.85rem', fontWeight: 600 }}
                     >
                         Não consegui fazer esse exercício
                     </button>
@@ -676,6 +783,17 @@ export default function StudentWorkouts() {
                     </div>
                 )}
             </div>
+
+            {/* Último treino nessa variação */}
+            {lastWorkoutLabel && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem',
+                    fontSize: '0.85rem', color: lastWorkoutLabel.includes('✓') ? 'var(--primary)' : 'var(--text-muted)',
+                    fontWeight: lastWorkoutLabel.includes('✓') ? 600 : 400
+                }}>
+                    <Clock size={14} /> {lastWorkoutLabel}
+                </div>
+            )}
 
             {/* Start Workout Button */}
             {exercises.length > 0 && (
@@ -965,10 +1083,12 @@ export default function StudentWorkouts() {
 
                         {activeExercise.videoUrl ? (
                             <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', background: '#000', marginBottom: '1rem', aspectRatio: '16/9' }}>
-                                <video 
-                                    src={activeExercise.videoUrl} 
-                                    controls 
+                                <video
+                                    src={activeExercise.videoUrl}
+                                    controls
                                     autoPlay
+                                    muted
+                                    playsInline
                                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                                 />
                             </div>

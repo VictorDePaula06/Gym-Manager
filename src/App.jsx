@@ -25,6 +25,7 @@ import TeacherDetails from './pages/TeacherDetails';
 import PaymentRequired from './pages/PaymentRequired';
 import TrialExpired from './pages/TrialExpired';
 import TermsOfService from './pages/TermsOfService';
+import TermsPublic from './pages/TermsPublic';
 import TermsCertificate from './pages/TermsCertificate'; // New Import
 import ChangePassword from './pages/ChangePassword';
 import AccessDenied from './pages/AccessDenied';
@@ -75,6 +76,7 @@ function App() {
                 <Route path="/payment-required" element={<PaymentRequired />} />
                 <Route path="/trial-expired" element={<TrialExpired />} />
                 <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/termos" element={<TermsPublic />} />
                 <Route path="/central-de-ajuda" element={<HelpCenter />} />
                 <Route path="/access-denied" element={<AccessDenied />} />
                 <Route path="/admin" element={

@@ -109,7 +109,7 @@ const TermsOfService = () => {
 
     if (loading) {
         return (
-            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a', color: 'white' }}>
+            <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'var(--bg-app)', color: 'var(--text-main)' }}>
                 <Loader2 className="animate-spin" size={40} />
             </div>
         );
@@ -122,28 +122,26 @@ const TermsOfService = () => {
             alignItems: 'center',
             justifyContent: 'center',
             padding: '2rem',
-            backgroundColor: '#0f172a',
-            color: 'white'
+            background: 'var(--bg-app)',
+            color: 'var(--text-main)'
         }}>
-            <div style={{
+            <div className="glass-panel" style={{
                 maxWidth: '800px',
                 width: '100%',
-                backgroundColor: '#1e293b',
+                padding: 0,
                 borderRadius: '16px',
-                border: '1px solid #334155',
                 overflow: 'hidden',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
             }}>
                 {/* Header */}
                 <div style={{
                     padding: '2rem',
-                    borderBottom: '1px solid #334155',
-                    backgroundColor: '#0f172a'
+                    borderBottom: '1px solid var(--border-glass)'
                 }}>
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Shield color="#10b981" /> Termos de Uso e Política de Privacidade
+                    <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
+                        <Shield color="var(--primary)" /> Termos de Uso e Política de Privacidade
                     </h1>
-                    <p style={{ color: '#94a3b8', marginTop: '0.5rem' }}>
+                    <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                         Para continuar utilizando o Alivia Fitness, você precisa ler e aceitar nossos termos.
                     </p>
                 </div>
@@ -153,28 +151,27 @@ const TermsOfService = () => {
                     padding: '2rem',
                     height: '350px',
                     overflowY: 'auto',
-                    backgroundColor: '#1e293b',
-                    color: '#cbd5e1',
+                    color: 'var(--text-muted)',
                     fontSize: '0.95rem',
                     lineHeight: '1.6'
                 }}>
-                    <h3>1. Aceitação dos Termos</h3>
-                    <p>Ao acessar e usar este software, você aceita e concorda em estar vinculado aos termos e disposições deste acordo.</p>
+                    <h3 style={{ color: 'var(--text-main)' }}>1. Aceitação dos Termos</h3>
+                    <p>Ao criar uma conta e utilizar o Alivia Fitness, você declara ter lido, compreendido e concordado com estes Termos de Uso e com nossa Política de Privacidade. Caso não concorde com algum ponto, não deve utilizar a plataforma.</p>
                     <br />
-                    <h3>2. Licença de Uso</h3>
-                    <p>Concedemos a você uma licença limitada, não exclusiva e intransferível para usar o software para fins de gestão de sua academia ou estúdio.</p>
+                    <h3 style={{ color: 'var(--text-main)' }}>2. Licença de Uso</h3>
+                    <p>Concedemos a você uma licença limitada, não exclusiva, intransferível e revogável para usar o software exclusivamente para fins de gestão da sua atividade como personal trainer, academia ou estúdio, de acordo com o plano contratado.</p>
                     <br />
-                    <h3>3. Responsabilidades</h3>
-                    <p>Você é responsável por manter a confidencialidade de sua conta e senha. O sistema não se responsabiliza por dados inseridos incorretamente.</p>
+                    <h3 style={{ color: 'var(--text-main)' }}>3. Cadastro e Responsabilidades</h3>
+                    <p>Você é responsável por manter a confidencialidade de sua conta e senha, e por todas as atividades realizadas a partir do seu login. O Alivia Fitness não se responsabiliza por dados inseridos incorretamente por você ou por seus alunos, nem por decisões de treino ou saúde tomadas com base nas informações registradas no sistema.</p>
                     <br />
-                    <h3>4. Pagamentos e Assinaturas</h3>
-                    <p>O não pagamento das mensalidades poderá resultar na suspensão temporária do acesso até a regularização.</p>
+                    <h3 style={{ color: 'var(--text-main)' }}>4. Pagamentos e Assinaturas</h3>
+                    <p>O acesso às funcionalidades pagas depende de assinatura ativa, processada através do Stripe. O não pagamento das mensalidades poderá resultar na suspensão temporária do acesso até a regularização. Você pode cancelar sua assinatura a qualquer momento, sem multa, diretamente em Configurações → Assinatura; o acesso permanece ativo até o fim do período já pago.</p>
                     <br />
-                    <h3>5. Dados e Privacidade</h3>
-                    <p>Respeitamos a LGPD. Seus dados são criptografados e utilizados apenas para o funcionamento da plataforma.</p>
+                    <h3 style={{ color: 'var(--text-main)' }}>5. Dados e Privacidade</h3>
+                    <p>Respeitamos a Lei Geral de Proteção de Dados (LGPD). Os dados inseridos por você e por seus alunos (informações de cadastro, treinos, avaliações físicas e financeiro) são armazenados de forma criptografada e utilizados apenas para o funcionamento da plataforma, nunca compartilhados com terceiros para fins comerciais. Você pode solicitar a exportação ou exclusão dos seus dados a qualquer momento entrando em contato com o suporte.</p>
                     <br />
-                    <p style={{ fontStyle: 'italic', color: '#64748b' }}>... Texto completo deve ser inserido aqui ...</p>
-                    <br />
+                    <h3 style={{ color: 'var(--text-main)' }}>6. Disponibilidade e Alterações</h3>
+                    <p>Fazemos o possível para manter o serviço disponível ininterruptamente, mas não garantimos ausência total de falhas. Estes termos podem ser atualizados periodicamente; mudanças relevantes serão comunicadas dentro do app.</p>
                     <br />
                 </div>
 
@@ -183,7 +180,7 @@ const TermsOfService = () => {
 
                     {/* Name Input for Legacy Users */}
                     {needsName && (
-                        <div style={{ backgroundColor: '#0f172a', padding: '1.5rem', borderRadius: '12px', border: '1px solid #f59e0b' }}>
+                        <div style={{ background: 'var(--input-bg)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #f59e0b' }}>
                             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#f59e0b', fontSize: '1.1rem' }}>
                                 <Star size={18} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'text-bottom' }} />
                                 Confirme seu Nome Completo
@@ -197,22 +194,23 @@ const TermsOfService = () => {
                                     width: '100%',
                                     padding: '12px',
                                     borderRadius: '8px',
-                                    border: '1px solid #64748b',
-                                    backgroundColor: '#1e293b',
-                                    color: 'white',
-                                    fontSize: '1rem'
+                                    border: '1px solid var(--border-glass)',
+                                    background: 'var(--bg-app)',
+                                    color: 'var(--text-main)',
+                                    fontSize: '1rem',
+                                    boxSizing: 'border-box'
                                 }}
                             />
                         </div>
                     )}
 
                     {/* Document Input */}
-                    <div style={{ backgroundColor: '#0f172a', padding: '1.5rem', borderRadius: '12px', border: '1px solid #334155' }}>
-                        <label style={{ display: 'block', marginBottom: '1rem', fontWeight: 'bold', color: 'white', fontSize: '1rem' }}>
+                    <div style={{ background: 'var(--input-bg)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                        <label style={{ display: 'block', marginBottom: '1rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '1rem' }}>
                             CPF ou CNPJ do Responsável/Empresa
                         </label>
 
-                        <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem', color: 'var(--text-main)' }}>
                             <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <input
                                     type="radio"
@@ -245,13 +243,14 @@ const TermsOfService = () => {
                                 width: '100%',
                                 padding: '12px',
                                 borderRadius: '8px',
-                                border: '1px solid #64748b',
-                                backgroundColor: '#1e293b',
-                                color: 'white',
-                                fontSize: '1rem'
+                                border: '1px solid var(--border-glass)',
+                                background: 'var(--bg-app)',
+                                color: 'var(--text-main)',
+                                fontSize: '1rem',
+                                boxSizing: 'border-box'
                             }}
                         />
-                        <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                             Este documento será vinculado ao seu Certificado de Adesão.
                         </p>
                     </div>
@@ -260,19 +259,19 @@ const TermsOfService = () => {
                 {/* Footer Actions */}
                 <div style={{
                     padding: '2rem',
-                    borderTop: '1px solid #334155',
-                    backgroundColor: '#0f172a',
+                    borderTop: '1px solid var(--border-glass)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '1rem'
+                    gap: '1rem',
+                    flexWrap: 'wrap'
                 }}>
                     <button
                         onClick={logout}
                         style={{
                             background: 'transparent',
                             border: 'none',
-                            color: '#94a3b8',
+                            color: 'var(--text-muted)',
                             cursor: 'pointer',
                             textDecoration: 'underline'
                         }}
@@ -283,10 +282,8 @@ const TermsOfService = () => {
                     <button
                         onClick={handleAccept}
                         disabled={accepting}
+                        className="btn-primary"
                         style={{
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            border: 'none',
                             padding: '1rem 2rem',
                             borderRadius: '8px',
                             fontWeight: 'bold',

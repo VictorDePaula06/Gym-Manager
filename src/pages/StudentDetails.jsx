@@ -7,7 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { useDialog } from '../context/DialogContext';
 import { db, storage } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, getDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
-import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, Sparkles, X, Check, Loader2, Lock, Unlock, ClipboardList, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Trash2, Plus, Edit2, ArrowLeft, Download, User, Activity, Dumbbell, DollarSign, Scale, MessageCircle, CheckCircle, CheckCircle2, Clock, Image as ImageIcon, Camera, ChevronLeft, ChevronRight, Accessibility, AlertCircle, AlertTriangle, Sparkles, X, Check, Loader2, Lock, Unlock, ClipboardList, TrendingUp, TrendingDown, Minus, ChevronDown } from 'lucide-react';
 import { subscribeCheckins } from '../services/checkin';
 import { DEFAULT_CHECKIN } from '../config/checkin';
 import { getNextPaymentDate, getPaymentStatus } from '../utils/payments';
@@ -81,6 +81,7 @@ export default function StudentDetails() {
     }, [isGeneratingSheet]);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showHistoryModal, setShowHistoryModal] = useState(false);
+    const [expandedLogId, setExpandedLogId] = useState(null);
 
     const [newAssessment, setNewAssessment] = useState({
         weight: '',
@@ -906,26 +907,75 @@ export default function StudentDetails() {
                             </div>
 
                             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '0.5rem' }}>
-                                {trainingLogs.map(log => (
-                                    <div key={log.id} style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-glass)' }}>
-                                        <div style={{ width: '45px', height: '45px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                                             <CheckCircle size={22} />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                                <h4 style={{ margin: 0, fontSize: '1rem' }}>Treino {log.variation}</h4>
-                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                    {new Date(log.timestamp).toLocaleDateString('pt-BR')} às {new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                </span>
+                                {trainingLogs.map(log => {
+                                    const isExpanded = expandedLogId === log.id;
+                                    const hasDetail = log.exercisesDetail?.length > 0;
+                                    return (
+                                    <div key={log.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
+                                        <div
+                                            onClick={() => hasDetail && setExpandedLogId(isExpanded ? null : log.id)}
+                                            style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: hasDetail ? 'pointer' : 'default' }}
+                                        >
+                                            <div style={{ width: '45px', height: '45px', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', flexShrink: 0 }}>
+                                                 <CheckCircle size={22} />
                                             </div>
-                                            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={14} /> {log.duration} min</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Dumbbell size={14} /> {log.exercisesCompleted} exercícios</span>
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Activity size={14} /> {log.sheetName?.split(' ')[0]}</span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                                    <h4 style={{ margin: 0, fontSize: '1rem' }}>Treino {log.variation}</h4>
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                        {new Date(log.timestamp).toLocaleDateString('pt-BR')} às {new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={14} /> {log.duration} min</span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Dumbbell size={14} /> {log.exercisesCompleted} exercícios</span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Activity size={14} /> {log.sheetName?.split(' ')[0]}</span>
+                                                </div>
+                                                {log.skippedExercises?.length > 0 && (
+                                                    <div style={{ marginTop: '0.4rem', fontSize: '0.78rem', color: '#f97316', display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+                                                        <AlertTriangle size={13} style={{ marginTop: '1px', flexShrink: 0 }} />
+                                                        <span>Não realizado: {log.skippedExercises.join(', ')}</span>
+                                                    </div>
+                                                )}
+                                                {log.substitutedExercises?.length > 0 && (
+                                                    <div style={{ marginTop: '0.3rem', fontSize: '0.78rem', color: '#60a5fa', display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+                                                        <Activity size={13} style={{ marginTop: '1px', flexShrink: 0 }} />
+                                                        <span>Substituído: {log.substitutedExercises.join(', ')}</span>
+                                                    </div>
+                                                )}
                                             </div>
+                                            {hasDetail && (
+                                                <ChevronDown size={18} color="var(--text-muted)" style={{ flexShrink: 0, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                                            )}
                                         </div>
+
+                                        {isExpanded && hasDetail && (
+                                            <div style={{ padding: '0 1.25rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                {log.exercisesDetail.map((ex, i) => (
+                                                    <div key={i} style={{
+                                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem',
+                                                        padding: '0.6rem 0.85rem', borderRadius: '10px', background: 'rgba(255,255,255,0.03)',
+                                                        fontSize: '0.85rem'
+                                                    }}>
+                                                        <div style={{ minWidth: 0 }}>
+                                                            <div style={{ color: 'var(--text-main)' }}>{ex.name}</div>
+                                                            {ex.substitutedWith && (
+                                                                <div style={{ color: '#60a5fa', fontSize: '0.78rem' }}>Substituído: {ex.substitutedWith}</div>
+                                                            )}
+                                                        </div>
+                                                        <span style={{
+                                                            flexShrink: 0, fontWeight: 600,
+                                                            color: ex.skipped ? '#f97316' : (ex.done >= ex.totalSets ? '#10b981' : 'var(--text-muted)')
+                                                        }}>
+                                                            {ex.skipped ? 'Não realizado' : `${ex.done}/${ex.totalSets} séries`}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             <button onClick={() => setShowHistoryModal(false)} className="btn-primary" style={{ width: '100%', padding: '1rem', borderRadius: '14px', fontWeight: 'bold' }}>

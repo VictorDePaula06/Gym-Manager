@@ -690,7 +690,7 @@ export default function LandingPage() {
                 <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem' }}>
                     <a href="/central-de-ajuda" style={{ color: '#64748b', textDecoration: 'underline' }}>Central de Ajuda</a>
                     {' · '}
-                    <a href="/terms" style={{ color: '#64748b', textDecoration: 'underline' }}>Termos de Uso e Privacidade</a>
+                    <a href="/termos" style={{ color: '#64748b', textDecoration: 'underline' }}>Termos de Uso e Privacidade</a>
                 </p>
             </footer>
 

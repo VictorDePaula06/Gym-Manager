@@ -296,7 +296,7 @@ export default function Layout() {
                         <span className="sidebar-text">Sair</span>
                     </button>
                     <div className="sidebar-text" style={{ textAlign: 'center', marginTop: '1rem', opacity: 0.4 }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>v11.5.0</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>v11.6.1</span>
                     </div>
                 </div>
             </aside>
