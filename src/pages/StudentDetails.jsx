@@ -911,7 +911,7 @@ export default function StudentDetails() {
                                     const isExpanded = expandedLogId === log.id;
                                     const hasDetail = log.exercisesDetail?.length > 0;
                                     return (
-                                    <div key={log.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
+                                    <div key={log.id} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '16px', border: '1px solid var(--border-glass)', overflow: 'hidden', flexShrink: 0 }}>
                                         <div
                                             onClick={() => hasDetail && setExpandedLogId(isExpanded ? null : log.id)}
                                             style={{ padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: hasDetail ? 'pointer' : 'default' }}
